@@ -124,7 +124,9 @@ def fig1_network():
 
     for i, (u,v) in enumerate(G.edges()):
         Ninv[(u, v)] = i
-        N[i] = (u, v)
+        N[i] = (u, v)        
+        Ninv[(v, u)] = i
+        
         # if u == (5,8) and v == (6,8): edge_color.append('r')
 #         elif u == (6,7) and v == (6,8): edge_color.append('r')
 #         elif u == (6,7) and v == (7,7): edge_color.append('r')
@@ -153,6 +155,25 @@ def fig1_network():
         assert (u, v) in Ninv
     return G
 
+
+def color_path(G, path, c, w, figname):
+    colors, widths = edge_color[:], edge_width[:]
+    for i in xrange(len(path) - 1):
+        edge = (path[i], path[i + 1])
+        index = None
+        try:
+            index = Ninv[edge]
+        except KeyError:
+            index = Ninv[(path[i + 1], path[i])]
+        colors[index] = c
+        widths[index] = w
+        
+    nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors, node_color=node_color, width=widths)
+    PP.draw()
+    #PP.show()
+    PP.savefig(figname)
+    PP.close()
+    
 
 def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay):
     """ """
@@ -232,18 +253,9 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay):
         assert len(path_lengths) == num_ants == len(revisits)
         print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i" %(iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),mean(path_lengths),median(path_lengths),len(wrong_nest),first_10,last_10)
         
-        first_path = paths[0]
-        for i in xrange(len(first_path) - 1):
-            edge = (first_path[i], first_path[i + 1])
-            pos = None
-            try:
-                pos = Ninv[edge]
-            except KeyError:
-                pos = Ninv[(first_path[i + 1], first_path[i])]
-            edge_color[pos] = 'b'
-            edge_width[pos] = 2
-
-                
+        for i in xrange(num_ants):
+            path = paths[i]
+            color_path(G, path, 'b', 2, "ant" + str(i) + ".pdf")     
 
 def main():
     start = time.time()
