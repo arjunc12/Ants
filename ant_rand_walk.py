@@ -157,6 +157,12 @@ def fig1_network():
 
 
 def color_path(G, path, c, w, figname):
+    """
+    Given a path, colors that path on the graph and then outputs the colored path to a
+    file
+    
+    TODO: make it clear what the order of edges taken is rather than just the edges taken
+    """
     colors, widths = edge_color[:], edge_width[:]
     for i in xrange(len(path) - 1):
         edge = (path[i], path[i + 1])
@@ -194,47 +200,81 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay):
 
         # Initialize all ants.
         paths = {}           # path traveled for each ant.
-        wrong_nest = set()   # ants that revisit an old nest before recovering.
         for i in xrange(num_ants):
-            paths[i] = [init,bkpt] # path traveled.
-            next = paths[i][-1]
-
-            j = 0
-            while next != target:
-                assert paths[i][0] == init
-
-                # iterate through candidate edges and choose proportionally.
-                curr,prev = paths[i][-1],paths[i][-2]
-                candidates,weights = [],[]
-                for neighbor in G.neighbors(curr):
-                    if neighbor == prev: continue # history of last step.
-                    candidates.append(Minv[neighbor])
-                    weights.append(float(G[curr][neighbor]['weight']))
-
-                # choose one proportionally.
-                next = M[choice(candidates,1,p=[val/sum(weights) for val in weights])[0]]
-                paths[i].append(next)
-
-                # visited an old nest first.
-                if next in nests: wrong_nest.add(i)
-
-                # target found.
-                if next == target: break 
+            paths[i] = [init, bkpt]
+        wrong_nest = set()   # ants that revisit an old nest before recovering.
+        
+        done = False
+        i = 0
+        while not done:
+            done = True
+            for j in xrange(min(i, num_ants)):
+                path = paths[j]
+                curr = path[-1]
+                prev = path[-2]
+                if curr != target:
+                    done = False
+                    candidates,weights = [],[]
+                    for neighbor in G.neighbors(curr):
+                        if neighbor =!= prev # history of last step.
+                            candidates.append(Minv[neighbor])
+                            weights.append(float(G[curr][neighbor]['weight']))
+                    next = M[choice(candidates,1,p=[val/sum(weights) for val in weights])[0]]
+                    path.append(next)
+                    G[curr][next]['weight'] += pheromone_add
                     
-                # max reached, break.
-                if len(paths[i]) == MAX_STEPS: break
-
-            # Update pheromone on traversed edges (except the initial edge).
-            for j in xrange(1,len(paths[i])-1):
-                u,v = paths[i][j],paths[i][j+1]                
-                assert G.has_edge(u,v)         
-                G[u][v]['weight'] += pheromone_add
-
-            # Decay weights.
-            for u,v in G.edges_iter():                
-                G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,0.1)
-
-            assert G.size() == num_edges
+                    # visited an old nest first.
+                    if next in nests: 
+                        wrong_nest.add(i)
+                        
+                for u, v in G.edges_iter():
+                   G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,0.1) 
+                    
+            i += 1
+        
+        for k in xrange(num_ants):
+            assert paths[i][-1] == target
+        
+        # for i in xrange(num_ants):
+#             paths[i] = [init,bkpt] # path traveled.
+#             next = paths[i][-1]
+# 
+#             j = 0
+#             while next != target:
+#                 assert paths[i][0] == init
+# 
+#                 # iterate through candidate edges and choose proportionally.
+#                 curr,prev = paths[i][-1],paths[i][-2]
+#                 candidates,weights = [],[]
+#                 for neighbor in G.neighbors(curr):
+#                     if neighbor == prev: continue # history of last step.
+#                     candidates.append(Minv[neighbor])
+#                     weights.append(float(G[curr][neighbor]['weight']))
+# 
+#                 # choose one proportionally.
+#                 next = M[choice(candidates,1,p=[val/sum(weights) for val in weights])[0]]
+#                 paths[i].append(next)
+# 
+#                 # visited an old nest first.
+#                 if next in nests: wrong_nest.add(i)
+# 
+#                 # target found.
+#                 if next == target: break 
+#                     
+#                 # max reached, break.
+#                 if len(paths[i]) == MAX_STEPS: break
+# 
+#             # Update pheromone on traversed edges (except the initial edge).
+#             for j in xrange(1,len(paths[i])-1):
+#                 u,v = paths[i][j],paths[i][j+1]                
+#                 assert G.has_edge(u,v)         
+#                 G[u][v]['weight'] += pheromone_add
+# 
+#             # Decay weights.
+#             for u,v in G.edges_iter():                
+#                 G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,0.1)
+# 
+#             assert G.size() == num_edges
 
         # todo: somehow the 'good edges' have to be preferentially reinforced. 
 
