@@ -17,6 +17,7 @@ N = {}    # edge -> edge id
 Ninv = {} # edge id -> edge
 
 MAX_STEPS=3000
+MIN_PHEROMONE = 0.1
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
@@ -45,7 +46,7 @@ def fig1_network():
         M[i] = u
         Minv[u] = i
 
-    for u,v in G.edges_iter(): G[u][v]['weight'] = 1
+    for u,v in G.edges_iter(): G[u][v]['weight'] = MIN_PHEROMONE
 
     # horizontal edges.
     G.remove_edge((1,9),(2,9))
@@ -137,11 +138,16 @@ def fig1_network():
 #         elif u == (9,4) and v == (9,5): edge_color.append('r')
 #         elif u == (9,4) and v == (8,4): edge_color.append('r')
 #         elif u == (8,3) and v == (8,4): edge_color.append('r')
-        if u == (7,3) and v == (8,3): edge_color.append('r')
-        elif u == (7,3) and v == (6,3): edge_color.append('r')
-        elif u == (5,3) and v == (6,3): edge_color.append('r')
-        elif u == (5,3) and v == (4,3): edge_color.append('r')
-        elif u == (3,2) and v == (3,3): edge_color.append('r')
+        if u == (7,3) and v == (8,3): 
+            edge_color.append('r')
+        elif u == (7,3) and v == (6,3): 
+            edge_color.append('r')
+        elif u == (5,3) and v == (6,3): 
+            edge_color.append('r')
+        elif u == (5,3) and v == (4,3): 
+            edge_color.append('r')
+        elif u == (3,2) and v == (3,3): 
+            edge_color.append('r')
         else:
             edge_color.append('k')
 
@@ -154,7 +160,6 @@ def fig1_network():
     for (u, v) in G.edges():
         assert (u, v) in Ninv
     return G
-
 
 def color_path(G, path, c, w, figname):
     """
@@ -194,9 +199,15 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay):
 
     print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(revisits), mean(path_lengths), median(path_lengths), len(wrong_nest), first_10,last_10)"
 
-
+    data_file = open('ant_walks.csv', 'a')
+    pher_str = "%d, %f, %f, " % (num_ants, pheromone_add, pheromone_decay)
     # Repeat 'num_iters' times.
     for iter in xrange(num_iters):
+        
+        for u, v in G.edges_iter():
+            G[u][v]['weight'] = 1
+        for u, v in P:
+            G[u][v]['weight'] += pheromone_add
 
         # Initialize all ants.
         paths = {}           # path traveled for each ant.
@@ -205,8 +216,8 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay):
         wrong_nest = set()   # ants that revisit an old nest before recovering.
         
         done = False
-        i = 0
-        while not done:
+        i = 1
+        while (not done) and i <= MAX_STEPS:
             done = True
             for j in xrange(min(i, num_ants)):
                 path = paths[j]
@@ -216,74 +227,41 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay):
                     done = False
                     candidates,weights = [],[]
                     for neighbor in G.neighbors(curr):
-                        if neighbor =!= prev # history of last step.
+                        if neighbor != prev: # history of last step.
                             candidates.append(Minv[neighbor])
                             weights.append(float(G[curr][neighbor]['weight']))
                     next = M[choice(candidates,1,p=[val/sum(weights) for val in weights])[0]]
                     path.append(next)
                     G[curr][next]['weight'] += pheromone_add
                     
+                    '''
+                    if next == target:
+                        at_nest.append(j)
+                        print j, len(at_nest), num_ants
+                    '''
+                    
                     # visited an old nest first.
                     if next in nests: 
-                        wrong_nest.add(i)
-                        
+                        wrong_nest.add(i)     
                 for u, v in G.edges_iter():
                    G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,0.1) 
                     
             i += 1
         
-        for k in xrange(num_ants):
-            assert paths[i][-1] == target
-        
-        # for i in xrange(num_ants):
-#             paths[i] = [init,bkpt] # path traveled.
-#             next = paths[i][-1]
-# 
-#             j = 0
-#             while next != target:
-#                 assert paths[i][0] == init
-# 
-#                 # iterate through candidate edges and choose proportionally.
-#                 curr,prev = paths[i][-1],paths[i][-2]
-#                 candidates,weights = [],[]
-#                 for neighbor in G.neighbors(curr):
-#                     if neighbor == prev: continue # history of last step.
-#                     candidates.append(Minv[neighbor])
-#                     weights.append(float(G[curr][neighbor]['weight']))
-# 
-#                 # choose one proportionally.
-#                 next = M[choice(candidates,1,p=[val/sum(weights) for val in weights])[0]]
-#                 paths[i].append(next)
-# 
-#                 # visited an old nest first.
-#                 if next in nests: wrong_nest.add(i)
-# 
-#                 # target found.
-#                 if next == target: break 
-#                     
-#                 # max reached, break.
-#                 if len(paths[i]) == MAX_STEPS: break
-# 
-#             # Update pheromone on traversed edges (except the initial edge).
-#             for j in xrange(1,len(paths[i])-1):
-#                 u,v = paths[i][j],paths[i][j+1]                
-#                 assert G.has_edge(u,v)         
-#                 G[u][v]['weight'] += pheromone_add
-# 
-#             # Decay weights.
-#             for u,v in G.edges_iter():                
-#                 G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,0.1)
-# 
-#             assert G.size() == num_edges
-
         # todo: somehow the 'good edges' have to be preferentially reinforced. 
 
         # Compute statistics for each ant.
         revisits,path_lengths = [],[]
-        for i in xrange(num_ants):
-            revisits.append(len(paths[i]) - len(set(paths[i])))
-            path_lengths.append(len(paths[i]))
-
+        for k in xrange(num_ants):
+            path = paths[k]
+            revisits.append(len(path) - len(set(path)))
+            path_lengths.append(len(path))
+            top10 = (k + 1) <= 0.1 * num_ants
+            bottom10 = (k + 1) >= 0.9 * num_ants
+            finished = path[-1] == target
+            ant_str = "%d, %d, %d, %d, %d\n" % (len(path), top10, bottom10, revisits[-1], finished)
+            data_file.write(pher_str + ant_str)
+            
 
         # Compare time for recovery for first 10% of ants with last 10%.
         first_10 = mean(path_lengths[0:int(num_ants*0.1)])
@@ -293,9 +271,15 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay):
         assert len(path_lengths) == num_ants == len(revisits)
         print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i" %(iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),mean(path_lengths),median(path_lengths),len(wrong_nest),first_10,last_10)
         
+        '''
         for i in xrange(num_ants):
             path = paths[i]
-            color_path(G, path, 'b', 2, "ant" + str(i) + ".pdf")     
+            num_zeros = len(str(num_ants)) - len(str(i))
+            fig_name = 'ant' + ('0' * num_zeros) + str(i)
+            color_path(G, path, 'b', 2, fig_name)
+        '''
+    
+    data_file.close()        
 
 def main():
     start = time.time()
