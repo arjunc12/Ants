@@ -7,6 +7,8 @@ from optparse import OptionParser
 from matplotlib import pylab as PP
 from numpy.random import seed,choice
 from numpy import mean,median
+from collections import defaultdict
+import numpy as np
 
 #seed(10301949)
 
@@ -185,6 +187,52 @@ def color_path(G, path, c, w, figname):
     PP.savefig(figname)
     PP.close()
     
+def color_graph(G, c, w, figname):
+    colors, widths = edge_color[:], edge_width[:]
+    unique_weights = set()
+    for u, v in G.edges():
+        index = None
+        try:
+            index = Ninv[(u, v)]
+        except KeyError:
+            index = Ninv[(v, u)]
+        colors[index] = c
+        wt = G[u][v]['weight']
+        widths[index] = wt * w
+        unique_weights.add(wt)
+    print len(unique_weights)
+    nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors, node_color=node_color, width=widths)
+    PP.draw()
+    #PP.show()
+    PP.savefig(figname)
+    PP.close()
+    
+def bfs(G, start, target, k, add, decay):
+    if start == target:
+        return True, 0
+    elif k == 0:
+        return False, 0
+    neighbors = G.neighbors(start)
+    neighbors = sorted(neighbors, key = lambda n : -G[start][n]['weight'])
+    total = 0
+    explored = set()
+    while len(explored) < len(neighbors):
+        weights = map(lambda x : G[start][x]['weight'], neighbors)
+        weights = np.array(weights)
+        weights = weights / float(sum(weights))
+        next = choice(len(neighbors),1,p=weights)[0]
+        next = neighbors[next]
+        G[start][next]['weight'] += add
+        for u, v in G.edges_iter():
+            wt = G[u][v]['weight']
+            G[u][v]['weight'] = min(MIN_PHEROMONE, wt - decay)
+        explored.add(next)
+        found, steps = bfs(G, next, target, k - 1, add, decay)
+        total += steps + 1
+        if found:
+            return True, total
+    return False, total
+    
 
 def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
     """ """
@@ -197,88 +245,47 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=
     assert G.has_node(bkpt)
     num_edges = G.size()
 
-    print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(revisits), mean(path_lengths), median(path_lengths), len(wrong_nest), first_10,last_10)"
+    print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(steps taken)"
 
-    data_file = open('ant_walks.csv', 'a')
     pher_str = "%d, %f, %f, " % (num_ants, pheromone_add, pheromone_decay)
     # Repeat 'num_iters' times.
     for iter in xrange(num_iters):
         
         for u, v in G.edges_iter():
-            G[u][v]['weight'] = 1
+            G[u][v]['weight'] = MIN_PHEROMONE
         for u, v in P:
             G[u][v]['weight'] += pheromone_add
-
-        # Initialize all ants.
-        paths = {}           # path traveled for each ant.
-        for i in xrange(num_ants):
-            paths[i] = [init, bkpt]
-        wrong_nest = set()   # ants that revisit an old nest before recovering.
         
-        done = False
+        at_nest = set()
+        steps_taken = defaultdict(int)
+        
         i = 1
-        while (not done) and i <= MAX_STEPS:
-            done = True
+        while (len(at_nest) < num_ants) and i <= MAX_STEPS:
             for j in xrange(min(i, num_ants)):
-                path = paths[j]
-                curr = path[-1]
-                prev = path[-2]
-                if curr != target:
-                    done = False
-                    candidates,weights = [],[]
-                    for neighbor in G.neighbors(curr):
-                        if neighbor != prev: # history of last step.
-                            candidates.append(Minv[neighbor])
-                            weights.append(float(G[curr][neighbor]['weight']))
-                    next = M[choice(candidates,1,p=[val/sum(weights) for val in weights])[0]]
-                    path.append(next)
-                    G[curr][next]['weight'] += pheromone_add
-                    
-                    '''
-                    if next == target:
-                        at_nest.append(j)
-                        print j, len(at_nest), num_ants
-                    '''
-                    
-                    # visited an old nest first.
-                    if next in nests: 
-                        wrong_nest.add(i)     
-                for u, v in G.edges_iter():
-                   G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,0.1) 
+                if j not in at_nest:
+                    found, steps = bfs(G, init, target, i, pheromone_add, pheromone_decay)
+                    if found:
+                        at_nest.add(j)
+                    steps_taken[j] += steps
                     
             i += 1
         
-        # todo: somehow the 'good edges' have to be preferentially reinforced. 
-
-        # Compute statistics for each ant.
-        revisits,path_lengths = [],[]
-        for k in xrange(num_ants):
-            path = paths[k]
-            revisits.append(len(path) - len(set(path)))
-            path_lengths.append(len(path))
-            top10 = (k + 1) <= 0.1 * num_ants
-            bottom10 = (k + 1) >= 0.9 * num_ants
-            finished = path[-1] == target
-            ant_str = "%d, %d, %d, %d, %d\n" % (len(path), top10, bottom10, revisits[-1], finished)
-            data_file.write(pher_str + ant_str)
-            
-
-        # Compare time for recovery for first 10% of ants with last 10%.
-        first_10 = mean(path_lengths[0:int(num_ants*0.1)])
-        last_10  = mean(path_lengths[int(num_ants*0.9):])
 
         # Output results.
-        assert len(path_lengths) == num_ants == len(revisits)
-        print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i" %(iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),mean(path_lengths),median(path_lengths),len(wrong_nest),first_10,last_10)
+        avg_time = mean(steps_taken.values())
+        print "%i\t%i\t%.2f\t%.2f\t%.2f" %(iter+1, num_ants, pheromone_add, pheromone_decay, avg_time)
 
-        if print_path:        
+        if print_path:
+            '''       
             for i in xrange(num_ants):
                 path = paths[i]
                 num_zeros = len(str(num_ants)) - len(str(i))
                 fig_name = 'ant' + ('0' * num_zeros) + str(i)
                 color_path(G, path, 'b', 1.5, fig_name)
+            '''
+            fig_name = "graph"
+            color_graph(G, 'g', 5, fig_name)
     
-    data_file.close()        
 
 def main():
     start = time.time()
