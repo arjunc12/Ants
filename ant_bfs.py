@@ -204,7 +204,7 @@ def color_graph(G, c, w, figname):
         wt = G[u][v]['weight']
         widths[index] = wt * w
         unique_weights.add(wt)
-    print len(unique_weights)
+    #print len(unique_weights)
     nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors, node_color=node_color, width=widths)
     PP.draw()
     #PP.show()
