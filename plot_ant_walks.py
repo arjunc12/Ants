@@ -140,6 +140,7 @@ def first_walks_heat(dframe):
     pos = 0
     for name, group in grouped:
         mu = pylab.mean(group['revisits'])
+        print name, mu
         i, j = pos % len(y), pos / len(y)
         z[i, j] = mu
         pos += 1
@@ -168,6 +169,7 @@ def last_walks_heat(dframe):
     pos = 0
     for name, group in grouped:
         mu = pylab.mean(group['revisits'])
+        print name, mu
         i, j = pos % len(y), pos / len(y)
         z[i, j] = mu
         pos += 1

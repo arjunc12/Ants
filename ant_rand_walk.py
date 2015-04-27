@@ -22,6 +22,7 @@ pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
 P = []
+thickness = 0.001
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -185,6 +186,26 @@ def color_path(G, path, c, w, figname):
     PP.savefig(figname)
     PP.close()
     
+def color_graph(G, c, w, figname):
+    colors, widths = edge_color[:], edge_width[:]
+    unique_weights = set()
+    for u, v in G.edges():
+        index = None
+        try:
+            index = Ninv[(u, v)]
+        except KeyError:
+            index = Ninv[(v, u)]
+        colors[index] = c
+        wt = G[u][v]['weight']
+        widths[index] = wt * w
+        unique_weights.add(wt)
+    print len(unique_weights)
+    nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors, node_color=node_color, width=widths)
+    PP.draw()
+    #PP.show()
+    PP.savefig(figname)
+    PP.close()
+    
 
 def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
     """ """
@@ -202,7 +223,10 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=
     data_file = open('ant_walks.csv', 'a')
     pher_str = "%d, %f, %f, " % (num_ants, pheromone_add, pheromone_decay)
     # Repeat 'num_iters' times.
+    
     for iter in xrange(num_iters):
+        fig_name = "graph_before_" + str(iter)
+        color_graph(G, 'g', thickness, fig_name)
         
         for u, v in G.edges_iter():
             G[u][v]['weight'] = 1
@@ -244,7 +268,8 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=
                     if next in nests: 
                         wrong_nest.add(i)     
                 for u, v in G.edges_iter():
-                   G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,0.1) 
+                   G[u][v]['weight'] = max(G[u][v]['weight']-pheromone_decay,MIN_PHEROMONE)
+                   assert G[u][v]['weight'] >= MIN_PHEROMONE 
                     
             i += 1
         
@@ -277,6 +302,9 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=
                 num_zeros = len(str(num_ants)) - len(str(i))
                 fig_name = 'ant' + ('0' * num_zeros) + str(i)
                 color_path(G, path, 'b', 1.5, fig_name)
+                
+        fig_name = "graph_after_" + str(iter)
+        color_graph(G, 'g', thickness, fig_name)
     
     data_file.close()        
 

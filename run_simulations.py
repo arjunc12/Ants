@@ -2,10 +2,10 @@ import os
 import numpy as np
 from sys import argv
 
-def run_simulations(n, x, a_min, a_max, d_min, d_max, step):
+def run_simulations(n, x, a_min, a_max, d_min, d_max, step, script):
     for add in np.arange(a_min, a_max + step, step):
         for decay in np.arange(d_min, d_max + step, step):
-            command = "python ant_rand_walk.py -n %d -x %d -a %f -d %f" % (n, x, add, decay)
+            command = "python %s -n %d -x %d -a %f -d %f" % (script, n, x, add, decay)
             os.system(command)
             
 def main():
@@ -16,8 +16,13 @@ def main():
     d_min = float(argv[5])
     d_max = float(argv[6])
     step = float(argv[7])
+    script = argv[8]
+    if script == 'r':
+        script = 'ant_rand_walk.py'
+    else:
+        script = 'ant_bfs.py'
     
-    run_simulations(n, x, a_min, a_max, d_min, d_max, step)
+    run_simulations(n, x, a_min, a_max, d_min, d_max, step, script)
     
 if __name__ == '__main__':
     main()

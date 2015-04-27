@@ -6,9 +6,9 @@ import time,logging
 from optparse import OptionParser
 from matplotlib import pylab as PP
 from numpy.random import seed,choice
-from numpy import mean,median
+from numpy import mean,median, array
 from collections import defaultdict
-import numpy as np
+import os
 
 #seed(10301949)
 
@@ -18,12 +18,16 @@ M = {}    # node id -> node tuple
 N = {}    # edge -> edge id
 Ninv = {} # edge id -> edge
 
-MAX_STEPS=3000
+MAX_STEPS= 3000
 MIN_PHEROMONE = 0.1
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
 P = []
+path_thickness = 1.5
+pheromone_thickness = 0.005
+DEBUG_PATHS = False
+OUTPUT_GRAPHS = False
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -206,37 +210,40 @@ def color_graph(G, c, w, figname):
     #PP.show()
     PP.savefig(figname)
     PP.close()
-    
-def bfs(G, start, target, k, add, decay):
-    if start == target:
-        return True, 0
-    elif k == 0:
-        return False, 0
-    neighbors = G.neighbors(start)
-    neighbors = sorted(neighbors, key = lambda n : -G[start][n]['weight'])
-    total = 0
-    explored = set()
-    while len(explored) < len(neighbors):
-        weights = map(lambda x : G[start][x]['weight'], neighbors)
-        weights = np.array(weights)
-        weights = weights / float(sum(weights))
-        next = choice(len(neighbors),1,p=weights)[0]
-        next = neighbors[next]
-        G[start][next]['weight'] += add
-        for u, v in G.edges_iter():
-            wt = G[u][v]['weight']
-            G[u][v]['weight'] = min(MIN_PHEROMONE, wt - decay)
-        explored.add(next)
-        found, steps = bfs(G, next, target, k - 1, add, decay)
-        total += steps + 1
-        if found:
-            return True, total
-    return False, total
-    
 
-def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
-    """ """
+def decay_graph(G, decay):
+    for u, v in G.edges_iter():
+        wt = G[u][v]['weight']
+        assert wt >= MIN_PHEROMONE
+        x = max(MIN_PHEROMONE, wt - decay)
+        G[u][v]['weight'] = x
     
+def rand_edge(G, start, candidates = None):
+    if candidates == None: 
+        candidates = G.neighbors(start)
+    weights = map(lambda x : G[start][x]['weight'], candidates)
+    weights = array(weights)
+    weights = weights / float(sum(weights))
+    next = candidates[choice(len(candidates),1,p=weights)[0]]
+    return next
+    
+def next_edge(G, start, prev=None):
+    candidates = []
+    neighbors = G.neighbors(start)
+    for neighbor in neighbors:
+        if neighbor == prev:
+            continue
+        wt = G[start][neighbor]['weight']
+        if wt == MIN_PHEROMONE:
+            return neighbor, True
+        else:
+            candidates.append(neighbor)
+    assert prev not in candidates
+    return rand_edge(G, start, candidates), False
+
+def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
+    """ """
+    os.system("rm -f graph*.png")
     # Put ants at the node adjacent to e, at node (4,3).
     bkpt = (4,3)
     init = (5,3)
@@ -245,10 +252,10 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=
     assert G.has_node(bkpt)
     num_edges = G.size()
 
-    print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(steps taken)"
-
+    print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(revisits), mean(path_lengths), median(path_lengths), len(wrong_nest), first_10,last_10)"
+    data_file = open('ant_bfs.csv', 'a')
     pher_str = "%d, %f, %f, " % (num_ants, pheromone_add, pheromone_decay)
-    # Repeat 'num_iters' times.
+    # Repeat 'num_iters' times 
     for iter in xrange(num_iters):
         
         for u, v in G.edges_iter():
@@ -256,35 +263,81 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=
         for u, v in P:
             G[u][v]['weight'] += pheromone_add
         
-        at_nest = set()
-        steps_taken = defaultdict(int)
+        if iter == 0:
+            color_graph(G, 'g', pheromone_thickness, "graph_before")
+        
+        at_nest = 0
+        explore = defaultdict(bool)
+        paths = defaultdict(lambda : [init, bkpt])
+        wrong_nest = set()
         
         i = 1
-        while (len(at_nest) < num_ants) and i <= MAX_STEPS:
+        while (at_nest < num_ants) and i <= MAX_STEPS:
             for j in xrange(min(i, num_ants)):
-                if j not in at_nest:
-                    found, steps = bfs(G, init, target, i, pheromone_add, pheromone_decay)
-                    if found:
-                        at_nest.add(j)
-                    steps_taken[j] += steps
+                curr = paths[j][-1]
+                prev = paths[j][-2]
+                if curr != target:
+                    if explore[j]:
+                        paths[j].append(prev)
+                        explore[j] = False
+                        G[curr][prev]['weight'] += pheromone_add
+                    else:
+                        next, ex = next_edge(G, curr, prev)
+                        explore[j] = ex
+                        paths[j].append(next)
+                        G[curr][next]['weight'] += pheromone_add
+                        if next in nests:
+                            wrong_nest.add(j)
+                        if next == target:
+                            at_nest += 1
                     
+            decay_graph(G, pheromone_decay)
+            
+            if DEBUG_PATHS:
+                print "----------------------"
+                print i
+                print "----------------------"
+                for l in xrange(num_ants):
+                    print l, paths[l]
+            
+            if OUTPUT_GRAPHS or i % 100 == 0:
+                num_str = str(i)
+                num_str = ('0' * (len(str(MAX_STEPS)) - len(num_str))) + num_str
+                color_graph(G, 'g', pheromone_thickness, "graph_t" + num_str)
             i += 1
         
 
         # Output results.
-        avg_time = mean(steps_taken.values())
-        print "%i\t%i\t%.2f\t%.2f\t%.2f" %(iter+1, num_ants, pheromone_add, pheromone_decay, avg_time)
+        path_lengths, revisits = [], []
+        for k in xrange(num_ants):
+            path = paths[k]
+            revisits.append(len(path) - len(set(path)))
+            path_lengths.append(len(path))
+            top10 = (k + 1) <= 0.1 * num_ants
+            bottom10 = (k + 1) >= 0.9 * num_ants
+            finished = path[-1] == target
+            ant_str = "%d, %d, %d, %d, %d\n" % (len(path), top10, bottom10, revisits[-1], finished)
+            data_file.write(pher_str + ant_str)
+            
 
-        if print_path:
-            '''       
+        # Compare time for recovery for first 10% of ants with last 10%.
+        first_10 = mean(path_lengths[0:int(num_ants*0.1)])
+        last_10  = mean(path_lengths[int(num_ants*0.9):])
+
+        # Output results.
+        assert len(path_lengths) == num_ants == len(revisits)
+        print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i" %(iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),mean(path_lengths),median(path_lengths),len(wrong_nest),first_10,last_10)
+
+        if print_path:        
             for i in xrange(num_ants):
                 path = paths[i]
                 num_zeros = len(str(num_ants)) - len(str(i))
                 fig_name = 'ant' + ('0' * num_zeros) + str(i)
-                color_path(G, path, 'b', 1.5, fig_name)
-            '''
-            fig_name = "graph"
-            color_graph(G, 'g', 5, fig_name)
+                color_path(G, path, 'b', path_thickness, fig_name)
+                
+        color_graph(G, 'g', pheromone_thickness, "graph_after_" + str(iter))
+    
+    data_file.close()
     
 
 def main():
@@ -318,7 +371,7 @@ def main():
     #return
 
     # Run recovery algorithm.
-    run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path)
+    bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path)
     
     nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
     PP.draw()
