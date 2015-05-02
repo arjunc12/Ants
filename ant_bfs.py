@@ -229,7 +229,7 @@ def rand_edge(G, start, candidates = None):
     next = candidates[choice(len(candidates),1,p=weights)[0]]
     return next
     
-def next_edge(G, start, explore_prob=0.75):
+def next_edge(G, start, explore_prob=0.5):
     unexplored = []
     explored = []
     neighbors = G.neighbors(start)
@@ -257,7 +257,8 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
     assert G.has_node(bkpt)
     num_edges = G.size()
 
-    print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(revisits), mean(path_lengths), median(path_lengths), len(wrong_nest), first_10,last_10)"
+    print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(revisits), mean(path_lengths), " + \
+          "median(path_lengths), len(wrong_nest), first_10, last_10, % right, % wrong)"
     data_file = open('ant_bfs.csv', 'a')
     pher_str = "%d, %f, %f, " % (num_ants, pheromone_add, pheromone_decay)
     # Repeat 'num_iters' times 
@@ -278,9 +279,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
             if i % 2 == 0:
                 paths[i] = [init, bkpt]
             else:
-                paths[i] = [target, (3, 3)]
-        wrong_nest = set()
-        
+                paths[i] = [target, (3, 3)]        
         i = 1
         while (at_nest < num_ants) and i <= MAX_STEPS:
             for j in xrange(min(i, num_ants)):
@@ -317,24 +316,41 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
 
         # Output results.
         path_lengths, revisits = [], []
+        right_nest, wrong_nest = 0.0, 0.0
+        correct = [(0, target), (1, nest)]
+        incorrect = [(0, nest), (1, target)]
         for k in xrange(num_ants):
             path = paths[k]
             revisits.append(len(path) - len(set(path)))
             path_lengths.append(len(path))
+            dest = k % 2
+            end = path[-1]
+            result = (dest, end)
+            right = result in correct
+            worng = result in incorrect
+            if right:
+                right_nest += 1
+            elif wrong:
+                wrong_nest += 1
             top10 = (k + 1) <= 0.1 * num_ants
             bottom10 = (k + 1) >= 0.9 * num_ants
-            finished = path[-1] == target
-            ant_str = "%d, %d, %d, %d, %d\n" % (len(path), top10, bottom10, revisits[-1], finished)
+            ant_str = "%d, %d, %d, %d, %d, %d\n" % (len(path), top10, bottom10, revisits[-1], right, wrong)
             data_file.write(pher_str + ant_str)
             
 
         # Compare time for recovery for first 10% of ants with last 10%.
         first_10 = mean(path_lengths[0:int(num_ants*0.1)])
         last_10  = mean(path_lengths[int(num_ants*0.9):])
+        
+        right_prop = right_nest / num_ants
+        wrong_prop = wrong_nest / num_ants
 
         # Output results.
         assert len(path_lengths) == num_ants == len(revisits)
-        print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i" %(iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),mean(path_lengths),median(path_lengths),len(wrong_nest),first_10,last_10)
+        print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i\t%0.2f\t%0.2f" % \
+        (iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),\
+        mean(path_lengths),median(path_lengths),len(wrong_nest),first_10,last_10,\
+        right_prop, wrong_prop)
 
         if print_path:        
             for i in xrange(num_ants):
