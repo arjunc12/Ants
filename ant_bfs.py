@@ -5,7 +5,7 @@ import networkx as nx
 import time,logging
 from optparse import OptionParser
 from matplotlib import pylab as PP
-from numpy.random import seed,choice
+from numpy.random import seed,choice, random
 from numpy import mean,median, array
 from collections import defaultdict
 import os
@@ -110,6 +110,8 @@ def fig1_network():
     G.remove_edge((9,0),(9,1))
     G.remove_edge((9,6),(9,7))
     G.remove_edge((9,8),(9,9))
+    G.remove_edge((4,2),(4,3))
+    G.remove_edge((4,3),(4,4))
 
     # Draw the network.
     for u in G.nodes():
@@ -227,28 +229,31 @@ def rand_edge(G, start, candidates = None):
     next = candidates[choice(len(candidates),1,p=weights)[0]]
     return next
     
-def next_edge(G, start, prev=None):
-    candidates = []
+def next_edge(G, start, explore_prob=0.75):
+    unexplored = []
+    explored = []
     neighbors = G.neighbors(start)
     for neighbor in neighbors:
-        if neighbor == prev:
-            continue
         wt = G[start][neighbor]['weight']
         if wt == MIN_PHEROMONE:
-            return neighbor, True
+            unexplored.append(neighbor)
         else:
-            candidates.append(neighbor)
-    assert prev not in candidates
-    return rand_edge(G, start, candidates), False
+            explored.append(neighbor)
+    flip = random()
+    if flip < explore_prob and len(unexplored) > 0:
+        next = choice(len(unexplored))
+        next = unexplored[next]
+        return next, True
+    return rand_edge(G, start, explored), False
 
-def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
+def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, print_graph=False):
     """ """
     os.system("rm -f graph*.png")
     # Put ants at the node adjacent to e, at node (4,3).
     bkpt = (4,3)
     init = (5,3)
     target = (3,2)
-    nests = set([(8,3)])
+    nest = (8,3)
     assert G.has_node(bkpt)
     num_edges = G.size()
 
@@ -263,12 +268,17 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
         for u, v in P:
             G[u][v]['weight'] += pheromone_add
         
-        if iter == 0:
+        if iter == 0 and print_graph:
             color_graph(G, 'g', pheromone_thickness, "graph_before")
         
         at_nest = 0
         explore = defaultdict(bool)
-        paths = defaultdict(lambda : [init, bkpt])
+        paths = {}
+        for i in xrange(num_ants):
+            if i % 2 == 0:
+                paths[i] = [init, bkpt]
+            else:
+                paths[i] = [target, (3, 3)]
         wrong_nest = set()
         
         i = 1
@@ -276,7 +286,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
             for j in xrange(min(i, num_ants)):
                 curr = paths[j][-1]
                 prev = paths[j][-2]
-                if curr != target:
+                if curr != target or curr != nest:
                     if explore[j]:
                         paths[j].append(prev)
                         explore[j] = False
@@ -286,9 +296,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
                         explore[j] = ex
                         paths[j].append(next)
                         G[curr][next]['weight'] += pheromone_add
-                        if next in nests:
-                            wrong_nest.add(j)
-                        if next == target:
+                        if next == target or next == nest:
                             at_nest += 1
                     
             decay_graph(G, pheromone_decay)
@@ -300,7 +308,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
                 for l in xrange(num_ants):
                     print l, paths[l]
             
-            if OUTPUT_GRAPHS or i % 100 == 0:
+            if print_graph and i % 100 == 0:
                 num_str = str(i)
                 num_str = ('0' * (len(str(MAX_STEPS)) - len(num_str))) + num_str
                 color_graph(G, 'g', pheromone_thickness, "graph_t" + num_str)
@@ -334,8 +342,9 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False):
                 num_zeros = len(str(num_ants)) - len(str(i))
                 fig_name = 'ant' + ('0' * num_zeros) + str(i)
                 color_path(G, path, 'b', path_thickness, fig_name)
-                
-        color_graph(G, 'g', pheromone_thickness, "graph_after_" + str(iter))
+        
+        if print_graph:        
+            color_graph(G, 'g', pheromone_thickness, "graph_after_" + str(iter))
     
     data_file.close()
     
@@ -353,7 +362,8 @@ def main():
     parser.add_option("-a", "--add", action="store", type="float", dest="pheromone_add", default=0.0,help="amt of phermone added")
     parser.add_option("-d", "--decay", action="store", type="float", dest="pheromone_decay", default=0.0,help="amt of pheromone decay")
     parser.add_option("-n", "--number", action="store", type="int", dest="num_ants", default=10,help="number of ants")
-    parser.add_option("-p", "--print", action="store_true", dest="print_path", default=False)
+    parser.add_option("-p", "--print_path", action="store_true", dest="print_path", default=False)
+    parser.add_option("-g", "--print_graph", action="store_true", dest="print_graph", default=False)
 
     (options, args) = parser.parse_args()
     # ===============================================================
@@ -364,6 +374,7 @@ def main():
     pheromone_decay = options.pheromone_decay
     num_ants = options.num_ants
     print_path = options.print_path
+    print_graph = options.print_graph
 
     # Build network.
     G = fig1_network()
@@ -371,7 +382,7 @@ def main():
     #return
 
     # Run recovery algorithm.
-    bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path)
+    bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph)
     
     nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
     PP.draw()

@@ -220,7 +220,7 @@ def run_recovery(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=
 
     print "iter+1, num_ants, pheromone_add, pheromone_decay, mean(revisits), mean(path_lengths), median(path_lengths), len(wrong_nest), first_10,last_10)"
 
-    data_file = open('ant_walks.csv', 'a')
+    data_file = open('ant_rand_walk.csv', 'a')
     pher_str = "%d, %f, %f, " % (num_ants, pheromone_add, pheromone_decay)
     # Repeat 'num_iters' times.
     
