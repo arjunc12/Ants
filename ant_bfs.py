@@ -25,8 +25,8 @@ node_color,node_size = [],[]
 edge_color,edge_width = [],[]
 P = []
 path_thickness = 1.5
-pheromone_thickness = 0.005
-DEBUG_PATHS = False
+pheromone_thickness = 0.0005
+DEBUG_PATHS = True
 OUTPUT_GRAPHS = False
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
@@ -229,7 +229,7 @@ def rand_edge(G, start, candidates = None):
     next = candidates[choice(len(candidates),1,p=weights)[0]]
     return next
     
-def next_edge(G, start, explore_prob=0.5):
+def next_edge(G, start, explore_prob=1):
     unexplored = []
     explored = []
     neighbors = G.neighbors(start)
@@ -244,7 +244,7 @@ def next_edge(G, start, explore_prob=0.5):
         next = choice(len(unexplored))
         next = unexplored[next]
         return next, True
-    return rand_edge(G, start, explored), False
+    return rand_edge(G, start, explored + unexplored), False
 
 def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, print_graph=False):
     """ """
@@ -275,17 +275,17 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
         at_nest = 0
         explore = defaultdict(bool)
         paths = {}
-        for i in xrange(num_ants):
-            if i % 2 == 0:
-                paths[i] = [init, bkpt]
+        for ant in xrange(num_ants):
+            if ant % 2 == 0:
+                paths[ant] = [init, bkpt]
             else:
-                paths[i] = [target, (3, 3)]        
+                paths[ant] = [target, (3, 3)]        
         i = 1
         while (at_nest < num_ants) and i <= MAX_STEPS:
             for j in xrange(min(i, num_ants)):
                 curr = paths[j][-1]
                 prev = paths[j][-2]
-                if curr != target or curr != nest:
+                if curr != target and curr != nest:
                     if explore[j]:
                         paths[j].append(prev)
                         explore[j] = False
@@ -313,6 +313,8 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
                 color_graph(G, 'g', pheromone_thickness, "graph_t" + num_str)
             i += 1
         
+        print i, MAX_STEPS, at_nest, num_ants
+        
 
         # Output results.
         path_lengths, revisits = [], []
@@ -327,7 +329,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
             end = path[-1]
             result = (dest, end)
             right = result in correct
-            worng = result in incorrect
+            wrong = result in incorrect
             if right:
                 right_nest += 1
             elif wrong:
@@ -339,8 +341,11 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
             
 
         # Compare time for recovery for first 10% of ants with last 10%.
-        first_10 = mean(path_lengths[0:int(num_ants*0.1)])
-        last_10  = mean(path_lengths[int(num_ants*0.9):])
+        if num_ants < 10:
+            first_10, last_10 = -1, -1
+        else:
+            first_10 = mean(path_lengths[0:int(num_ants*0.1)])
+            last_10  = mean(path_lengths[int(num_ants*0.9):])
         
         right_prop = right_nest / num_ants
         wrong_prop = wrong_nest / num_ants
@@ -349,7 +354,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
         assert len(path_lengths) == num_ants == len(revisits)
         print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i\t%0.2f\t%0.2f" % \
         (iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),\
-        mean(path_lengths),median(path_lengths),len(wrong_nest),first_10,last_10,\
+        mean(path_lengths),median(path_lengths),wrong_nest,first_10,last_10,\
         right_prop, wrong_prop)
 
         if print_path:        
