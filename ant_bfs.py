@@ -9,6 +9,7 @@ from numpy.random import seed,choice, random
 from numpy import mean,median, array
 from collections import defaultdict
 import os
+from matplotlib import animation
 
 #seed(10301949)
 
@@ -25,7 +26,8 @@ node_color,node_size = [],[]
 edge_color,edge_width = [],[]
 P = []
 path_thickness = 1.5
-pheromone_thickness = 0.0005
+pheromone_thickness = 5
+ant_thickness = 25
 DEBUG_PATHS = True
 OUTPUT_GRAPHS = False
 
@@ -246,7 +248,7 @@ def next_edge(G, start, explore_prob=1):
         return next, True
     return rand_edge(G, start, explored + unexplored), False
 
-def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, print_graph=False):
+def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, print_graph=False, video=False, nframes=50):
     """ """
     os.system("rm -f graph*.png")
     # Put ants at the node adjacent to e, at node (4,3).
@@ -254,6 +256,13 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
     init = (5,3)
     target = (3,2)
     nest = (8,3)
+    
+    def next_destination(prev):
+        if prev == target:
+            return nest
+        assert prev == nest
+        return target
+    
     assert G.has_node(bkpt)
     num_edges = G.size()
 
@@ -263,7 +272,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
     pher_str = "%d, %f, %f, " % (num_ants, pheromone_add, pheromone_decay)
     # Repeat 'num_iters' times 
     for iter in xrange(num_iters):
-        
+        fig = PP.figure()
         for u, v in G.edges_iter():
             G[u][v]['weight'] = MIN_PHEROMONE
         for u, v in P:
@@ -275,14 +284,40 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
         at_nest = 0
         explore = defaultdict(bool)
         paths = {}
+        destinations = {}
+        origins = {}
+        hits = defaultdict(int)
+        misses = defaultdict(int)
+        edge_weights = defaultdict(list)
         for ant in xrange(num_ants):
             if ant % 2 == 0:
                 paths[ant] = [init, bkpt]
+                destinations[ant] = target
+                origins[ant] = nest
             else:
-                paths[ant] = [target, (3, 3)]        
+                paths[ant] = [target, (3, 3)] 
+                destinations[ant] = nest
+                origins[ant] = target     
         i = 1
         while (at_nest < num_ants) and i <= MAX_STEPS:
-            for j in xrange(min(i, num_ants)):
+            max_weight = MIN_PHEROMONE
+            for u, v in G.edges():
+                wt = G[u][v]['weight']
+                max_weight = max(max_weight, wt)
+                
+            for u, v in G.edges():
+                index = None
+                try:
+                    index = Ninv[(u, v)]
+                except KeyError:
+                    index = Ninv[(v, u)]
+                wt = G[u][v]['weight']
+                if wt == MIN_PHEROMONE:
+                    edge_weights[index].append(None)
+                else:
+                    wt = 1 + (wt / max_weight)
+                    edge_weights[index].append(wt)
+            for j in xrange(min(num_ants, i)):
                 curr = paths[j][-1]
                 prev = paths[j][-2]
                 if curr != target and curr != nest:
@@ -297,24 +332,55 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
                         G[curr][next]['weight'] += pheromone_add
                         if next == target or next == nest:
                             at_nest += 1
-                    
+                        if next == destinations[j]:
+                            hits[j] += 1
+                            origins[j], destinations[j] = destinations[j], origins[j]
+                        elif next == origins[j]:
+                            misses[j] += 1
+                                    
             decay_graph(G, pheromone_decay)
             
-            if DEBUG_PATHS:
-                print "----------------------"
-                print i
-                print "----------------------"
-                for l in xrange(num_ants):
-                    print l, paths[l]
-            
-            if print_graph and i % 100 == 0:
-                num_str = str(i)
-                num_str = ('0' * (len(str(MAX_STEPS)) - len(num_str))) + num_str
-                color_graph(G, 'g', pheromone_thickness, "graph_t" + num_str)
             i += 1
         
         print i, MAX_STEPS, at_nest, num_ants
         
+        e_colors = ['k'] * len(edge_color)
+        e_widths = [1] * len(edge_width)
+        n_colors = ['r'] * len(node_color)
+        n_sizes = [10] * len(node_size)
+        
+        def init():
+            nx.draw(G, pos=pos, with_labels=False, node_size=n_sizes, edge_color=e_colors, node_color=n_colors, width=e_widths)
+        
+        def redraw(frame):
+            print frame
+            e_colors = ['k'] * len(edge_color)
+            e_widths = [1] * len(edge_width)
+            n_colors = ['r'] * len(node_color)
+            n_sizes = [10] * len(node_size)
+            
+            PP.clf()
+            
+            for n in xrange(min(frame, num_ants)):
+                idx = min(frame, len(paths[n]) - 1)                
+                node = paths[n][idx]
+                index = Minv[node]
+                n_colors[index] = 'k'
+                n_sizes[index] += ant_thickness
+            
+            for index in edge_weights:
+                wt = edge_weights[index][frame]
+                if wt != None:
+                    e_widths[index] = edge_weights[index][frame]
+                    e_colors[index] = 'g'
+
+            nx.draw(G, pos=pos, with_labels=False, node_size=n_sizes, edge_color=e_colors, node_color=n_colors, width=e_widths)
+            f = PP.draw()
+            return f,
+        
+        if video:    
+            ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
+            ani.save("ant_bfs" + str(iter) + ".mp4")
 
         # Output results.
         path_lengths, revisits = [], []
@@ -366,6 +432,8 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
         
         if print_graph:        
             color_graph(G, 'g', pheromone_thickness, "graph_after_" + str(iter))
+            
+        
     
     data_file.close()
     
@@ -385,6 +453,7 @@ def main():
     parser.add_option("-n", "--number", action="store", type="int", dest="num_ants", default=10,help="number of ants")
     parser.add_option("-p", "--print_path", action="store_true", dest="print_path", default=False)
     parser.add_option("-g", "--print_graph", action="store_true", dest="print_graph", default=False)
+    parser.add_option("-v", "--video", action="store_true", dest="video", default=False)
 
     (options, args) = parser.parse_args()
     # ===============================================================
@@ -396,6 +465,7 @@ def main():
     num_ants = options.num_ants
     print_path = options.print_path
     print_graph = options.print_graph
+    video = options.video
 
     # Build network.
     G = fig1_network()
@@ -403,13 +473,13 @@ def main():
     #return
 
     # Run recovery algorithm.
-    bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph)
+    bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video)
     
-    nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
-    PP.draw()
+    #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
+    #PP.draw()
     #PP.show()
-    PP.savefig("fig1.pdf")
-    PP.close()
+    #PP.savefig("fig1.pdf")
+    #PP.close()
 
     
     # =========================== Finish ============================

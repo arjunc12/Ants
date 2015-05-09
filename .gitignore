@@ -5,3 +5,11 @@
 *.csv
 
 *.pyc
+
+sandbox.py
+
+*.mp4
+
+*.out
+
+sandbox/*
