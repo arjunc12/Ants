@@ -69,22 +69,34 @@ def last_walks_heat(df, strategy):
     
 def right_prop_heat(df, strategy):
     def right_prop(group):
-        right = group['right']
-        return float(sum(right)) / len(right)
+        hits = group['hits']
+        return float(pylab.count_nonzero(hits)) / len(hits)
     
     heat(df, right_prop, "right_nest_percent", strategy, "percentage of ants to find right nest")
     
 def wrong_prop_heat(df, strategy):
     def wrong_prop(group):
-        wrong = group['wrong']
-        return float(sum(wrong)) / len(wrong)
+        misses = group['misses']
+        return float(pylab.count_nonzero(misses)) / len(misses)
     
     heat(df, wrong_prop, "wrong_nest_percent", strategy, "percentage of ants to find wrong nest")
     
+def hit_count_heat(df, strategy):
+    def hit_count(group):
+        return pylab.mean(group['hits'])
+        
+    heat(df, hit_count, "hit_count", strategy, "average times ants found destination nest")
+    
+def miss_count_heat(df, strategy):
+    def miss_count(group):
+        return pylab.mean(group['misses'])
+        
+    heat(df, hit_count, "miss_count", strategy, "average times ants returned to origin nest")
+    
 def main():
-    strategy = argv[1]
-    filename = argv[2]
-    columns = ['ants', 'add', 'decay', 'length', 'first', 'last', 'revisits', 'right', 'wrong'] 
+    filename = argv[1]
+    strategy = argv[2]
+    columns = ['ants', 'add', 'decay', 'length', 'first', 'last', 'revisits', 'hits', 'misses'] 
     df = pd.read_csv(filename, header=None, names = columns)
     walk_heat(df, strategy)
     walk_med_heat(df, strategy)
@@ -94,6 +106,8 @@ def main():
     revisits_heat(df, strategy)
     right_prop_heat(df, strategy)
     wrong_prop_heat(df, strategy)
+    hit_count_heat(df, strategy)
+    miss_count_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 

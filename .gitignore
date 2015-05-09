@@ -13,3 +13,5 @@ sandbox.py
 *.out
 
 sandbox/*
+
+bfs0/*
