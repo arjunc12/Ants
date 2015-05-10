@@ -91,18 +91,18 @@ def miss_count_heat(df, strategy):
     def miss_count(group):
         return pylab.mean(group['misses'])
         
-    heat(df, hit_count, "miss_count", strategy, "average times ants returned to origin nest")
+    heat(df, miss_count, "miss_count", strategy, "average times ants returned to origin nest")
     
 def main():
     filename = argv[1]
     strategy = argv[2]
     columns = ['ants', 'add', 'decay', 'length', 'first', 'last', 'revisits', 'hits', 'misses'] 
     df = pd.read_csv(filename, header=None, names = columns)
-    walk_heat(df, strategy)
-    walk_med_heat(df, strategy)
-    walk_var_heat(df, strategy)
-    first_walks_heat(df, strategy)
-    last_walks_heat(df, strategy)
+    #walk_heat(df, strategy)
+    #walk_med_heat(df, strategy)
+    #walk_var_heat(df, strategy)
+    #first_walks_heat(df, strategy)
+    #last_walks_heat(df, strategy)
     revisits_heat(df, strategy)
     right_prop_heat(df, strategy)
     wrong_prop_heat(df, strategy)

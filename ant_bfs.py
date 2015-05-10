@@ -231,7 +231,7 @@ def rand_edge(G, start, candidates = None):
     next = candidates[choice(len(candidates),1,p=weights)[0]]
     return next
     
-def next_edge(G, start, explore_prob=1):
+def next_edge(G, start, explore_prob=0.75):
     unexplored = []
     explored = []
     neighbors = G.neighbors(start)
@@ -248,7 +248,7 @@ def next_edge(G, start, explore_prob=1):
         return next, True
     return rand_edge(G, start, explored + unexplored), False
 
-def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, print_graph=False, video=False, nframes=50):
+def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, print_graph=False, video=False, nframes=200):
     """ """
     os.system("rm -f graph*.png")
     # Put ants at the node adjacent to e, at node (4,3).
@@ -343,12 +343,12 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
 #         n_colors = ['r'] * len(node_color)
 #         n_sizes = [10] * len(node_size)
 
-        e_colors edge_color[:]
+        e_colors = edge_color[:]
         e_widths = edge_width[:]
         n_colors = node_color[:]
         n_sizes = node_size[:]
         
-        n_colors[Minv[target]] 'm'
+        n_colors[Minv[target]] = 'm'
         n_colors[Minv[nest]] = 'y'
         
         n_sizes[Minv[target]] = n_sizes[Minv[nest]] = 100
@@ -358,7 +358,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
         
         def redraw(frame):
             PP.clf()
-            
+            print frame
             e_colors = ['k'] * len(edge_color)
             e_widths = [1] * len(edge_width)
             n_colors = ['r'] * len(node_color)
@@ -378,8 +378,10 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
                     e_widths[index] = edge_weights[index][frame]
                     e_colors[index] = 'g'
                     
-            n_colors[Minv[target]] 'm'
+            n_colors[Minv[target]] = 'm'
             n_colors[Minv[nest]] = 'y'
+            n_sizes[Minv[target]] = max(n_sizes[Minv[target]], 100)
+            n_sizes[Minv[nest]] = max(n_sizes[Minv[nest]], 100)
 
             nx.draw(G, pos=pos, with_labels=False, node_size=n_sizes, edge_color=e_colors, node_color=n_colors, width=e_widths)
             f = PP.draw()
@@ -459,6 +461,7 @@ def main():
     parser.add_option("-p", "--print_path", action="store_true", dest="print_path", default=False)
     parser.add_option("-g", "--print_graph", action="store_true", dest="print_graph", default=False)
     parser.add_option("-v", "--video", action="store_true", dest="video", default=False)
+    parser.add_option("-f", "--frames", action="store", dest="frames", default=200)
 
     (options, args) = parser.parse_args()
     # ===============================================================
@@ -471,6 +474,7 @@ def main():
     print_path = options.print_path
     print_graph = options.print_graph
     video = options.video
+    frames = parser.frames
 
     # Build network.
     G = fig1_network()
@@ -478,7 +482,7 @@ def main():
     #return
 
     # Run recovery algorithm.
-    bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video)
+    bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video, frames)
     
     #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
     #PP.draw()
