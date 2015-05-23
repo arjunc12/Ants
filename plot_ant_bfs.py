@@ -103,7 +103,7 @@ def main():
     #walk_var_heat(df, strategy)
     #first_walks_heat(df, strategy)
     #last_walks_heat(df, strategy)
-    revisits_heat(df, strategy)
+    #revisits_heat(df, strategy)
     right_prop_heat(df, strategy)
     wrong_prop_heat(df, strategy)
     hit_count_heat(df, strategy)
