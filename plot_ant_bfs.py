@@ -23,8 +23,8 @@ def heat(df, group_func, title, strategy, cb_label):
     #ax.yaxis.set_tick_params(
     ax = pylab.gca()
     ax.tick_params(top = True, labeltop = True, right=True, labelright = True)
-    pylab.xticks(pylab.arange(len(x)) + 0.5, x)
-    pylab.yticks(pylab.arange(len(y)) + 0.5, y)
+    #pylab.xticks(pylab.arange(len(x)) + 0.5, x)
+    #pylab.yticks(pylab.arange(len(y)) + 0.5, y)
     pylab.xlabel("pheromone add")
     pylab.ylabel("pheromone decay")
     pylab.savefig("%s_%s.png" % (title, strategy), format="png")
@@ -93,11 +93,23 @@ def miss_count_heat(df, strategy):
         
     heat(df, miss_count, "miss_count", strategy, "average times ants returned to origin nest")
     
+def success_rate_heat(df, strategy):
+    def success_rate(group):
+        return sum(group['hits']) / float(sum(group['attempts']))
+        
+    heat(df, success_rate, "success_rate", strategy, "percent of successful attempts")
+    
+def success_average_heat(df, strategy):
+    def success_average(group):
+        return pylab.mean(group['hits'] * group['mean_len'])
+        
+    heat(df, success_average, "success_average", strategy, "average length of successful paths")
+    
 def main():
     filename = argv[1]
     strategy = argv[2]
-    columns = ['ants', 'add', 'decay', 'length', 'first', 'last', 'revisits', 'hits', 'misses'] 
-    df = pd.read_csv(filename, header=None, names = columns)
+    columns = ['ants', 'add', 'decay', 'length', 'first', 'last', 'revisits', 'hits', 'misses', 'mean_len', 'attempts'] 
+    df = pd.read_csv(filename, header=None, names = columns, low_memory=False)
     #walk_heat(df, strategy)
     #walk_med_heat(df, strategy)
     #walk_var_heat(df, strategy)
@@ -108,6 +120,8 @@ def main():
     wrong_prop_heat(df, strategy)
     hit_count_heat(df, strategy)
     miss_count_heat(df, strategy)
+    success_rate_heat(df, strategy)
+    success_average_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 

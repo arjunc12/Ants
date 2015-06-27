@@ -34,8 +34,8 @@ OUTPUT_GRAPHS = False
 DEAD_END = False
 BREAK = False
 BACKTRACK = False
-EXPLORE_PROB1 = 0.25
-EXPLORE_PROB2 = 0.75
+EXPLORE_PROB1 = 0.00000001
+EXPLORE_PROB2 = 0.02
 
 MAX = False
 
@@ -270,10 +270,19 @@ def next_edge(G, start, explore_prob=0.75, prev=None):
     candidates = explored + unexplored
     if (not BACKTRACK) and (prev != None) and (len(candidates) > 1):
         candidates.remove(prev)
-    if MAX:
+    if len(explored) == 1:
+        return explored[0], False
+    elif MAX:
         return max_edge(G, start, candidates), False
     else:
         return rand_edge(G, start, candidates), False
+
+def count_nonzero(G, curr):
+    count = 0
+    for neighbor in G.neighbors(curr):
+        if G[curr][neighbor]['weight'] > MIN_PHEROMONE:
+            count += 1
+    return count
 
 def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, print_graph=False, video=False, nframes=200):
     """ """
@@ -324,6 +333,10 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
         hit_counts1 = [0]
         miss_counts1 = [0]
         
+        attempts = defaultdict(lambda : 1)
+        hitting_times = defaultdict(int)
+        success_lengths = defaultdict(list)
+        
         for ant in xrange(num_ants):
             if ant % 2 == 0 or DEAD_END:
                 if BREAK:
@@ -362,7 +375,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
             for j in xrange(min(num_ants, i)):
                 curr = paths[j][-1]
                 prev = paths[j][-2]
-                if len(G.neighbors(curr)) == 1:
+                if len(G.neighbors(curr)) == 1 or count_nonzero(G, curr) != 1:
                     search[j] = True
                 if explore[j]:
                     paths[j].append(prev)
@@ -384,12 +397,18 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
                         else:
                             h1 += 1
                         origins[j], destinations[j] = destinations[j], origins[j]
+                        
+                        success_lengths[j].append(i - hitting_times[j])
+                        hitting_times[j] = i
+                        attempts[j] += 1
+                        
                     elif next == origins[j]:
                         if origins[j] == nest:
                             m0 += 1
                         else:
                             m1 += 1
                         misses[j] += 1
+                        attempts[j] += 1
                                     
             decay_graph(G, pheromone_decay)
             
@@ -458,8 +477,10 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
                 wt = edge_weights[index][frame]
                 if wt != None:
                     units = edge_weights[index][frame]
-                    e_widths[index] = 1 + (units * 0.01)
+                    e_widths[index] = 1 + 5 * (units / max_units)
                     e_colors[index] = 'g'
+                    
+            #print e_widths
                     
             n_colors[Minv[target]] = 'm'
             n_colors[Minv[nest]] = 'y'
@@ -478,6 +499,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
         path_lengths, revisits = [], []
         right_nest, wrong_nest = 0.0, 0.0
         hit_counts, miss_counts = [], []
+        
         for k in xrange(num_ants):
             path = paths[k]
             revisits.append(len(path) - len(set(path)))
@@ -492,7 +514,11 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
                 wrong_nest += 1
             top10 = (k + 1) <= 0.1 * num_ants
             bottom10 = (k + 1) >= 0.9 * num_ants
-            ant_str = "%d, %d, %d, %d, %d, %d\n" % (len(path), top10, bottom10, revisits[-1], hits[k], misses[k])
+            mean_success_len = MAX_STEPS
+            if len(success_lengths[j]) != 0:
+                mean_success_len = mean(success_lengths[j])
+            att = attempts[j]
+            ant_str = "%d, %d, %d, %d, %d, %d, %.2f, %d\n" % (len(path), top10, bottom10, revisits[-1], hits[k], misses[k], mean_success_len, att)
             data_file.write(pher_str + ant_str)
             
 
@@ -508,7 +534,7 @@ def bfs(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path=False, pr
 
         # Output results.
         assert len(path_lengths) == num_ants == len(revisits)
-        print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i\t%0.2f\t%0.2f\t%0.2f\t%0.2f" % \
+        print "%i\t%i\t%.2f\t%.2f\t%i\t%i\t%i\t%i\t%i\t%i\t%.2f\t%.2f\t%.2f\t%.2f" % \
         (iter+1,num_ants,pheromone_add,pheromone_decay,mean(revisits),\
         mean(path_lengths),median(path_lengths),wrong_nest,first_10,last_10,\
         right_prop, wrong_prop, mean(hit_counts), mean(miss_counts))

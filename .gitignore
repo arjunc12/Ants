@@ -15,3 +15,5 @@ sandbox.py
 sandbox/*
 
 bfs0/*
+
+*.txt
