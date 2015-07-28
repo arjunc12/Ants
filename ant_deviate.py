@@ -293,7 +293,7 @@ def count_nonzero(G, curr):
             count += 1
     return count
 
-def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=False, print_graph=False, video=False, nframes=200, explore=0.1):
+def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=False, print_graph=False, video=False, nframes=200, explore_prob=0.1):
     """ """
     # os.system("rm -f graph*.png")
     # Put ants at the node adjacent to e, at node (4,3).
@@ -311,7 +311,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
     num_edges = G.size()
 
     data_file = open('ant_deviate.csv', 'a')
-    pher_str = "%d, %f, %f, " % (num_ants, explore, pheromone_decay)
+    pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     # Repeat 'num_iters' times 
     for iter in xrange(num_iters):
         if video:
@@ -323,7 +323,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         if iter == 0 and print_graph:
             color_graph(G, 'g', pheromone_thickness, "graph_before")
-        
+        print str(iter) + ": " + pher_str
         explore = defaultdict(bool)
         paths = {}
         destinations = {}
@@ -392,7 +392,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
                     explore[j] = False
                     G[curr][prev]['weight'] += pheromone_add
                 else:
-                    next, ex = next_edge(G, curr, explore_prob=explore, prev=prev)
+                    next, ex = next_edge(G, curr, explore_prob=explore_prob, prev=prev)
                     explore[j] = ex
                     paths[j].append(next)
                     G[curr][next]['weight'] += pheromone_add
@@ -533,10 +533,10 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             top10 = (k + 1) <= 0.1 * num_ants
             bottom10 = (k + 1) >= 0.9 * num_ants
             mean_success_len = MAX_STEPS
-            if len(success_lengths[j]) != 0:
-                mean_success_len = mean(success_lengths[j])
-            att = attempts[j]
-            ant_str = "%d, %d, %d, %d, %d, %d, %.2f, %d\n" % (len(path), top10, bottom10, revisits[-1], hits[k], misses[k], mean_success_len, att)
+            if len(success_lengths[k]) != 0:
+                mean_success_len = mean(success_lengths[k])
+            att = attempts[k]
+            ant_str = "%d, %d, %d, %d, %d, %.2f, %d\n" % (top10, bottom10, revisits[-1], hits[k], misses[k], mean_success_len, att)
             data_file.write(pher_str + ant_str)
             
 
@@ -600,6 +600,7 @@ def main():
     print_graph = options.print_graph
     video = options.video
     frames = options.frames
+    explore = options.explore
 
     # Build network.
     G = fig1_network()
@@ -607,7 +608,7 @@ def main():
     #return
 
     # Run recovery algorithm.
-    deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video, frames)
+    deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video, frames, explore)
     
     #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
     #PP.draw()
