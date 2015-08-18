@@ -19,7 +19,7 @@ M = {}    # node id -> node tuple
 N = {}    # edge -> edge id
 Ninv = {} # edge id -> edge
 
-MAX_STEPS= 5000
+MAX_STEPS= 10000
 MIN_PHEROMONE = 0.1
 pos = {}
 node_color,node_size = [],[]
