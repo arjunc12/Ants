@@ -21,12 +21,12 @@ def heat(df, group_func, title, strategy, cb_label):
     cb.ax.set_ylabel(cb_label)
     #ax.xaxis.set_tick_params(labeltop='on')
     #ax.yaxis.set_tick_params(
-    ax = pylab.gca()
-    ax.tick_params(top = True, labeltop = True, right=True, labelright = True)
+    #ax = pylab.gca()
+    #ax.tick_params(top = True, labeltop = True, right=True, labelright = True)
     #pylab.xticks(pylab.arange(len(x)) + 0.5, sorted(x), rotation=90)
     #pylab.yticks(pylab.arange(len(y)) + 0.5, sorted(y))
-    pylab.xlabel("explore probability (%f- %f)")
-    pylab.ylabel("pheromone decay")
+    pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)))
+    pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)))
     pylab.savefig("%s_%s.png" % (title, strategy), format="png")
 
 def walk_heat(df, strategy):
