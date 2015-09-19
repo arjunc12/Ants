@@ -113,6 +113,12 @@ def success_average_heat(df, strategy):
         
     heat(df, success_average, "success_average", strategy, "average length of successful paths")
     
+def success_ratio_heat(df, strategy):
+    def success_ratio(group):
+        return pylab.mean(group['hits']) / pylab.mean(group['misses'])
+        
+    heat(df, success_ratio, "success_ratio", strategy, "ratio of average average successes to average failures")
+    
 def main():
     filename = argv[1]
     strategy = argv[2]
@@ -132,6 +138,7 @@ def main():
     success_rate_heat(df, strategy)
     failure_rate_heat(df, strategy)
     success_average_heat(df, strategy)
+    success_ratio_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 
