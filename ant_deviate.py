@@ -259,6 +259,13 @@ def max_edge(G, start = None, candidates=None):
     next = argmax(weights)
     next = candidates[next]
     return next
+
+def pheromone_connectivity(G):
+    G2 = G.copy()
+    for u, v in G.edges_iter():
+        if G[u][v]['weight'] <= MIN_PHEROMONE:
+            G2.remove_edge(u, v)
+    return G2.edge_connectivity()
     
 def next_edge(G, start, explore_prob=0.1, prev=None):
     unexplored = []
@@ -344,6 +351,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         hitting_times = defaultdict(int)
         success_lengths = defaultdict(list)
         
+        connectivities = []
+        
         for ant in xrange(num_ants):
             if ant % 2 == 0 or DEAD_END:
                 if BREAK:
@@ -426,6 +435,9 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             miss_counts0.append(m0)
             miss_counts1.append(m1)
             
+            if video:
+                connectivities.append(pheromone_connectivity(G))
+            
             i += 1
                     
         # e_colors = ['k'] * len(edge_color)
@@ -487,6 +499,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
              
                 PP.text(0.1, 0.9, 'nest1 -> nest2: ' + uv_str, transform=ax.transAxes, fontsize=7)
                 PP.text(0.1, 0.88, 'nest2 -> nest1: ' + vu_str, transform=ax.transAxes, fontsize=7)
+                
+                PP.text(0.1, 0.96, 'connectivity %d' % connectivities[frame], transform=ax.transAxes, fontsize=7)
             
             if frame > 0:
                 frame -= 1
