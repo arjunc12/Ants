@@ -4,7 +4,7 @@ import numpy as np
 from sys import argv
 
 in_file = open(argv[1])
-out_file = open('counts.csv', 'a')
+out_file = open('reformated_' + argv[1], 'a')
 
 for line in in_file:
     line = line.strip('\n')
@@ -20,7 +20,7 @@ for line in in_file:
     delta = datetime.timedelta(days=day, hours=hour, minutes=minute, seconds=second)
     dt += delta
     dt = str(dt)
-    edge = line[6]
+    edge = line[-2]
     edge = edge.split('-')
     if len(edge) < 2:
         continue
