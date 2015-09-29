@@ -181,6 +181,55 @@ def fig1_network():
         assert (u, v) in Ninv
     return G
 
+def simple_network():
+    G = nx.grid_2d_graph(6, 6)
+    
+    for j in [1, 2, 4]:
+        for k in xrange(5):
+            G.remove_edge((k, j), (k + 1, j))
+            if 1 <= k <= 5:
+                try:
+                    G.remove_edge((k, j), (k, j + 1))
+                except:
+                    pass
+                try:
+                    G.remove_edge((k, j), (k, j - 1))
+                except:
+                    pass
+                    
+    for i,u in enumerate(G.nodes_iter()):
+        M[i] = u
+        Minv[u] = i
+            
+    # Draw the network.
+    for u in G.nodes():
+        pos[u] = [u[0],u[1]] # position is the same as the label.
+
+        # nests
+        # if u[0] == 5 and u[1] == 8:
+#             node_size.append(100)
+#             node_color.append('r')
+        if u[0] == 0 and u[1] == 3:
+            node_size.append(100)
+            node_color.append('r')
+        elif u[0] == 5 and u[1] == 3:
+            node_size.append(100)
+            node_color.append('r')
+        else:
+            node_size.append(10)
+            node_color.append('k')
+            
+    for i, (u, v) in enumerate(G.edges()):
+        Ninv[(u, v)] = i
+        N[i] = (u, v)        
+        Ninv[(v, u)] = i
+        
+        edge_width.append(1)
+        edge_color.append('k')
+        
+    return G
+    
+
 def color_path(G, path, c, w, figname):
     """
     Given a path, colors that path on the graph and then outputs the colored path to a
@@ -269,11 +318,7 @@ def pheromone_connectivity(G, origin, destination):
         G2.add_node(origin)
     if destination not in G2:
         G2.add_node(destination)
-    #spec = nx.laplacian_spectrum(G2)
-    #spec = sorted(spec)
-    #print spec[1] == 0
-    #return spec[1]
-    return len(list(nx.all_simple_paths(G2, origin, destination, 15)))
+    return len(list(nx.all_simple_paths(G2, origin, destination, 10)))
     #dist = nx.shortest_path_length(G2, origin, destination)
     '''
     try:
@@ -322,22 +367,19 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
     """ """
     # os.system("rm -f graph*.png")
     # Put ants at the node adjacent to e, at node (4,3).
-    bkpt = (4,3)
-    init = (5,3)
-    target = (3,2)
-    nest = (8,3)
+    target = (5, 3)
+    nest = (0, 3)
     
     def next_destination(prev):
         if prev == target:
             return nest
         return target
     
-    assert G.has_node(bkpt)
     num_edges = G.size()
     
     nframes = min(nframes, MAX_STEPS)
 
-    data_file = open('ant_deviate.csv', 'a')
+    data_file = open('ant_deviate_simple.csv', 'a')
     pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     # Repeat 'num_iters' times 
     for iter in xrange(num_iters):
@@ -375,16 +417,13 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         for ant in xrange(num_ants):
             if ant % 2 == 0 or DEAD_END:
-                if BREAK:
-                    paths[ant] = [init, bkpt]
-                else:
-                    paths[ant] = [nest, (7, 3)]
+                paths[ant] = [nest, nest]
                 destinations[ant] = target
                 origins[ant] = nest
             else:
-                paths[ant] = [target, (3, 3)] 
+                paths[ant] = [target, target]   
                 destinations[ant] = nest
-                origins[ant] = target     
+                origins[ant] = target
         i = 1
         max_weight = MIN_PHEROMONE
         unique_weights = set()
@@ -520,7 +559,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
                 PP.text(0.1, 0.9, 'nest1 -> nest2: ' + uv_str, transform=ax.transAxes, fontsize=7)
                 PP.text(0.1, 0.88, 'nest2 -> nest1: ' + vu_str, transform=ax.transAxes, fontsize=7)
                 
-                PP.text(0.1, 0.96, 'connectivity %0.2f' % connectivities[frame], transform=ax.transAxes, fontsize=7)
+                PP.text(0.1, 0.96, 'connectivity %d' % connectivities[frame], transform=ax.transAxes, fontsize=7)
             
             if frame > 0:
                 frame -= 1
@@ -546,10 +585,6 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
             ani.save("ant_deviate" + str(iter) + ".mp4")
-            
-        PP.figure()
-        PP.plot(range(len(connectivities)), connectivities)
-        PP.savefig('connectivities' + str(iter) + '.png', format='png')
 
         # Output results.
         path_lengths, revisits = [], []
@@ -641,12 +676,13 @@ def main():
     explore = options.explore
 
     # Build network.
-    G = fig1_network()
+    #G = fig1_network()
+    G = simple_network()
 
     #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
     #PP.draw()
     #PP.show()
-    #PP.savefig("fig1.pdf")
+    #PP.savefig("simple.pdf")
     #PP.close()
 
     # Run recovery algorithm.
