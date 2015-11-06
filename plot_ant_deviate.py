@@ -19,21 +19,17 @@ def heat(df, group_func, title, strategy, cb_label):
     hm = pylab.pcolormesh(z, cmap='Reds')
     cb = pylab.colorbar(hm)
     cb.ax.set_ylabel(cb_label)
-    #ax.xaxis.set_tick_params(labeltop='on')
-    #ax.yaxis.set_tick_params(
-    #ax = pylab.gca()
-    #ax.tick_params(top = True, labeltop = True, right=True, labelright = True)
-    #pylab.xticks(pylab.arange(len(x)) + 0.5, sorted(x), rotation=90)
-    #pylab.yticks(pylab.arange(len(y)) + 0.5, sorted(y))
+    pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
+    labeltop='off', labelbottom='off', labelleft='off', labelright='off')
     pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)))
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)))
     pylab.savefig("%s_%s.png" % (title, strategy), format="png")
 
 def walk_heat(df, strategy):
     def mean_len(group):
-        return pylab.mean(group['length'])
+        return pylab.nanmean(group['length'])
     
-    heat(df, mean_len, "ant_mean_walks", strategy, "mean walk length")
+    heat(df, mean_len, "ant_mean_walks", strategy, "nanmean walk length")
 
 def walk_med_heat(df, strategy):
     def med_len(group):
@@ -49,21 +45,21 @@ def walk_var_heat(df, strategy):
     
 def revisits_heat(df, strategy):
     def mean_revisits(group):
-        return pylab.mean(group['revisits'])
+        return pylab.nanmean(group['revisits'])
         
-    heat(df, mean_revisits, "ant_revisits", strategy, "mean revisits")
+    heat(df, mean_revisits, "ant_revisits", strategy, "nanmean revisits")
     
 def first_walks_heat(df, strategy):
     def first_mean(group):
         g = group[group['first'] == 1]
-        return pylab.mean(g['length'])
+        return pylab.nanmean(g['length'])
         
     heat(df, first_mean, "first_walks", strategy, "average walk length (first 10%)")
 
 def last_walks_heat(df, strategy):
     def last_mean(group):
         g = group[group['last'] == 1]
-        return pylab.mean(g['length'])
+        return pylab.nanmean(g['length'])
         
     heat(df, last_mean, "last_walks", strategy, "average walk length (last 10%)")
     
@@ -83,13 +79,13 @@ def wrong_prop_heat(df, strategy):
     
 def hit_count_heat(df, strategy):
     def hit_count(group):
-        return pylab.mean(group['hits'])
+        return pylab.nanmean(group['hits'])
         
     heat(df, hit_count, "hit_count", strategy, "average times ants found destination nest")
     
 def miss_count_heat(df, strategy):
     def miss_count(group):
-        return pylab.mean(group['misses'])
+        return pylab.nanmean(group['misses'])
         
     heat(df, miss_count, "miss_count", strategy, "average times ants returned to origin nest")
     
@@ -109,21 +105,55 @@ def failure_rate_heat(df, strategy):
     
 def success_average_heat(df, strategy):
     def success_average(group):
-        return pylab.mean(group['hits'] * group['mean_len'])
+        return pylab.nanmean(group['hits'] * group['mean_len'])
         
     heat(df, success_average, "success_average", strategy, "average length of successful paths")
     
 def success_ratio_heat(df, strategy):
     def success_ratio(group):
-        return pylab.mean(group['hits']) / pylab.mean(group['misses'])
+        return pylab.nanmean(group['hits']) / pylab.nanmean(group['misses'])
         
     heat(df, success_ratio, "success_ratio", strategy, "ratio of average average successes to average failures")
+    
+def connect_time_heat(df, strategy):
+    def connect_time(group):
+        return pylab.nanmean(group['connect_time'])
+    
+    heat(df, connect_time, "connect_time", strategy, "average time taken to form a path between nests")
+    
+def connectivity_heat(df, strategy):
+    def connectivity(group):
+        return pylab.nanmean(group['connectivity'])
+    
+    heat(df, connectivity, "connectivity", strategy, "average number of simple paths between nest and target")
+
+def distance_heat(df, strategy):
+    def distance(group):
+        return pylab.nanmean(group['dist'])
+        
+    heat(df, distance, 'distance', strategy, 'average distance from nest to target at the end')
+    
+def pruning_heat(df, strategy):
+    def pruning(group):
+        return pylab.nanmean(group['pruning'])
+        
+    heat(df, pruning, 'pruning', strategy, 'average pruning done between connect time and end')
+    
+def score_heat(df, strategy):
+    def score(group):
+        return pylab.nanmean(group['score'])
+        
+    heat(df, score, 'paths_score', strategy, 'average ratio of path weight to path length')
     
 def main():
     filename = argv[1]
     strategy = argv[2]
-    columns = ['ants', 'explore', 'decay', 'first', 'last', 'revisits', 'hits', 'misses', 'mean_len', 'attempts'] 
+    columns = ['ants', 'explore', 'decay', 'first', 'last', 'revisits', 'hits', 'misses', \
+              'mean_len', 'attempts', 'connect_time', 'connectivity', 'pruning', 'dist', \
+              'mean_dist', 'score', 'correlation', 'cost'] 
     df = pd.read_csv(filename, header=None, names = columns)
+    #print df['score']
+    #print df
     #print df['attempts']
     #walk_heat(df, strategy)
     #walk_med_heat(df, strategy)
@@ -131,14 +161,20 @@ def main():
     #first_walks_heat(df, strategy)
     #last_walks_heat(df, strategy)
     #revisits_heat(df, strategy)
-    right_prop_heat(df, strategy)
-    wrong_prop_heat(df, strategy)
-    hit_count_heat(df, strategy)
-    miss_count_heat(df, strategy)
-    success_rate_heat(df, strategy)
-    failure_rate_heat(df, strategy)
-    success_average_heat(df, strategy)
-    success_ratio_heat(df, strategy)
+    # right_prop_heat(df, strategy)
+#     wrong_prop_heat(df, strategy)
+#     hit_count_heat(df, strategy)
+#     miss_count_heat(df, strategy)
+#     success_rate_heat(df, strategy)
+#     failure_rate_heat(df, strategy)
+#     success_average_heat(df, strategy)
+#     success_ratio_heat(df, strategy)
+
+    connect_time_heat(df, strategy)
+    connectivity_heat(df, strategy)
+    distance_heat(df, strategy)
+    pruning_heat(df, strategy)
+    score_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 

@@ -17,3 +17,7 @@ sandbox/*
 bfs0/*
 
 *.txt
+
+*.xlsx
+
+*.xls
