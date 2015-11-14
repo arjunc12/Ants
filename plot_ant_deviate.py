@@ -131,7 +131,13 @@ def distance_heat(df, strategy):
     def distance(group):
         return pylab.nanmean(group['dist'])
         
-    heat(df, distance, 'distance', strategy, 'average distance from nest to target at the end')
+    heat(df, distance, 'distance', strategy, 'average shortest path length from nest to target at the end')
+    
+def mean_dist_heat(df, strategy):
+    def mean_dist(group):
+        return pylab.nanmean(group['mean_dist'])
+        
+    heat(df, mean_dist, 'mean distance', strategy, 'average distance from nest to target at the end')
     
 def pruning_heat(df, strategy):
     def pruning(group):
@@ -144,6 +150,18 @@ def score_heat(df, strategy):
         return pylab.nanmean(group['score'])
         
     heat(df, score, 'paths_score', strategy, 'average ratio of path weight to path length')
+
+def correlation_heat(df, strategy):
+    def correlation(group):
+        return pylab.nanmean(group['correlation'])
+        
+    heat(df, correlation, 'path_correlation', strategy, 'inverse path length-path weight correlation')
+
+def cost_heat(df, strategy):
+    def cost(group):
+        return pylab.nanmean(group['cost'])
+        
+    heat(df, cost, 'graph_cost', strategy, 'cost of pheromone subgraph')
     
 def main():
     filename = argv[1]
@@ -173,8 +191,11 @@ def main():
     connect_time_heat(df, strategy)
     connectivity_heat(df, strategy)
     distance_heat(df, strategy)
+    mean_dist_heat(df, strategy)
     pruning_heat(df, strategy)
     score_heat(df, strategy)
+    correlation_heat(df, strategy)
+    cost_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 

@@ -394,6 +394,13 @@ def all_paths_score(G, origin, destination, limit=15):
     subgraph = pheromone_subgraph(G, origin, destination)
     paths = nx.all_simple_paths(G, nest, target, limit)
     return mean_path_score(G, paths)
+    
+def pheromone_cost(G):
+    G2 = nx.Graph()
+    for u, v in G.edges_iter():
+        if G[u][v]['weight'] > MIN_PHEROMONE:
+            G2.add_edge(u, v)
+    return G2.number_of_edges()
 
 def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=False, print_graph=False, video=False, nframes=200, explore_prob=0.1, max_steps=3000):
     """ """
@@ -635,14 +642,16 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             path_weights.append(path_weight(G, path))
         dist = G.number_of_edges() + 1
         mean_dist = dist
-        correlation = 0
+        correlation = -1
         if connectivity != 0:
             dist = min(path_dists)
-            correlation = -spearmanr(path_dists, path_weights)[0]
+            corr = -spearmanr(path_dists, path_weights)[0]
+            if not PP.isnan(corr):
+                correlation = corr
             mean_dist = mean(path_dists)
-        print correlation
         pruning = before_paths - connectivity
         score = mean_path_score(G, after_paths)
+        cost = pheromone_cost(G)
         
         if connect_time == -1:
             connect_time = max_steps
@@ -667,7 +676,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             att = attempts[k]
             ant_str = ', '.join(map(str, [top10, bottom10, revisits[-1], hits[k], misses[k], \
                                           mean_success_len, att, connect_time, connectivity,\
-                                          pruning, dist, mean_dist, score, correlation]))
+                                          pruning, dist, mean_dist, score, correlation, cost]))
             data_file.write(pher_str + ant_str + '\n')
             
 
