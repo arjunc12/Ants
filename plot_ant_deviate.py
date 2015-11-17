@@ -155,7 +155,7 @@ def correlation_heat(df, strategy):
     def correlation(group):
         return pylab.nanmean(group['correlation'])
         
-    heat(df, correlation, 'path_correlation', strategy, 'inverse path length-path weight correlation')
+    heat(df, correlation, 'path_correlation', strategy, 'negative correlation of path length and path weight/edge')
 
 def cost_heat(df, strategy):
     def cost(group):

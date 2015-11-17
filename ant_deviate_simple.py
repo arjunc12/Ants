@@ -305,8 +305,15 @@ def max_edge(G, start = None, candidates=None):
         assert start != None
         candidates = G.neighbors(start)
     weights = get_weights(G, start, candidates)
-    next = argmax(weights)
-    next = candidates[next]
+    assert len(weights) == len(candidates)
+    max_weight = max(weights)
+    max_neighbors = []
+    for i in xrange(len(weights)):
+        w = weights[i]
+        if w == max_weight:
+            max_neighbors.append(candidates[i])
+    next = choice(len(max_neighbors))
+    next = max_neighbors[next]
     return next
 
 def pheromone_subgraph(G, origin, destination):
@@ -336,8 +343,10 @@ def next_edge(G, start, explore_prob=0.1, prev=None):
     unexplored = []
     explored = []
     neighbors = G.neighbors(start)
+    max_wt = float("-inf")
     for neighbor in neighbors:
         wt = G[start][neighbor]['weight']
+        max_wt = max(wt, max_wt)
         if wt == MIN_PHEROMONE:
             unexplored.append(neighbor)
         else:
@@ -350,6 +359,10 @@ def next_edge(G, start, explore_prob=0.1, prev=None):
         
     flip = random()
     if (flip < explore_prob and len(unexplored) > 0) or (len(explored) == 0):
+        if MAX:
+            for e in explored:
+                if G[start][e]['weight'] < max_wt:
+                    unexplored.append(e)
         next = choice(len(unexplored))
         next = unexplored[next]
         return next, True
@@ -377,6 +390,17 @@ def path_weight(G, path):
         assert wt > MIN_PHEROMONE
         weight += wt
     return weight
+    
+def path_mean_weight(G, path):
+    path = list(path)
+    weight = 0.0
+    for i in range(len(path) - 1):
+        source = path[i]
+        dest = path[i + 1]
+        wt = G[source][dest]['weight']
+        assert wt > MIN_PHEROMONE
+        weight += wt
+    return weight / len(path)
     
 def path_score(G, path):
     weight = path_weight(G, path)
@@ -545,7 +569,6 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             if connect_time == -1:
                 if has_pheromone_path(G, nest, target):
                     connect_time = i
-                    print "connected", i
                     before_paths = pheromone_connectivity(G, nest, target)
                     #color_graph(G, 'g', 1, 'connect_time.png')
                     #print "connected
@@ -625,7 +648,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
-            ani.save("ant_deviate" + str(iter) + ".mp4")
+            ani.save("ant_deviate_max" + str(iter) + ".mp4")
             
 
         # Output results.
@@ -639,7 +662,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         path_weights = []
         for path in after_paths:
             path_dists.append(len(path))
-            path_weights.append(path_weight(G, path))
+            path_weights.append(path_mean_weight(G, path))
         dist = G.number_of_edges() + 1
         mean_dist = dist
         correlation = -1
@@ -649,6 +672,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             if not PP.isnan(corr):
                 correlation = corr
             mean_dist = mean(path_dists)
+        print correlation
         pruning = before_paths - connectivity
         score = mean_path_score(G, after_paths)
         cost = pheromone_cost(G)
@@ -677,7 +701,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             ant_str = ', '.join(map(str, [top10, bottom10, revisits[-1], hits[k], misses[k], \
                                           mean_success_len, att, connect_time, connectivity,\
                                           pruning, dist, mean_dist, score, correlation, cost]))
-            data_file.write(pher_str + ant_str + '\n')
+            line = pher_str + ant_str + '\n'
+            data_file.write(line)
             
 
         # Compare time for recovery for first 10% of ants with last 10%.
