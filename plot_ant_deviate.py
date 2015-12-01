@@ -137,7 +137,7 @@ def mean_dist_heat(df, strategy):
     def mean_dist(group):
         return pylab.nanmean(group['mean_dist'])
         
-    heat(df, mean_dist, 'mean distance', strategy, 'average distance from nest to target at the end')
+    heat(df, mean_dist, 'mean_distance', strategy, 'average distance from nest to target at the end')
     
 def pruning_heat(df, strategy):
     def pruning(group):

@@ -178,7 +178,7 @@ def likelihood_3dplot(sheets, likelihood_func, strategy):
         sheet = int(sheet)
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        delta = 0.01
+        delta = 0.02
         decays = np.arange(delta, 1, delta)
         explores = np.arange(delta, 1, delta)
         G = None
@@ -200,8 +200,11 @@ def likelihood_3dplot(sheets, likelihood_func, strategy):
                     max_explore = explore
                 z.append(likelihood)
         ax.scatter(x, y, z)
+        ax.set_xlabel('decay')
+        ax.set_ylabel('explore')
+        ax.set_zlabel('log-likelihood')
         pylab.title('maximum at decay = %f, explore = %f' % (max_decay, max_explore))
-        pylab.savefig("decay_ml_%s%d.png" % (strategy, sheet), format="png")
+        pylab.savefig("decay_ml3d_%s%d.png" % (strategy, sheet), format="png")
         pylab.close()
         print "plotted"
 
@@ -252,9 +255,9 @@ if __name__ == '__main__':
     #unif_likelihood_heat(sheets)
     #threshold_likelihood_heat(sheets)
     #max_edge_likelihood_heat(sheets)
-    #unif_likelihood_3dplot(sheets)
+    unif_likelihood_3dplot(sheets)
     #threshold_likelihood_3dplot(sheets)
-    #max_edge_likelihood_3dplot(sheets)
-    unif_likelihood_2dplot(sheets)
-    threshold_likelihood_2dplot(sheets)
-    max_edge_likelihood_2dplot(sheets)
+    max_edge_likelihood_3dplot(sheets)
+    #unif_likelihood_2dplot(sheets)
+    #threshold_likelihood_2dplot(sheets)
+    #max_edge_likelihood_2dplot(sheets)
