@@ -11,6 +11,7 @@ from collections import defaultdict
 import os
 from matplotlib import animation
 from scipy.stats import spearmanr
+from scipy.stats import entropy
 
 #seed(10301949)
 
@@ -677,6 +678,32 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         score = mean_path_score(G, after_paths)
         cost = pheromone_cost(G)
         
+        choices = defaultdict(lambda : defaultdict(int))
+        for new_ant in xrange(100):
+            G2 = G.copy()
+            curr = nest
+            prev = None
+            ex = False
+            for step in xrange(1000):
+                next = None
+                if ex:
+                    next = prev
+                    ex = False
+                else:
+                    next, ex = next_edge(G2, curr, explore_prob=explore_prob, prev=prev)
+                G[curr][next]['weight'] += pheromone_add
+                choices[Minv[curr]][Minv[next]] += 1
+                decay_graph(G2)
+                prev = curr
+                curr = next
+                
+        entropies = []
+        for node in choices:
+            counts = node.values()
+            entropies.append(entropy(count))
+        print pylab.mean(entropy)
+                
+        
         if connect_time == -1:
             connect_time = max_steps
         
@@ -727,7 +754,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
                 color_path(G, path, 'b', path_thickness, fig_name)
         
         if print_graph:        
-            color_graph(G, 'g', pheromone_thickness, "graph_after_" + str(iter))
+            color_graph(G, 'g', pheromone_add / max_weight, "graph_after_" + str(iter))
             
         
     
@@ -773,11 +800,11 @@ def main():
     G = fig1_network()
     # G = simple_network()
 
-    #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
-    #PP.draw()
+    nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
+    PP.draw()
     #PP.show()
-    #PP.savefig("fig1.pdf")
-    #PP.close()
+    PP.savefig("fig1.pdf")
+    PP.close()
 
     # Run recovery algorithm.
     deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video, frames, explore, max_steps)
