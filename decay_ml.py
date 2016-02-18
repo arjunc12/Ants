@@ -216,6 +216,56 @@ def threshold_likelihood_3dplot(sheets):
     
 def max_edge_likelihood_3dplot(sheets):
     likelihood_3dplot(sheets, max_edge_likelihood, 'max_edge')
+    
+def cumulative_likelihood_3dplot(sheets, likelihood_func, strategy):
+    delta = 0.02
+    decays = np.arange(delta, 1, delta)
+    explores = np.arange(delta, 1, delta)
+    x = []
+    y = []
+    for decay in decays:
+        for explore in explores:
+            x.append(decay)
+            y.append(explore)
+    z = np.zeros(len(x))
+    denominator = 0
+    for sheet in sheets:
+        sheet = int(sheet)
+        print sheet
+        choices = 'reformated_counts%d.csv' % sheet    
+        f = open(choices)
+        num_lines = sum(1 for line in f)
+        denominator += num_lines
+        f.close()
+        G = None
+        i = 0
+        for explore in explores:
+            for decay in decays:
+                likelihood, G = decay_likelihood(choices, decay, explore, likelihood_func, G)
+                likelihood *= num_lines
+                z[i] += likelihood
+                i += 1
+    z /= denominator
+    max_index = np.argmax(z)
+    max_decay = x[max_index]
+    max_explore = y[max_index]
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(x, y, z)
+    ax.set_xlabel('decay')
+    ax.set_ylabel('explore')
+    ax.set_zlabel('log-likelihood')
+    pylab.title('maximum at decay = %f, explore = %f' % (max_decay, max_explore))
+    pylab.savefig("cumulative_decay_ml3d_%s.png" % strategy, format="png")
+    pylab.close()
+    print "plotted"
+    
+def cumulative_unif_likelihood_3dplot(sheets):
+    cumulative_likelihood_3dplot(sheets, uniform_likelihood, 'uniform')
+    
+def cumulative_max_edge_likelihood_3dplot(sheets):
+    cumulative_likelihood_3dplot(sheets, max_edge_likelihood, 'max_edge')
         
 def likelihood_2dplot(sheets, likelihood_func, strategy, explore=0.1):
     for sheet in sheets:
@@ -255,9 +305,12 @@ if __name__ == '__main__':
     #unif_likelihood_heat(sheets)
     #threshold_likelihood_heat(sheets)
     #max_edge_likelihood_heat(sheets)
-    unif_likelihood_3dplot(sheets)
+    #unif_likelihood_3dplot(sheets)
     #threshold_likelihood_3dplot(sheets)
-    max_edge_likelihood_3dplot(sheets)
+    #max_edge_likelihood_3dplot(sheets)
     #unif_likelihood_2dplot(sheets)
     #threshold_likelihood_2dplot(sheets)
     #max_edge_likelihood_2dplot(sheets)
+    cumulative_unif_likelihood_3dplot(sheets)
+    cumulative_max_edge_likelihood_3dplot(sheets)
+    
