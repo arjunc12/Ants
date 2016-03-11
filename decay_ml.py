@@ -137,9 +137,9 @@ def likelihood_heat(sheets, likelihood_func, strategy):
     for sheet in sheets:
         sheet = int(sheet)
         pylab.figure()
-        delta = 0.01
-        decays = np.arange(0.05, 0.21, delta)
-        explores = np.arange(0.01, 0.11, delta)
+        delta = 0.05
+        decays = np.arange(0.05, 1, delta)
+        explores = np.arange(0.05, 1, delta)
         likelihoods = pylab.zeros((len(decays), len(explores)))
         G = None
         choices = 'reformated_counts%d.csv' % sheet
@@ -163,6 +163,60 @@ def likelihood_heat(sheets, likelihood_func, strategy):
         pylab.savefig("decay_ml_%s%d.png" % (strategy, sheet), format="png")
         pylab.close()
         print "plotted"
+        
+def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
+    delta = 0.02
+    decays = np.arange(delta, 1, delta)
+    explores = np.arange(delta, 1, delta)
+    likelihoods = pylab.zeros((len(decays), len(explores)))
+    denominator = 0
+    pylab.figure()
+    for sheet in sheets:
+        sheet = int(sheet)
+        print sheet
+        G = None
+        choices = 'reformated_counts%d.csv' % sheet
+        f = open(choices)
+        num_lines = sum(1 for line in f)
+        denominator += num_lines
+        f.close()
+        pos = 0
+        for decay in decays:
+            for explore in explores:
+                i, j = pos / len(explores), pos % len(explores)
+                likelihood, G = decay_likelihood(choices, decay, explore, likelihood_func, G)
+                #likelihood = pos
+                likelihoods[i, j] += likelihood * num_lines
+                #print likelihoods
+                pos += 1
+    likelihoods /= denominator
+    min_likelihood = float("inf")
+    bad_positions = []
+    pos = 0
+    for decay in decays:
+        for explore in explores:
+            i, j = pos / len(explores), pos % len(explores)
+            likelihood = likelihoods[i, j]
+            if likelihood == float("-inf"):
+                bad_positions.append((i, j))
+            else:
+                min_likelihood = min(likelihood, min_likelihood)
+            pos += 1
+    for i, j in bad_positions:
+        likelihoods[i, j] = min_likelihood
+            
+    #print likelihoods
+    hm = pylab.pcolormesh(likelihoods, cmap='Reds')
+    cb = pylab.colorbar(hm)
+    cb.ax.set_ylabel('log-likelihood')
+    pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
+    labeltop='off', labelbottom='off', labelleft='off', labelright='off')
+    
+    pylab.xlabel("explore probability (%0.2f-%0.2f)" % (min(explores), max(explores)))
+    pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)))
+    pylab.savefig("cumulative_decay_ml_%s.png" % strategy, format="png")
+    pylab.close()
+    print "plotted"
     
 def unif_likelihood_heat(sheets):
     likelihood_heat(sheets, uniform_likelihood, 'uniform')
@@ -207,6 +261,12 @@ def likelihood_3dplot(sheets, likelihood_func, strategy):
         pylab.savefig("decay_ml3d_%s%d.png" % (strategy, sheet), format="png")
         pylab.close()
         print "plotted"
+        
+def cumulative_unif_likelihood_heat(sheets):
+    cumulative_likelihood_heat(sheets, uniform_likelihood, 'uniform')
+    
+def cumulative_max_edge_likelihood_heat(sheets):
+    cumulative_likelihood_heat(sheets, max_edge_likelihood, 'max_edge')
 
 def unif_likelihood_3dplot(sheets):
     likelihood_3dplot(sheets, uniform_likelihood, 'uniform')
@@ -239,8 +299,8 @@ def cumulative_likelihood_3dplot(sheets, likelihood_func, strategy):
         f.close()
         G = None
         i = 0
-        for explore in explores:
-            for decay in decays:
+        for decay in decays:
+            for explore in explores:
                 likelihood, G = decay_likelihood(choices, decay, explore, likelihood_func, G)
                 likelihood *= num_lines
                 z[i] += likelihood
@@ -311,6 +371,7 @@ if __name__ == '__main__':
     #unif_likelihood_2dplot(sheets)
     #threshold_likelihood_2dplot(sheets)
     #max_edge_likelihood_2dplot(sheets)
-    cumulative_unif_likelihood_3dplot(sheets)
-    cumulative_max_edge_likelihood_3dplot(sheets)
-    
+    #cumulative_unif_likelihood_3dplot(sheets)
+    #cumulative_max_edge_likelihood_3dplot(sheets)
+    cumulative_unif_likelihood_heat(sheets)
+    cumulative_max_edge_likelihood_heat(sheets)
