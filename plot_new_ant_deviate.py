@@ -63,6 +63,7 @@ def main():
     med_journey_time_heat(df2, strategy)
     logmean_journey_time_heat(df2, strategy)
     logmed_journey_time_heat(df2, strategy)
+    walk_success_rate_heat(df, strategy)
     
    
 if __name__ == '__main__':
