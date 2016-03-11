@@ -124,7 +124,7 @@ def connect_time_heat(df, strategy):
     
 def connectivity_heat(df, strategy):
     def connectivity(group):
-        return pylab.nanmean(group['connectivity'])
+        return pylab.log10(pylab.nanmean(group['connectivity']))
     
     heat(df, connectivity, "connectivity", strategy, "average number of simple paths between nest and target")
 
@@ -218,22 +218,25 @@ def walk_entropy_heat(df, strategy):
         
     heat(df, mean_walk_entropy, 'mean_walk_entropy', strategy, 'entropy over all chosen walks')
     
+def path_success_rate_heat(df, strategy):
+    def path_success_rate(group):
+        return pylab.nansum(group['has_path']) / float(pylab.count_nonzero(~pylab.isnan(group['has_path'])))
+    heat(df, path_success_rate, 'path_success_rate', strategy, 'proportion of times ants successfully created a path')
+    
 def main():
     filename = argv[1]
     strategy = argv[2]
     columns = ['ants', 'explore', 'decay', 'first', 'last', 'revisits', 'hits', 'misses', \
               'mean_len', 'attempts', 'connect_time', 'connectivity', 'pruning', 'dist', \
               'mean_dist', 'score', 'correlation', 'cost', 'node_etr', 'min_etr', 'mean_etr',\
-              'total_etr', 'min_etr_dist', 'mean_journey_time', 'popular_len', 'walk_entropy'] 
+              'total_etr', 'min_etr_dist', 'mean_journey_time', 'popular_len', 'walk_entropy', 'has_path'] 
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan')
     
     if DEBUG:
-        grouped = df.groupby(['explore', 'decay'])
-        pos = 0
-        for name, group in grouped:
-            print "%0.2f, %0.2f, %d" % (name[0], name[1], pylab.nanmedian(group['mean_journey_time']))
-        #pylab.hist(df['mean_journey_time'][(df['explore'] == 0.05) & (df['decay'] == 0.05)])
-        #pylab.savefig('journey_time_hist.png', format='png')
+        df2 = df[(df['has_path'] == 0) | (df['has_path'] == 1)]
+        print df2
+        for name, group in df2.groupby(['explore', 'decay']):
+            print name, group['has_path']
         return None
     
     #print df['score']
@@ -255,23 +258,24 @@ def main():
 #     success_average_heat(df, strategy)
 #     success_ratio_heat(df, strategy)
 
-    connect_time_heat(df, strategy)
-#     connectivity_heat(df, strategy)
+    #connect_time_heat(df, strategy)
+    connectivity_heat(df, strategy)
 #     distance_heat(df, strategy)
 #     mean_dist_heat(df, strategy)
 #     pruning_heat(df, strategy)
 #     score_heat(df, strategy)
 #     correlation_heat(df, strategy)
-#     cost_heat(df, strategy)
+    #cost_heat(df, strategy)
     #node_entropy_heat(df, strategy)
     #min_entropy_heat(df, strategy)
-    mean_entropy_heat(df, strategy)
+    #mean_entropy_heat(df, strategy)
     #total_entropy_heat(df, strategy)
     #min_entropy_dist_heat(df, strategy)
-#    mean_journey_heat(df, strategy)
+    #mean_journey_heat(df, strategy)
     #popular_len_heat(df, strategy)
-    walk_entropy_heat(df, strategy)
-#    med_journey_heat(df, strategy)
+    #walk_entropy_heat(df, strategy)
+    #med_journey_heat(df, strategy)
+    #path_success_rate_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 
