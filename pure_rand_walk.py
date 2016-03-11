@@ -11,6 +11,10 @@ Ninv = {} # edge id -> edge
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
     G = nx.grid_2d_graph(11,11)
+    
+    for i,u in enumerate(G.nodes_iter()):
+        M[i] = u
+        Minv[u] = i
 
     # horizontal edges.
     G.remove_edge((1,9),(2,9))
@@ -73,16 +77,30 @@ def fig1_network():
 
     return G
 
+def walk_to_string(walk):
+    walk_str = []
+    for i in range(len(walk)):
+        walk_str.append(str(Minv[walk[i]]))
+    return '-'.join(walk_str)
+
 def pure_random_walk(G, nest, target, ants):
     out_file = open('pure_random_walk.csv', 'a')
     for ant in range(ants):
         curr = nest
         steps = 0
+        walk = [curr]
+        prev = None
         while curr != target:
-            next = choice(G.neighbors(curr))
+            candidates = G.neighbors(curr)
+            if prev in candidates and len(candidates) > 1:
+                candidates.remove(prev)
+            next = choice(candidates)
+            prev = curr
             curr = next
+            walk.append(next)
             steps += 1
-        out_file.write(str(steps) + '\n')
+        walk_str = walk_to_string(walk)
+        out_file.write('%d, %s\n' % (steps, walk_str))
     out_file.close()
     
 if __name__ == '__main__':
