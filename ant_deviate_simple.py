@@ -765,7 +765,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         total_steps = 0
         data_file2 = open('new_ant_deviate%d.csv' % max_steps, 'a')
         print "new ants"
-        for new_ant in xrange(1000000):
+        for new_ant in xrange(100000):
             #G2 = G.copy()
             curr = nest
             prev = None
@@ -776,7 +776,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
                 data_file2.write('%f, %f, %d\n' % (explore_prob, pheromone_decay, -1))
                 continue
             assert has_path
-            while curr != target and steps <= 1000:
+            while curr != target and steps <= 100:
                 steps += 1
                 total_steps += 1
                 next = None
@@ -927,7 +927,10 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         #if len(success_lengths[k]) != 0:
         #    mean_success_len = mean(success_lengths[k])
         #att = attempts[k]
-        ant_str = ', '.join(map(str, [int(has_path), cost, path_etr, walk_entropy]))
+        write_items = [int(has_path), cost, path_etr]
+        if len(walk_counts.values()) > 0:
+            write_items.append(walk_entropy)
+        ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
         data_file.write(line)
             

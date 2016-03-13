@@ -765,7 +765,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         total_steps = 0
         data_file2 = open('new_ant_deviate%d.csv' % max_steps, 'a')
         print "new ants"
-        for new_ant in xrange(1000000):
+        for new_ant in xrange(100000):
             #G2 = G.copy()
             curr = nest
             prev = None
@@ -927,7 +927,10 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         #if len(success_lengths[k]) != 0:
         #    mean_success_len = mean(success_lengths[k])
         #att = attempts[k]
-        ant_str = ', '.join(map(str, [int(has_path), cost, path_etr, walk_entropy]))
+        write_items = [int(has_path), cost, path_etr]
+        if len(walk_counts.values()) > 0:
+            write_items.append(walk_entropy)
+        ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
         data_file.write(line)
             
@@ -998,7 +1001,7 @@ def main():
 
     # Build network.
     G = fig1_network()
-    # G = simple_network()
+    #G = simple_network()
 
     #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
     #PP.draw()
