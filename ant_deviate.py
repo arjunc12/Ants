@@ -43,7 +43,7 @@ MIN_ADD = 1
 
 MAX = False
 INIT_WEIGHT_FACTOR = 0
-MAX_PATH_LENGTH = 50
+MAX_PATH_LENGTH = 30
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -460,7 +460,7 @@ def choice_prob(G, source, dest, explore_prob, prev=None):
     for n in neighbors:
         if n != prev:
             total += G[source][n]['weight']
-    return (1 - explore_prob) * G[source][dest]['weight']
+    return (1 - explore_prob) * (G[source][dest]['weight'] / total)
     
 def path_prob(G, path, explore_prob):
     prob = 1
@@ -471,6 +471,9 @@ def path_prob(G, path, explore_prob):
         prob *= choice_prob(G, source, dest, explore_prob, prev)
         prev = source
     return prob
+    
+def path_prob_no_explore(G, path):
+    return path_prob(G, path, explore_prob=0)
     
 def path_entropy(G, path, explore_prob):
     probs = []
@@ -731,7 +734,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         for path in after_paths:
             #path_dists.append(len(path))
             #path_weights.append(path_mean_weight(G, path))
-            path_probs.append(path_prob(G, path, explore_prob))
+            path_probs.append(path_prob_no_explore(G, path))
             #path_etrs.append(path_entropy(G, path, explore_prob))
         #dist = G.number_of_edges() + 1
         #mean_dist = dist
@@ -750,9 +753,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             #min_etr = path_etrs[min_etr_path]
             #min_etr_dist = path_dists[min_etr_path]
             #mean_etr = mean(path_etrs)
-            tot_etr = entropy(path_probs)
-            if tot_etr != float('-inf'):
-                path_etr = tot_etr
+            path_etr = entropy(path_probs)
         #pruning = before_paths - connectivity
         #pruning = 0
         #score = mean_path_score(G, after_paths)
@@ -763,47 +764,41 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         journey_lengths = []
         walk_counts = defaultdict(int)
         total_steps = 0
-        data_file2 = open('new_ant_deviate%d.csv' % max_steps, 'a')
+        #data_file2 = open('new_ant_deviate%d.csv' % max_steps, 'a')
         print "new ants"
-        for new_ant in xrange(100000):
+        successful_walks = 0
+        failed_walks = 0
+        for new_ant in xrange(10000):
             #G2 = G.copy()
+            #print "new ant", new_ant
             curr = nest
             prev = None
             ex = False
             steps = 0
             walk = []
             if not has_path:
-                data_file2.write('%f, %f, %d\n' % (explore_prob, pheromone_decay, -1))
+                #data_file2.write('%f, %f, %d\n' % (explore_prob, pheromone_decay, -1))
+                failed_walks += 1
                 continue
             assert has_path
             while curr != target and steps <= 1000:
                 steps += 1
                 total_steps += 1
                 next = None
-                prev_ex = False
                 walk.append(curr)
-                if ex:
-                    next = prev
-                    ex = False
-                    prev_ex = True
-                    #del walk[-1]
-                else:
-                    next, ex = next_edge(G, curr, explore_prob=0, prev=prev)
-                #G2[curr][next]['weight'] += pheromone_add
-                #if not prev_ex:
-                #    choices[Minv[curr]][Minv[next]] += 1
-                #else:
-                #    del walk[-1]
-                #decay_graph(G2, pheromone_decay)
+                next, ex = next_edge(G, curr, explore_prob=0, prev=prev)
+
                 prev = curr
                 curr = next
             if curr != target:
                 steps = -1
+                failed_walks += 1
             else:
                 journey_times.append(steps)
                 walk_counts[tuple(walk)] += 1
-            data_file2.write('%f, %f, %d\n' % (explore_prob, pheromone_decay, steps))
-        data_file2.close()
+                successful_walks += 1
+            #data_file2.write('%f, %f, %d\n' % (explore_prob, pheromone_decay, steps))
+        #data_file2.close()
         #if len(journey_times) == 0 or len(walk_counts) == 0:
         #    return None     
         #node_entropies = []
@@ -811,7 +806,9 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         #    counts = choices[node].values()
         #    node_entropies.append(entropy(counts))
         #node_etr = mean(node_entropies)
+        success_rate = float(successful_walks) / (successful_walks + failed_walks)
         mean_journey_time = mean(journey_times)
+        med_journey_time = median(journey_times)
         
         #def max_keys(dict):
         #    keys = []
@@ -927,9 +924,16 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         #if len(success_lengths[k]) != 0:
         #    mean_success_len = mean(success_lengths[k])
         #att = attempts[k]
-        write_items = [int(has_path), cost, path_etr]
+        write_items = [int(has_path), cost]
+        if len(path_probs) > 0 and path_etr != float("-inf"):
+            write_items.append(path_etr)
+        else:
+            write_items.append('')
         if len(walk_counts.values()) > 0:
-            write_items.append(walk_entropy)
+            write_items += [walk_entropy, mean_journey_time, med_journey_time]
+        else:
+            write_items += ['', '', '']
+        write_items.append(success_rate)
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
         data_file.write(line)

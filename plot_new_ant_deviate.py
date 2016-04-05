@@ -56,7 +56,7 @@ def main():
     filename = argv[1]
     strategy = argv[2]
     columns = ['explore', 'decay', 'journey_time'] 
-    df = pd.read_csv(filename, header=None, names = columns)
+    df = pd.read_csv(filename, header=None, names = columns, skipinitialspace=True)
     df2 = df[df['journey_time'] != -1]
     print max(df['journey_time'])
     mean_journey_time_heat(df2, strategy)
