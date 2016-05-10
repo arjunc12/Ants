@@ -8,7 +8,8 @@ import pylab
 
 
 MIN_PHEROMONE = 0
-THRESHOLD = 1
+INIT_WEIGHT = 0
+#THRESHOLD = 1
 #EXPLORE_PROB = 0.1
 
 def reset_graph(G):
@@ -22,7 +23,7 @@ def make_graph(sources, dests):
         source = sources[i]
         dest = dests[i]
         G.add_edge(source, dest)
-        G[source][dest]['weight'] = MIN_PHEROMONE
+        G[source][dest]['weight'] = INIT_WEIGHT #MIN_PHEROMONE
     return G
 
 def decay_graph(G, decay, seconds=1):
@@ -152,7 +153,7 @@ def likelihood_heat(sheets, likelihood_func, strategy):
                 likelihoods[i, j] = likelihood
                 #print likelihoods
                 pos += 1
-        hm = pylab.pcolormesh(likelihoods, cmap='Reds')
+        hm = pylab.pcolormesh(likelihoods, cmap='BluGn')
         cb = pylab.colorbar(hm)
         cb.ax.set_ylabel('log-likelihood')
         pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
@@ -165,7 +166,7 @@ def likelihood_heat(sheets, likelihood_func, strategy):
         print "plotted"
         
 def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
-    delta = 0.02
+    delta = 0.05
     decays = np.arange(delta, 1, delta)
     explores = np.arange(delta, 1, delta)
     likelihoods = pylab.zeros((len(decays), len(explores)))
@@ -206,7 +207,7 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
         likelihoods[i, j] = min_likelihood
             
     #print likelihoods
-    hm = pylab.pcolormesh(likelihoods, cmap='Reds')
+    hm = pylab.pcolormesh(likelihoods, cmap='nipy_spectral')
     cb = pylab.colorbar(hm)
     cb.ax.set_ylabel('log-likelihood')
     pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
@@ -214,7 +215,7 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
     
     pylab.xlabel("explore probability (%0.2f-%0.2f)" % (min(explores), max(explores)))
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)))
-    pylab.savefig("cumulative_decay_ml_%s.png" % strategy, format="png")
+    pylab.savefig("cumulative_decay_ml_%s.png" % strategy, format="png", transparent=True,bbox_inches='tight')
     pylab.close()
     print "plotted"
     
