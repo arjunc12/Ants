@@ -21,3 +21,5 @@ bfs0/*
 *.xlsx
 
 *.xls
+
+graph_after/*
