@@ -4,27 +4,38 @@ from sys import argv
 import argparse
 DEBUG = False
 
-def heat(df, group_func, title, strategy, cb_label):
+def heat(df, group_func, title, strategy, cb_label, sequential=True):
     x = df['explore'].unique()
     y = df['decay'].unique()
     z = pylab.zeros((len(y), len(x)))
     grouped = df.groupby(['explore', 'decay'])
     pos = 0
+    max_abs = float('-inf')
     for name, group in grouped:
         val = group_func(group)
         i, j = pos % len(y), pos / len(y)
         z[i, j] = val
         pos += 1
+        max_abs = max(max_abs, abs(val))
     assert pos == len(x) * len(y)
     pylab.figure()
-    hm = pylab.pcolormesh(z, cmap='Reds')
+    map = 'Reds'
+    vmin = 0
+    vmax = max_abs
+    if not sequential:
+        map = 'coolwarm'
+        vmin = -max_abs
+    #print title, vmin, vmax, map
+    hm = pylab.pcolormesh(z, cmap=map, clim=(vmin, vmax))
     cb = pylab.colorbar(hm)
+    cb.set_clim(vmin, vmax)
     cb.ax.set_ylabel(cb_label)
+    cb.ax.set_ylim(bottom=0)
     pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
     labeltop='off', labelbottom='off', labelleft='off', labelright='off')
     pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)))
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)))
-    pylab.savefig("%s_%s.png" % (title, strategy), format="png")
+    pylab.savefig("%s_%s.png" % (title, strategy), format="png", transparent=True, bbox_inches='tight')
 
 def walk_heat(df, strategy):
     def mean_len(group):
@@ -196,15 +207,15 @@ def min_entropy_dist_heat(df, strategy):
     
 def mean_journey_heat(df, strategy):
     def mean_journey_time(group):
-        return pylab.nanmean(group['mean_journey_time'])
+        return pylab.nanmean(group['mean_journey_time']) - 223.13
         
-    heat(df, mean_journey_time, 'mean_journey_time', strategy, 'average time for new ants to find nest')
+    heat(df, mean_journey_time, 'mean_journey_time', strategy, 'average time for new ants to find nest', sequential=False)
     
 def med_journey_heat(df, strategy):
     def med_journey_time(group):
-        return pylab.nanmedian(group['mean_journey_time'])
+        return pylab.nanmedian(group['mean_journey_time']) - 164
         
-    heat(df, med_journey_time, 'median_journey_time', strategy, 'median time for new ants to find nest')
+    heat(df, med_journey_time, 'median_journey_time', strategy, 'median time for new ants to find nest', sequential=False)
     
 def popular_len_heat(df, strategy):
     def mean_popular_len(group):
@@ -214,19 +225,25 @@ def popular_len_heat(df, strategy):
     
 def walk_entropy_heat(df, strategy):
     def mean_walk_entropy(group):
-        return pylab.nanmean(group['walk_entropy'])
+        return pylab.nanmean(group['walk_entropy']) - 14.47
         
-    heat(df, mean_walk_entropy, 'walk_entropy', strategy, 'entropy over all chosen walks')
+    heat(df, mean_walk_entropy, 'walk_entropy', strategy, 'entropy over all chosen walks', sequential=False)
     
 def path_success_rate_heat(df, strategy):
     def path_success_rate(group):
-        return pylab.nansum(group['has_path']) / float(pylab.count_nonzero(~pylab.isnan(group['has_path'])))
+        success_rate = pylab.nansum(group['has_path']) / float(pylab.count_nonzero(~pylab.isnan(group['has_path'])))
+        if success_rate == 0:
+            print group
+        return success_rate
     heat(df, path_success_rate, 'path_success_rate', strategy, 'proportion of times ants successfully created a path')
     
 def walk_success_rate_heat(df, strategy):
     def walk_success_rate(group):
-        return pylab.nanmean(group['walk_success_rate'])
-    heat(df, walk_success_rate, 'walk_success_rate', strategy, 'proportion successful walks for new ants')
+        success_rate = pylab.nanmean(group['walk_success_rate'])
+        if success_rate == 0:
+            print group
+        return success_rate - 0.9933417141012928
+    heat(df, walk_success_rate, 'walk_success_rate', strategy, 'proportion successful walks for new ants', sequential=False)
     
 def main():
     filename = argv[1]

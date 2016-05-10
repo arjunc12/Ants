@@ -4,7 +4,7 @@ from sys import argv
 import argparse
 DEBUG = False
 
-def heat(df, group_func, title, strategy, cb_label):
+def heat(df, group_func, title, strategy, cb_label, map='Reds'):
     x = df['explore'].unique()
     y = df['decay'].unique()
     z = pylab.zeros((len(y), len(x)))
@@ -17,7 +17,7 @@ def heat(df, group_func, title, strategy, cb_label):
         pos += 1
     assert pos == len(x) * len(y)
     pylab.figure()
-    hm = pylab.pcolormesh(z, cmap='Reds')
+    hm = pylab.pcolormesh(z, cmap=map)
     cb = pylab.colorbar(hm)
     cb.ax.set_ylabel(cb_label)
     pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
