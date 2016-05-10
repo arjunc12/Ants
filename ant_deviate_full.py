@@ -28,7 +28,7 @@ node_color,node_size = [],[]
 edge_color,edge_width = [],[]
 P = []
 path_thickness = 1.5
-pheromone_thickness = 10
+pheromone_thickness = 1
 ant_thickness = 25
 DEBUG_PATHS = True
 OUTPUT_GRAPHS = False
@@ -186,6 +186,9 @@ def fig1_network():
     return G
 
 def simple_network():
+    '''
+    Manually builds a simple network with 3 disjoint paths between nest and target
+    '''
     G = nx.grid_2d_graph(6, 6)
     
     for j in [1, 2, 4]:
@@ -234,6 +237,10 @@ def simple_network():
     return G
 
 def full_grid():
+    '''
+    Manually builds a full 11x11 grid graph, puts two nests at opposite ends of the middle
+    of the grid, and removes the very middle edge
+    '''
     G = nx.grid_2d_graph(11,11)
     G.remove_edge((4, 5), (5, 5))
 
@@ -279,8 +286,6 @@ def color_path(G, path, c, w, figname):
     """
     Given a path, colors that path on the graph and then outputs the colored path to a
     file
-    
-    TODO: make it clear what the order of edges taken is rather than just the edges taken
     """
     colors, widths = edge_color[:], edge_width[:]
     for i in xrange(len(path) - 1):
@@ -300,8 +305,25 @@ def color_path(G, path, c, w, figname):
     PP.close()
     
 def color_graph(G, c, w, figname):
+    '''
+    Draws the current graph and colors all the edges with pheromone, to display the
+    pheromone network the ants have constructed at some point in time
+    
+    G - the networkx Graph object to be drawn
+    
+    c - the color to use for pheromone edges
+    
+    w - the scaling factor for edge weights.  If the edge widths are set directly equal to
+        the edge weights, the edge widths will become prohibitively big and ruin the picture
+        this scaling factor allows the edge widths to be proportional to the edge weights
+        while capping the size of the largest edge.  Thus, this value should be a constant
+        factor times the weight of the highest edge in the graph at the time of drawing.
+        All edge weights and resulting widths are normalized by this factor.
+        
+    figname - the name to which to save the figure
+    '''
     colors, widths = edge_color[:], edge_width[:]
-    unique_weights = set()
+    #unique_weights = set()
     for u, v in G.edges():
         index = None
         try:
@@ -310,21 +332,30 @@ def color_graph(G, c, w, figname):
             index = Ninv[(v, u)]
         colors[index] = c
         wt = G[u][v]['weight']
-        widths[index] = wt * w
-        unique_weights.add(wt)
+        width = wt * w
+        widths[index] = width
+        #if width > 0:
+            #print u, v, width
+        #unique_weights.add(wt)
     #print len(unique_weights)
     nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors, node_color=node_color, width=widths)
     PP.draw()
     #PP.show()
-    PP.savefig(figname)
+    PP.savefig(figname + '.png', format='png')
     PP.close()
 
 def check_graph_weights(G):
+    '''
+    Ensure that no edges have weight lower than the minimum allowable weight
+    '''
     for u, v in G.edges_iter():
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
 
 def decay_graph(G, decay):
+    '''
+    Decrease the weight on all edges by the prescribed decay amount
+    '''
     for u, v in G.edges_iter():
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
@@ -333,10 +364,19 @@ def decay_graph(G, decay):
         G[u][v]['weight'] = x
 
 def get_weights(G, start, candidates):
+    '''
+    Returns an array containing all the edge weights in the graph
+    '''
     weights = map(lambda x : G[start][x]['weight'], candidates)
     return array(weights)
     
-def rand_edge(G, start=None, candidates = None):
+def rand_edge(G, start, candidates = None):
+    '''
+    Pick an ant's next edge.  Given the current vertex and possibly the list of candidates
+    picks the next edge based on the pheromone levels.  In particular, if S is the sum of
+    the total weights of all edges adjacent to start, then the function picks edge
+    (start, u) with probability w(start, u) / S
+    '''
     if candidates == None: 
         assert start != None
         candidates = G.neighbors(start)
@@ -345,7 +385,12 @@ def rand_edge(G, start=None, candidates = None):
     next = candidates[choice(len(candidates),1,p=weights)[0]]
     return next
 
-def max_edge(G, start = None, candidates=None):
+def max_edge(G, start, candidates=None):
+    '''
+    Picks the next edge according to the max edge model.  Finds all adjacent edges that 
+    are of maximal weight (among the set of neighboring edges).  Picks uniformly among all
+    these maximal edges.
+    '''
     if candidates == None:
         assert start != None
         candidates = G.neighbors(start)
@@ -361,7 +406,10 @@ def max_edge(G, start = None, candidates=None):
     next = max_neighbors[next]
     return next
 
-def pheromone_subgraph(G, origin, destination):
+def pheromone_subgraph(G, origin=None, destination=None):
+    '''
+    
+    '''
     G2 = nx.Graph()
     for u, v in G.edges_iter():
         if G[u][v]['weight'] > MIN_PHEROMONE:
@@ -584,11 +632,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         before_paths = after_paths = 0
                 
         for ant in xrange(num_ants):
-            if ant % 2 == 0 or DEAD_END:
-                if BREAK:
-                    paths[ant] = [init, bkpt]
-                else:
-                    paths[ant] = [nest, (9, 5)]
+            if ant % 2 == 0:
+                paths[ant] = [nest, (9, 5)]
                 destinations[ant] = target
                 origins[ant] = nest
             else:
@@ -684,6 +729,9 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             G = G2
             i += 1
                     
+        if print_graph:        
+            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
+            print "graph colored"
         
         e_colors = edge_color[:]
         e_widths = edge_width[:]
@@ -767,6 +815,15 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         hit_counts, miss_counts = [], []
         
         has_path = has_pheromone_path(G, nest, target)
+        print "has path", has_path
+        '''
+        if has_path:
+            short_path = nx.shortest_path(pheromone_subgraph(G, nest, target), nest, target)
+            for i in range(len(short_path) - 1):
+                wt = G[short_path[i]][short_path[i + 1]]['weight']
+                print short_path[i], short_path[i + 1], wt
+                assert wt > MIN_PHEROMONE
+        '''
         after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
         #connectivity = len(after_paths)
         #path_dists = []
@@ -1000,11 +1057,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
                 path = paths[i]
                 num_zeros = len(str(num_ants)) - len(str(i))
                 fig_name = 'ant' + ('0' * num_zeros) + str(i)
-                color_path(G, path, 'b', path_thickness, fig_name)
-        
-        if print_graph:        
-            color_graph(G, 'g', pheromone_add / max_weight, "graph_after_full_" + str(iter))
-            
+                color_path(G, path, 'b', path_thickness, fig_name)               
         
     
     data_file.close()
