@@ -43,7 +43,7 @@ MIN_ADD = 1
 
 MAX = True
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 30
+MAX_PATH_LENGTH = 20
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -186,6 +186,9 @@ def fig1_network():
     return G
 
 def simple_network():
+    '''
+    Manually builds a simple network with 3 disjoint paths between nest and target
+    '''
     G = nx.grid_2d_graph(6, 6)
     
     for j in [1, 2, 4]:
@@ -234,6 +237,10 @@ def simple_network():
     return G
 
 def full_grid():
+    '''
+    Manually builds a full 11x11 grid graph, puts two nests at opposite ends of the middle
+    of the grid, and removes the very middle edge
+    '''
     G = nx.grid_2d_graph(11,11)
     G.remove_edge((4, 5), (5, 5))
 
@@ -279,8 +286,6 @@ def color_path(G, path, c, w, figname):
     """
     Given a path, colors that path on the graph and then outputs the colored path to a
     file
-    
-    TODO: make it clear what the order of edges taken is rather than just the edges taken
     """
     colors, widths = edge_color[:], edge_width[:]
     for i in xrange(len(path) - 1):
@@ -300,6 +305,23 @@ def color_path(G, path, c, w, figname):
     PP.close()
     
 def color_graph(G, c, w, figname):
+    '''
+    Draws the current graph and colors all the edges with pheromone, to display the
+    pheromone network the ants have constructed at some point in time
+    
+    G - the networkx Graph object to be drawn
+    
+    c - the color to use for pheromone edges
+    
+    w - the scaling factor for edge weights.  If the edge widths are set directly equal to
+        the edge weights, the edge widths will become prohibitively big and ruin the picture
+        this scaling factor allows the edge widths to be proportional to the edge weights
+        while capping the size of the largest edge.  Thus, this value should be a constant
+        factor times the weight of the highest edge in the graph at the time of drawing.
+        All edge weights and resulting widths are normalized by this factor.
+        
+    figname - the name to which to save the figure
+    '''
     colors, widths = edge_color[:], edge_width[:]
     #unique_weights = set()
     for u, v in G.edges():
@@ -323,11 +345,17 @@ def color_graph(G, c, w, figname):
     PP.close()
 
 def check_graph_weights(G):
+    '''
+    Ensure that no edges have weight lower than the minimum allowable weight
+    '''
     for u, v in G.edges_iter():
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
 
 def decay_graph(G, decay):
+    '''
+    Decrease the weight on all edges by the prescribed decay amount
+    '''
     for u, v in G.edges_iter():
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
@@ -336,10 +364,19 @@ def decay_graph(G, decay):
         G[u][v]['weight'] = x
 
 def get_weights(G, start, candidates):
+    '''
+    Returns an array containing all the edge weights in the graph
+    '''
     weights = map(lambda x : G[start][x]['weight'], candidates)
     return array(weights)
     
-def rand_edge(G, start=None, candidates = None):
+def rand_edge(G, start, candidates = None):
+    '''
+    Pick an ant's next edge.  Given the current vertex and possibly the list of candidates
+    picks the next edge based on the pheromone levels.  In particular, if S is the sum of
+    the total weights of all edges adjacent to start, then the function picks edge
+    (start, u) with probability w(start, u) / S
+    '''
     if candidates == None: 
         assert start != None
         candidates = G.neighbors(start)
@@ -348,7 +385,12 @@ def rand_edge(G, start=None, candidates = None):
     next = candidates[choice(len(candidates),1,p=weights)[0]]
     return next
 
-def max_edge(G, start = None, candidates=None):
+def max_edge(G, start, candidates=None):
+    '''
+    Picks the next edge according to the max edge model.  Finds all adjacent edges that 
+    are of maximal weight (among the set of neighboring edges).  Picks uniformly among all
+    these maximal edges.
+    '''
     if candidates == None:
         assert start != None
         candidates = G.neighbors(start)
@@ -364,7 +406,10 @@ def max_edge(G, start = None, candidates=None):
     next = max_neighbors[next]
     return next
 
-def pheromone_subgraph(G, origin, destination):
+def pheromone_subgraph(G, origin=None, destination=None):
+    '''
+    
+    '''
     G2 = nx.Graph()
     for u, v in G.edges_iter():
         if G[u][v]['weight'] > MIN_PHEROMONE:
@@ -598,7 +643,9 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         i = 1
         max_weight = MIN_PHEROMONE
         unique_weights = set()
+        max_cost = 0
         while i <= max_steps:
+            max_cost = max(max_cost, pheromone_cost(G))
             G2 = G.copy()
             #check_graph_weights(G)
             #h0 = hit_counts0[-1]
@@ -685,7 +732,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             i += 1
                     
         if print_graph:        
-            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_max_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
+            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
             print "graph colored"
         
         e_colors = edge_color[:]
@@ -759,7 +806,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
-            ani.save("ant_deviate_max_full" + str(iter) + ".mp4")
+            ani.save("ant_deviate_full" + str(iter) + ".mp4")
 
         #if not has_pheromone_path(G, nest, target):
          #   return None
@@ -812,13 +859,15 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         #pruning = 0
         #score = mean_path_score(G, after_paths)
         cost = pheromone_cost(G)
+        max_cost = max(cost, max_cost)
+        pruning = (max_cost - cost) / float(max_cost)
         
         #choices = defaultdict(lambda : defaultdict(int))
         journey_times = []
         journey_lengths = []
         walk_counts = defaultdict(int)
         total_steps = 0
-        #data_file2 = open('new_ant_deviate%d.csv' % max_steps, 'a')
+        #data_file2 = open('new_ant_max_deviate%d.csv' % max_steps, 'a')
         print "new ants"
         successful_walks = 0
         failed_walks = 0
@@ -860,7 +909,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         #    counts = choices[node].values()
         #    node_entropies.append(entropy(counts))
         #node_etr = mean(node_entropies)
-        success_rate = float(successful_walks) / (successful_walks + failed_walks)
+        walk_success_rate = float(successful_walks) / (successful_walks + failed_walks)
         mean_journey_time = mean(journey_times)
         med_journey_time = median(journey_times)
         
@@ -954,7 +1003,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw2, init_func=init2, frames=total_steps, interval = 1000)
-            ani.save("ant_deviate_max_full" + str(iter) + "a.mp4")
+            ani.save("ant_deviate_full" + str(iter) + "a.mp4")
         
         if connect_time == -1:
             connect_time = max_steps
@@ -987,7 +1036,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             write_items += [walk_entropy, mean_journey_time, med_journey_time]
         else:
             write_items += ['', '', '']
-        write_items.append(success_rate)
+        write_items.append(walk_success_rate)
+        write_items.append(pruning)
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
         data_file.write(line)
