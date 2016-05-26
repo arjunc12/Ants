@@ -23,3 +23,9 @@ bfs0/*
 *.xls
 
 graph_after/*
+
+pruning/*
+
+*.sh
+
+*.zip
