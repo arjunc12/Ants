@@ -151,12 +151,6 @@ def mean_dist_heat(df, strategy):
         
     heat(df, mean_dist, 'mean_distance', strategy, 'average distance from nest to target at the end')
     
-def pruning_heat(df, strategy):
-    def pruning(group):
-        return pylab.nanmean(group['pruning'])
-        
-    heat(df, pruning, 'pruning', strategy, 'average pruning done between connect time and end')
-    
 def score_heat(df, strategy):
     def score(group):
         return pylab.nanmean(group['score'])
@@ -244,6 +238,12 @@ def walk_success_rate_heat(df, strategy):
             print group
         return success_rate - 0.9933417141012928
     heat(df, walk_success_rate, 'walk_success_rate', strategy, 'proportion successful walks for new ants', sequential=False)
+
+def pruning_heat(df, strategy):
+    def pruning(group):
+        return pylab.nanmean(group['pruning'])
+        
+    heat(df, pruning, 'pruning', strategy, 'average pruning done between connect time and end')
     
 def main():
     filename = argv[1]
@@ -253,7 +253,7 @@ def main():
     #          'mean_dist', 'score', 'correlation', 'cost', 'node_etr', 'min_etr', 'mean_etr',\
     #          'total_etr', 'min_etr_dist', 'mean_journey_time', 'popular_len', 'walk_entropy', 'has_path'] 
     columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
-               'mean_journey_time', 'median_journey_time', 'walk_success_rate']
+               'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning']
     
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
@@ -301,6 +301,7 @@ def main():
     walk_entropy_heat(df, strategy)
     path_success_rate_heat(df, strategy)
     walk_success_rate_heat(df, strategy)
+    pruning_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 
