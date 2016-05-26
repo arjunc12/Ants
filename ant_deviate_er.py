@@ -44,7 +44,7 @@ MIN_ADD = 1
 
 MAX = False
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 30
+MAX_PATH_LENGTH = 15
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -285,41 +285,64 @@ def full_grid():
 
 def er_network(p=0.5):
     G = nx.grid_2d_graph(11, 11)
-    for u in G.nodes_iter():
-        for v in nodes_iter():
+    for u in G.nodes():
+        for v in G.nodes():
+            if u == nest and v == target:
+                continue
+            if v == nest and u == target:
+                continue
             if u != v:
                 if random() <= p:
                     G.add_edge(u, v)
                 else:
                     if G.has_edge(u, v):
                         G.remove_edge(u, v)
+    if not nx.has_path(G, nest, target):
+        return None
     short_path = nx.shortest_path(G, nest, target)
-    idx = choice(len(short_path) - 1)
+    if len(short_path) <= 3:
+        return None
+    #print short_path
+    idx = choice(range(1, len(short_path) - 1))
+    #print idx
     G.remove_edge(short_path[idx], short_path[idx + 1])
-    for i in xrange(idx + 1):
+    for i in xrange(idx):
         P.append((short_path[i], short_path[i + 1]))
-    for i in xrange(idx + 1, len(short_path)):
+    for i in xrange(idx + 1, len(short_path) - 1):
         P.append((short_path[i], short_path[i + 1]))
+    #print P
         
-    
+    if not nx.has_path(G, nest, target):
+        return None
     
     for i,u in enumerate(G.nodes_iter()):
         M[i] = u
         Minv[u] = i
-        
-     for u,v in G.edges_iter(): G[u][v]['weight'] = MIN_PHEROMONE
-     
-     for u in G.nodes():
         pos[u] = [u[0],u[1]] # position is the same as the label.
-        
 
         if (u[0] == nest) or (u == target):
             node_size.append(100)
             node_color.append('r')
         else:
             node_size.append(10)
-            node_color.append('k')      
-
+            node_color.append('k') 
+        
+    for u,v in G.edges_iter():
+        G[u][v]['weight'] = MIN_PHEROMONE
+        if (u, v) in P or (v, u) in P:
+            edge_color.append('g')
+            edge_width.append(10)
+        else:
+            edge_color.append('k')
+            edge_width.append(1)
+    
+    for i, (u,v) in enumerate(G.edges()):
+        Ninv[(u, v)] = i
+        N[i] = (u, v)        
+        Ninv[(v, u)] = i
+            
+    return G
+     
 def color_path(G, path, c, w, figname):
     """
     Given a path, colors that path on the graph and then outputs the colored path to a
@@ -632,7 +655,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
     
     nframes = min(nframes, max_steps)
 
-    data_file = open('ant_deviate_full%d.csv' % max_steps, 'a')
+    data_file = open('ant_deviate_er%d.csv' % max_steps, 'a')
     pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     # Repeat 'num_iters' times 
     for iter in xrange(num_iters):
@@ -681,7 +704,9 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         i = 1
         max_weight = MIN_PHEROMONE
         unique_weights = set()
+        max_cost = 0
         while i <= max_steps:
+            max_cost = max(max_cost, pheromone_cost(G))
             G2 = G.copy()
             #check_graph_weights(G)
             #h0 = hit_counts0[-1]
@@ -768,7 +793,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
             i += 1
                     
         if print_graph:        
-            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
+            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_er%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
             print "graph colored"
         
         e_colors = edge_color[:]
@@ -842,7 +867,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
-            ani.save("ant_deviate_full" + str(iter) + ".mp4")
+            ani.save("ant_deviate_er" + str(iter) + ".mp4")
 
         #if not has_pheromone_path(G, nest, target):
          #   return None
@@ -895,6 +920,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         #pruning = 0
         #score = mean_path_score(G, after_paths)
         cost = pheromone_cost(G)
+        max_cost = max(cost, max_cost)
+        pruning = (max_cost - cost) / float(max_cost)
         
         #choices = defaultdict(lambda : defaultdict(int))
         journey_times = []
@@ -1037,7 +1064,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw2, init_func=init2, frames=total_steps, interval = 1000)
-            ani.save("ant_deviate_full" + str(iter) + "a.mp4")
+            ani.save("ant_deviate_er" + str(iter) + "a.mp4")
         
         if connect_time == -1:
             connect_time = max_steps
@@ -1071,6 +1098,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         else:
             write_items += ['', '', '']
         write_items.append(success_rate)
+        write_items.append(pruning)
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
         data_file.write(line)
@@ -1139,16 +1167,19 @@ def main():
     # Build network.
     #G = fig1_network()
     #G = simple_network()
-    G = full_grid()
+    #G = full_grid()
+    G = er_network(p=0.033)
+    
+    if G != None:
+        nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
+        PP.draw()
+        print "show"
+        PP.show()
+        PP.savefig("fig_er.pdf")
+        PP.close()
 
-    #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
-    #PP.draw()
-    #PP.show()
-    #PP.savefig("fig_full.pdf")
-    #PP.close()
-
-    # Run recovery algorithm.
-    deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video, frames, explore, max_steps)
+        # Run recovery algorithm.
+        #deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, print_path, print_graph, video, frames, explore, max_steps)
 
     
     # =========================== Finish ============================
