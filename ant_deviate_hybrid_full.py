@@ -773,7 +773,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, print_path=Fa
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
-            ani.save("ant_deviate_hybrid_full" + str(iter) + ".mp4")
+            ani.save("ant_deviate_hybrid_simple" + str(iter) + ".mp4")
             
         cost = pheromone_cost(G)
         max_cost = max(cost, max_cost)
