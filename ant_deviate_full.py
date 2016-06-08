@@ -425,7 +425,6 @@ def decay_edges(G, nonzero_edges, decay):
             zero_edges.append(Ninv[(u, v)])
     return zero_edges
 
-
 def decay_graph(G, decay):
     '''
     Decrease the weight on all edges by the prescribed decay amount
@@ -683,6 +682,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
     pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     # Repeat 'num_iters' times 
     for iter in xrange(num_iters):
+        nonzero_edges = set()
         for u, v in G.edges_iter():
             G[u][v]['weight'] = MIN_PHEROMONE
         for u, v in P:
@@ -717,7 +717,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
         max_cost = 0
         costs = []
         while steps <= max_steps:
-            cost = float(pheromone_cost(G))
+            cost = float(len(nonzero_edges))
             max_cost = max(max_cost, cost)
             costs.append(cost)
             prun_str = '%d, %d' % (steps, cost)
@@ -745,7 +745,9 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
                                     
-            decay_graph(G2, pheromone_decay)
+            zero_edges = decay_edges(G2, nonzero_edges, pheromone_decay)
+            for zero_edge in zero_edges:
+                nonzero_edges.remove(zero_edge)
                 
             G = G2
             steps += 1
