@@ -790,7 +790,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
-            ani.save("ant_deviate_hybrid_full" + str(iter) + ".mp4")
+            ani.save("ant_deviate_hybrid" + str(iter) + ".mp4")
             
         cost = float(len(nonzero_edges))
         max_cost = max(cost, max_cost)
@@ -799,7 +799,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         costs = PP.array(costs)
         pruning = (max_cost - cost) / float(max_cost)
         if cost_plot:
-            figname = "pruning/pruning_hybrid_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay)
+            figname = "pruning/pruning_hybrid%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay)
             pruning_plot(costs, figname, max_cost)
             return None
             
@@ -913,7 +913,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         
         if video2:    
             ani = animation.FuncAnimation(fig, redraw2, init_func=init2, frames=total_steps, interval = 1000)
-            ani.save("ant_deviate_hybrid_full" + str(iter) + "a.mp4")
+            ani.save("ant_deviate_hybrid" + str(iter) + "a.mp4")
         
         if connect_time == -1:
             connect_time = max_steps

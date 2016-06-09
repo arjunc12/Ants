@@ -629,8 +629,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
     
     num_edges = G.size()
     
-    data_file = open('ant_deviate_hybrid_full%d.csv' % max_steps, 'a')
-    pruning_file = open('ant_deviate_hybrid_full_pruning%d.csv' % max_steps, 'a')
+    data_file = open('ant_deviate_hybrid_simple%d.csv' % max_steps, 'a')
+    pruning_file = open('ant_deviate_hybrid_simple_pruning%d.csv' % max_steps, 'a')
     pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     
     # Repeat 'num_iters' times 
@@ -728,7 +728,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         costs = PP.array(costs)
         pruning = (max_cost - cost) / float(max_cost)
         if cost_plot:
-            figname = "pruning/pruning_hybrid_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay)
+            figname = "pruning/pruning_hybrid_simple%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay)
             pruning_plot(costs, figname, max_cost)
             return None
 

@@ -765,7 +765,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
             steps += 1
                     
         if print_graph:        
-            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
+            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_max%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
             print "graph colored"
         
         e_colors = edge_color[:]
@@ -826,14 +826,14 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, interval = 1000)
-            ani.save("ant_deviate_full" + str(iter) + ".mp4")
+            ani.save("ant_deviate_max" + str(iter) + ".mp4")
             
         cost = float(len(nonzero_edges))
         costs.append(cost)
         max_cost = max(max_cost, cost)
         costs = PP.array(costs)
         if cost_plot:
-            figname = "pruning/pruning_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay)
+            figname = "pruning/pruning_max%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay)
             pruning_plot(costs, figname, max_cost)
             return None
 
