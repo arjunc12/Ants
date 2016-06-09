@@ -687,6 +687,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
             G[u][v]['weight'] = MIN_PHEROMONE
         for u, v in P:
             G[u][v]['weight'] += pheromone_add * INIT_WEIGHT_FACTOR
+            nonzero_edges.add(Ninv[(u, v)])
         
         if iter == 0 and print_graph:
             color_graph(G, 'g', pheromone_thickness, "graph_before")
@@ -712,8 +713,6 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                 destinations[ant] = nest
                 origins[ant] = target     
         steps = 1
-        max_weight = MIN_PHEROMONE
-        unique_weights = set()
         max_cost = 0
         costs = []
         while steps <= max_steps:
@@ -734,6 +733,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                     currs[j] = prev
                     explore[j] = False
                     G2[curr][prev]['weight'] += pheromone_add
+                    nonzero_edges.add(Ninv[(curr, prev)])
                 else:
                     if curr == origins[j]:
                         prev = None
@@ -742,6 +742,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                     prevs[j] = curr
                     currs[j] = next
                     G2[curr][next]['weight'] += pheromone_add
+                    nonzero_edges.add(Ninv[(curr, next)])
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
                                     
@@ -751,12 +752,11 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                 
             G = G2
             steps += 1
-                    
+        
         if print_graph:        
-            color_graph(G, 'g', (pheromone_add / max_weight), "graph_after_full%d_e%0.2fd%0.2f" % (max_steps, explore_prob, pheromone_decay))
-            print "graph colored"
+            color_graph(G, 'g', pheromone_add / max_weight, "graph_after_" + str(iter))
             
-        cost = float(pheromone_cost(G))
+        cost = float(len(nonzero_edges))
         costs.append(cost)
         max_cost = max(max_cost, cost)
         costs = PP.array(costs)
