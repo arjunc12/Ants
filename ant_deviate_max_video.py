@@ -41,7 +41,7 @@ BACKTRACK = False
 ADD_PRUNE = 0.1
 MIN_ADD = 1
 
-MAX = False
+MAX = True
 INIT_WEIGHT_FACTOR = 10
 MAX_PATH_LENGTH = 20
 
@@ -991,9 +991,9 @@ def main():
     cost_plot = options.cost_plot
 
     # Build network.
-    #G = fig1_network()
+    G = fig1_network()
     #G = simple_network()
-    G = full_grid()
+    #G = full_grid()
 
     #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
     #PP.draw()
