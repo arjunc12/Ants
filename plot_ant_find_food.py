@@ -35,12 +35,12 @@ def plot_find_food2d(df):
             x.append(distance)
             y.append(pylab.median(group2['time']))
         #print explore, explore % 0.15
-        #if explore % 0.15 < 6e-17:
-        pylab.plot(x, y, label=str(explore))
-        pylab.xlabel('distance')
-        pylab.ylabel('time')
-        pylab.legend(loc=2)
-        pylab.savefig("find_food/find_food_e%f.png" % explore, format="png")
+        if explore % 0.15 < 6e-17:
+            pylab.plot(x, y, label=str(explore))
+            pylab.xlabel('distance')
+            pylab.ylabel('time')
+            pylab.legend(loc=2)
+            pylab.savefig("find_food/find_food_e%f.png" % explore, format="png")
     
 if __name__ == '__main__':
     columns = ['ants', 'explore', 'decay', 'distance', 'time']
