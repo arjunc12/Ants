@@ -37,6 +37,9 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True):
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)))
     pylab.savefig("%s_%s.png" % (title, strategy), format="png", transparent=True, bbox_inches='tight')
 
+def describe_group(group):
+    print pylab.mean(group['explore']), pylab.mean(group['decay'])
+
 def walk_heat(df, strategy):
     def mean_len(group):
         return pylab.nanmean(group['length'])
@@ -189,6 +192,9 @@ def mean_entropy_heat(df, strategy):
     
 def path_entropy_heat(df, strategy):
     def path_entropy(group):
+        if all(pylab.isnan(group['path_entropy'])):
+            print "path entropy"
+            describe_group(group)
         return pylab.nanmean(group['path_entropy'])
         
     heat(df, path_entropy, 'path_entropy', strategy, 'entropy over all possible paths')
@@ -219,6 +225,9 @@ def popular_len_heat(df, strategy):
     
 def walk_entropy_heat(df, strategy):
     def mean_walk_entropy(group):
+        if all(pylab.isnan(group['walk_entropy'])):
+            print "walk entropy"
+            describe_group(group)
         return pylab.nanmean(group['walk_entropy']) - 14.47
         
     heat(df, mean_walk_entropy, 'walk_entropy', strategy, 'entropy over all chosen walks', sequential=False)
@@ -227,7 +236,8 @@ def path_success_rate_heat(df, strategy):
     def path_success_rate(group):
         success_rate = pylab.nansum(group['has_path']) / float(pylab.count_nonzero(~pylab.isnan(group['has_path'])))
         if success_rate == 0:
-            print group
+            print "path success rate"
+            describe_group(group)
         return success_rate
     heat(df, path_success_rate, 'path_success_rate', strategy, 'proportion of times ants successfully created a path')
     
@@ -235,7 +245,8 @@ def walk_success_rate_heat(df, strategy):
     def walk_success_rate(group):
         success_rate = pylab.nanmean(group['walk_success_rate'])
         if success_rate == 0:
-            print group
+            print "walk success rate"
+            describe_group(group)
         return success_rate - 0.9933417141012928
     heat(df, walk_success_rate, 'walk_success_rate', strategy, 'proportion successful walks for new ants', sequential=False)
 
@@ -243,17 +254,25 @@ def pruning_heat(df, strategy):
     def pruning(group):
         return pylab.nanmean(group['pruning'])
         
-    heat(df, pruning, 'pruning', strategy, 'average pruning done between connect time and end')
+    heat(df, pruning, 'pruning', strategy, 'average edge pruning done between start and end')
+    
+def path_pruning_heat(df, strategy):
+    def path_pruning(group):
+        if all(pylab.isnan(group['path_pruning'])):
+            print "path pruning"
+            print group
+            
+        return pylab.nanmean(group['path_pruning'])
+            
+    heat(df, path_pruning, 'path_pruning', strategy, 'average path pruning done between start and end')
     
 def main():
     filename = argv[1]
     strategy = argv[2]
-    #columns = ['ants', 'explore', 'decay', 'first', 'last', 'revisits', 'hits', 'misses', \
-    #          'mean_len', 'attempts', 'connect_time', 'connectivity', 'pruning', 'dist', \
-    #          'mean_dist', 'score', 'correlation', 'cost', 'node_etr', 'min_etr', 'mean_etr',\
-    #          'total_etr', 'min_etr_dist', 'mean_journey_time', 'popular_len', 'walk_entropy', 'has_path'] 
+    
     columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
-               'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning']
+               'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
+               'connect_time', 'path_pruning']
     
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
@@ -262,46 +281,19 @@ def main():
         print pylab.nanmax(df['walk_success_rate'])
         return None
     
-    #print df['score']
-    #print df
-    #print df['attempts']
-    #walk_heat(df, strategy)
-    #walk_med_heat(df, strategy)
-    #walk_var_heat(df, strategy)
-    #first_walks_heat(df, strategy)
-    #last_walks_heat(df, strategy)
-    #revisits_heat(df, strategy)
-    
-#     right_prop_heat(df, strategy)
-#     wrong_prop_heat(df, strategy)
-#     hit_count_heat(df, strategy)
-#     miss_count_heat(df, strategy)
-#     success_rate_heat(df, strategy)
-#     failure_rate_heat(df, strategy)
-#     success_average_heat(df, strategy)
-#     success_ratio_heat(df, strategy)
-
-    #connect_time_heat(df, strategy)
-    #connectivity_heat(df, strategy)
-#     distance_heat(df, strategy)
-#     mean_dist_heat(df, strategy)
-#     pruning_heat(df, strategy)
-#     score_heat(df, strategy)
-#     correlation_heat(df, strategy)
-    #node_entropy_heat(df, strategy)
-    #min_entropy_heat(df, strategy)
-    #mean_entropy_heat(df, strategy)
-    #min_entropy_dist_heat(df, strategy)
-    #popular_len_heat(df, strategy)
+    path_success_rate_heat(df, strategy)
+    walk_success_rate_heat(df, strategy)
     
     mean_journey_heat(df, strategy)
     med_journey_heat(df, strategy)
     path_entropy_heat(df, strategy)
     cost_heat(df, strategy)
     walk_entropy_heat(df, strategy)
-    path_success_rate_heat(df, strategy)
-    walk_success_rate_heat(df, strategy)
+    
     pruning_heat(df, strategy)
+    connect_time_heat(df, strategy)
+    
+    path_pruning_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 

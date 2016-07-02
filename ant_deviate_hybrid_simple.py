@@ -185,12 +185,25 @@ def fig1_network():
     return G
 
 def simple_network():
-    G = nx.grid_2d_graph(6, 6)
+    '''
+    Manually builds a simple network with 3 disjoint paths between nest and target
+    '''
+    G = nx.grid_2d_graph(8, 6)
+        
+    for j in xrange(6):
+        if j < 5:
+            G.remove_edge((0, j), (0, j + 1))
+            G.remove_edge((7, j), (7, j + 1))
+        
+        if j != 3:
+            G.remove_edge((0, j), (1, j))
+            G.remove_edge((6, j), (7, j))
+    
     
     for j in [1, 2, 4]:
-        for k in xrange(5):
+        for k in xrange(1, 6):
             G.remove_edge((k, j), (k + 1, j))
-            if 1 <= k <= 5:
+            if 2 <= k <= 5:
                 try:
                     G.remove_edge((k, j), (k, j + 1))
                 except:
@@ -199,11 +212,11 @@ def simple_network():
                     G.remove_edge((k, j), (k, j - 1))
                 except:
                     pass
-                    
+                                            
     for i,u in enumerate(G.nodes_iter()):
         M[i] = u
         Minv[u] = i
-            
+                
     # Draw the network.
     for u in G.nodes():
         pos[u] = [u[0],u[1]] # position is the same as the label.
@@ -215,20 +228,40 @@ def simple_network():
         if u[0] == 0 and u[1] == 3:
             node_size.append(100)
             node_color.append('r')
-        elif u[0] == 5 and u[1] == 3:
+        elif u[0] == 7 and u[1] == 3:
             node_size.append(100)
             node_color.append('r')
         else:
             node_size.append(10)
             node_color.append('k')
-            
+        
+    for i in xrange(1, 6):
+        G[(i, 3)][(i + 1, 3)]['plant'] = 2
+        
+    for i in [3, 4]:
+        G[(1, i)][(1, i + 1)]['plant'] = 3
+        G[(6, i)][(6, i + 1)]['plant'] = 3
+    for i in xrange(1, 6):
+        G[(i, 5)][(i + 1, 5)]['plant'] = 3
+    
+    G[(0, 3)][(1, 3)]['plant'] = 1 
+    G[(6, 3)][(7, 3)]['plant'] = 1    
+    for i in xrange(3):
+        G[(1, i)][(1, i + 1)]['plant'] = 1
+        G[(6, i)][(6, i + 1)]['plant'] = 1
+    for i in xrange(1, 6):
+        G[(i, 0)][(i + 1, 0)]['plant'] = 1
+    
+    plant_colors = {1:'k', 2:'r', 3:'b'}        
     for i, (u, v) in enumerate(G.edges()):
         Ninv[(u, v)] = i
         N[i] = (u, v)        
         Ninv[(v, u)] = i
         
         edge_width.append(1)
-        edge_color.append('k')
+        
+        plant = G[u][v]['plant']
+        edge_color.append(plant_colors[plant])
         
     return G
 
@@ -619,8 +652,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
     """ """
     # os.system("rm -f graph*.png")
     # Put ants at the node adjacent to e, at node (4,3).
-    target = (0,5)
-    nest = (10,5)
+    nest = (0,3)
+    target = (7,3)
     
     def next_destination(prev):
         if prev == target:
@@ -659,12 +692,12 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         for ant in xrange(num_ants):
             if ant % 2 == 0:
                 prevs[ant] = nest
-                currs[ant] = (9, 5)
+                currs[ant] = (1, 3)
                 destinations[ant] = target
                 origins[ant] = nest
             else:
                 prevs[ant] = target
-                currs[ant] = (1, 5)
+                currs[ant] = (6, 3)
                 destinations[ant] = nest
                 origins[ant] = target     
         steps = 1

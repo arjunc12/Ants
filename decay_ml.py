@@ -5,6 +5,7 @@ from sys import argv
 import pandas as pd
 import numpy as np
 import pylab
+import argparse
 
 
 MIN_PHEROMONE = 0
@@ -52,6 +53,7 @@ def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
     
     likelihood = 1
     G[sources[1]][dests[1]]['weight'] += 1
+    G2 = G.copy()
     for i in xrange(1, len(sources)):
         source = sources[i]
         dest = dests[i]
@@ -62,10 +64,13 @@ def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
         
         curr = dts[i]
         prev = dts[i - 1]
-        diff = curr - prev
-        seconds = diff.total_seconds()
-        decay_graph(G, decay, seconds)
-        G[source][dest]['weight'] += 1
+        if curr != prev:
+            diff = curr - prev
+            seconds = diff.total_seconds()
+            G = G2
+            decay_graph(G, decay, seconds)
+            G2 = G.copy()
+        G2[source][dest]['weight'] += 1
             
         
     return np.log(likelihood), G
@@ -134,26 +139,54 @@ def max_edge_likelihood(G, source, dest, explore):
     else:
         return explore / (len(neighbors) - len(max_neighbors))    
 
-def likelihood_heat(sheets, likelihood_func, strategy):
+def likelihood_heat(sheets, likelihood_func, strategy, outname):
     for sheet in sheets:
-        sheet = int(sheet)
+        sheet = sheet
         pylab.figure()
         delta = 0.05
         decays = np.arange(0.05, 1, delta)
         explores = np.arange(0.05, 1, delta)
         likelihoods = pylab.zeros((len(decays), len(explores)))
         G = None
-        choices = 'reformated_counts%d.csv' % sheet
+        choices = 'reformated_counts%s.csv' % sheet
         pos = 0
+
         for decay in decays:
             for explore in explores:
                 i, j = pos / len(explores), pos % len(explores)
                 likelihood, G = decay_likelihood(choices, decay, explore, likelihood_func, G)
                 #likelihood = pos
                 likelihoods[i, j] = likelihood
-                #print likelihoods
                 pos += 1
-        hm = pylab.pcolormesh(likelihoods, cmap='BluGn')
+                
+        min_likelihood = float("inf")
+        max_likelihood = float("-inf")
+        bad_positions = []
+        max_values = []
+        pos = 0
+        for decay in decays:
+            for explore in explores:
+                i, j = pos / len(explores), pos % len(explores)
+                likelihood = likelihoods[i, j]
+                if likelihood == float("-inf"):
+                    bad_positions.append((i, j))
+                else:
+                    min_likelihood = min(likelihood, min_likelihood)
+                    if likelihood > max_likelihood:
+                        max_values = [(explore, decay)]
+                        max_likelihood = likelihood
+                    elif max_likelihood == likelihood:
+                        max_values.append((explore, decay))
+                pos += 1
+        for i, j in bad_positions:
+            likelihoods[i, j] = min_likelihood
+        
+        title_str = ['max likelihood %f at:' % max_likelihood]
+        for explore, decay in max_values:
+            title_str.append('(e=%0.2f, d=%0.2f)' % (explore, decay))
+        title_str = '\n'.join(title_str)
+
+        hm = pylab.pcolormesh(likelihoods, cmap='nipy_spectral')
         cb = pylab.colorbar(hm)
         cb.ax.set_ylabel('log-likelihood')
         pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
@@ -161,11 +194,12 @@ def likelihood_heat(sheets, likelihood_func, strategy):
         
         pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(explores), max(explores)))
         pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)))
-        pylab.savefig("decay_ml_%s%d.png" % (strategy, sheet), format="png")
+        pylab.title(title_str)
+        pylab.savefig("decay_ml_%s_%s%s.png" % (strategy, outname, sheet), format="png", transparent=True,bbox_inches='tight')
         pylab.close()
         print "plotted"
         
-def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
+def cumulative_likelihood_heat(sheets, likelihood_func, strategy, outname):
     delta = 0.05
     decays = np.arange(delta, 1, delta)
     explores = np.arange(delta, 1, delta)
@@ -173,10 +207,10 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
     denominator = 0
     pylab.figure()
     for sheet in sheets:
-        sheet = int(sheet)
+        sheet = sheet
         print sheet
         G = None
-        choices = 'reformated_counts%d.csv' % sheet
+        choices = 'reformated_counts%s.csv' % sheet
         f = open(choices)
         num_lines = sum(1 for line in f)
         denominator += num_lines
@@ -192,7 +226,9 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
                 pos += 1
     likelihoods /= denominator
     min_likelihood = float("inf")
+    max_likelihood = float("-inf")
     bad_positions = []
+    max_values = []
     pos = 0
     for decay in decays:
         for explore in explores:
@@ -202,9 +238,20 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
                 bad_positions.append((i, j))
             else:
                 min_likelihood = min(likelihood, min_likelihood)
+                if likelihood > max_likelihood:
+                    max_values = [(explore, decay)]
+                    max_likelihood = likelihood
+                elif max_likelihood == likelihood:
+                    max_values.append((explore, decay))
             pos += 1
+            
     for i, j in bad_positions:
         likelihoods[i, j] = min_likelihood
+    
+    title_str = ['max likelihood %f at:' % max_likelihood]
+    for explore, decay in max_values:
+        title_str.append('(e=%0.2f, d=%0.2f)' % (explore, decay))
+    title_str = '\n'.join(title_str)
             
     #print likelihoods
     hm = pylab.pcolormesh(likelihoods, cmap='nipy_spectral')
@@ -215,18 +262,19 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy):
     
     pylab.xlabel("explore probability (%0.2f-%0.2f)" % (min(explores), max(explores)))
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)))
-    pylab.savefig("cumulative_decay_ml_%s.png" % strategy, format="png", transparent=True,bbox_inches='tight')
+    pylab.title(title_str)
+    pylab.savefig("cumulative_decay_ml_%s_%s.png" % (strategy, outname), format="png", transparent=True,bbox_inches='tight')
     pylab.close()
     print "plotted"
     
-def unif_likelihood_heat(sheets):
-    likelihood_heat(sheets, uniform_likelihood, 'uniform')
+def unif_likelihood_heat(sheets, outname):
+    likelihood_heat(sheets, uniform_likelihood, 'uniform', outname)
     
-def threshold_likelihood_heat(sheets):
-    likelihood_heat(sheets, threshold_likelihood, 'threshold')
+def threshold_likelihood_heat(sheets, outname):
+    likelihood_heat(sheets, threshold_likelihood, 'threshold', outname)
     
-def max_edge_likelihood_heat(sheets):
-    likelihood_heat(sheets, max_edge_likelihood, 'max_edge')
+def max_edge_likelihood_heat(sheets, outname):
+    likelihood_heat(sheets, max_edge_likelihood, 'max_edge', outname)
     
 def likelihood_3dplot(sheets, likelihood_func, strategy):
     for sheet in sheets:
@@ -263,11 +311,11 @@ def likelihood_3dplot(sheets, likelihood_func, strategy):
         pylab.close()
         print "plotted"
         
-def cumulative_unif_likelihood_heat(sheets):
-    cumulative_likelihood_heat(sheets, uniform_likelihood, 'uniform')
+def cumulative_unif_likelihood_heat(sheets, outname):
+    cumulative_likelihood_heat(sheets, uniform_likelihood, 'uniform', outname)
     
-def cumulative_max_edge_likelihood_heat(sheets):
-    cumulative_likelihood_heat(sheets, max_edge_likelihood, 'max_edge')
+def cumulative_max_edge_likelihood_heat(sheets, outname):
+    cumulative_likelihood_heat(sheets, max_edge_likelihood, 'max_edge', outname)
 
 def unif_likelihood_3dplot(sheets):
     likelihood_3dplot(sheets, uniform_likelihood, 'uniform')
@@ -278,8 +326,8 @@ def threshold_likelihood_3dplot(sheets):
 def max_edge_likelihood_3dplot(sheets):
     likelihood_3dplot(sheets, max_edge_likelihood, 'max_edge')
     
-def cumulative_likelihood_3dplot(sheets, likelihood_func, strategy):
-    delta = 0.02
+def cumulative_likelihood_3dplot(sheets, likelihood_func, strategy, outname):
+    delta = 0.05
     decays = np.arange(delta, 1, delta)
     explores = np.arange(delta, 1, delta)
     x = []
@@ -291,9 +339,9 @@ def cumulative_likelihood_3dplot(sheets, likelihood_func, strategy):
     z = np.zeros(len(x))
     denominator = 0
     for sheet in sheets:
-        sheet = int(sheet)
+        sheet = sheet
         print sheet
-        choices = 'reformated_counts%d.csv' % sheet    
+        choices = 'reformated_counts%s.csv' % sheet    
         f = open(choices)
         num_lines = sum(1 for line in f)
         denominator += num_lines
@@ -318,15 +366,15 @@ def cumulative_likelihood_3dplot(sheets, likelihood_func, strategy):
     ax.set_ylabel('explore')
     ax.set_zlabel('log-likelihood')
     pylab.title('maximum at decay = %f, explore = %f' % (max_decay, max_explore))
-    pylab.savefig("cumulative_decay_ml3d_%s.png" % strategy, format="png")
+    pylab.savefig("cumulative_decay_ml3d_%s_%s.png" % (outname, strategy), format="png")
     pylab.close()
     print "plotted"
     
-def cumulative_unif_likelihood_3dplot(sheets):
-    cumulative_likelihood_3dplot(sheets, uniform_likelihood, 'uniform')
+def cumulative_unif_likelihood_3dplot(sheets, outname):
+    cumulative_likelihood_3dplot(sheets, uniform_likelihood, 'uniform', outname)
     
-def cumulative_max_edge_likelihood_3dplot(sheets):
-    cumulative_likelihood_3dplot(sheets, max_edge_likelihood, 'max_edge')
+def cumulative_max_edge_likelihood_3dplot(sheets, outname):
+    cumulative_likelihood_3dplot(sheets, max_edge_likelihood, 'max_edge', outname)
         
 def likelihood_2dplot(sheets, likelihood_func, strategy, explore=0.1):
     for sheet in sheets:
@@ -335,7 +383,7 @@ def likelihood_2dplot(sheets, likelihood_func, strategy, explore=0.1):
         delta = 0.01
         decays = np.arange(delta, 1, delta)
         G = None
-        choices = 'reformated_counts%d.csv' % sheet
+        choices = 'reformated_counts%s.csv' % sheet
         likelihoods = []
         max_likelihood = -float("inf")
         max_decay = None
@@ -348,7 +396,7 @@ def likelihood_2dplot(sheets, likelihood_func, strategy, explore=0.1):
         
         pylab.plot(decays, likelihoods)
         pylab.title('maximum at decay = %f' % max_decay)
-        pylab.savefig("decay_ml2d_%s%d.png" % (strategy, sheet), format="png")
+        pylab.savefig("decay_ml2d_%s%s.png" % (strategy, sheet), format="png")
         pylab.close()
         print "plotted"
         
@@ -362,17 +410,20 @@ def max_edge_likelihood_2dplot(sheets):
     likelihood_2dplot(sheets, max_edge_likelihood, 'max_edge')
     
 if __name__ == '__main__':
-    sheets = argv[1:]
-    #unif_likelihood_heat(sheets)
-    #threshold_likelihood_heat(sheets)
-    #max_edge_likelihood_heat(sheets)
-    #unif_likelihood_3dplot(sheets)
-    #threshold_likelihood_3dplot(sheets)
-    #max_edge_likelihood_3dplot(sheets)
-    #unif_likelihood_2dplot(sheets)
-    #threshold_likelihood_2dplot(sheets)
-    #max_edge_likelihood_2dplot(sheets)
-    #cumulative_unif_likelihood_3dplot(sheets)
-    #cumulative_max_edge_likelihood_3dplot(sheets)
-    cumulative_unif_likelihood_heat(sheets)
-    cumulative_max_edge_likelihood_heat(sheets)
+    outname = argv[1]
+    sheets = argv[2:]
+    
+    #unif_likelihood_heat(sheets, outname)
+    #max_edge_likelihood_heat(sheets, outname)
+    
+    #unif_likelihood_3dplot(sheets, outname)
+    #max_edge_likelihood_3dplot(sheets, outname)
+    
+    #unif_likelihood_2dplot(sheets, outname)
+    #max_edge_likelihood_2dplot(sheets, outname)
+    
+    #cumulative_unif_likelihood_3dplot(sheets, outname)
+    #cumulative_max_edge_likelihood_3dplot(sheets, outname)
+    
+    cumulative_unif_likelihood_heat(sheets, outname)
+    cumulative_max_edge_likelihood_heat(sheets, outname)

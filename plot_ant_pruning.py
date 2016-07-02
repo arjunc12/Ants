@@ -26,4 +26,6 @@ if __name__ == '__main__':
     
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
+    #print max(df['time'])
+    
     pruning_plot(df, strategy)
