@@ -780,7 +780,7 @@ def walk_to_path(walk):
     for i, node in enumerate(walk):
         if node not in visited:
             path.append(node)
-            visited[node] = i
+            visited[node] = len(path) - 1
         else:
             prev = visited[node]
             for j in xrange(prev + 1, len(path)):
@@ -899,6 +899,9 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
                         path = walk_to_path(walks[j])
+                        if path[-1] == nest:
+                            path = path[::-1]
+                            assert path[-1] == target
                         path_counts[tuple(path)] += 1
                         curr_entropy = entropy(path_counts.values())
                         if max_entropy == None:

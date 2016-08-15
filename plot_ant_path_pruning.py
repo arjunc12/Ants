@@ -9,12 +9,12 @@ def pruning_plot(df, strategy):
         y = []
         for name2, group2 in group1.groupby('time'):
             x.append(name2)
-            y.append(pylab.nanmean(group2['cost']))
+            y.append(pylab.nanmean(group2['path_pruning']))
         pylab.figure()
         pylab.plot(x, y)
         pylab.xlabel('time')
-        pylab.ylabel('average graph cost')
-        figname = 'pruning/pruning_%s_e%fd%f.png' % (strategy, explore, decay)
+        pylab.ylabel('average chosen path entropy')
+        figname = 'pruning/path_pruning_%s_e%fd%f.png' % (strategy, explore, decay)
         pylab.savefig(figname, format='png')
         pylab.close()
 
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     filename = argv[1]
     strategy = argv[2]
     
-    columns = ['ants', 'explore', 'decay', 'time', 'cost']
+    columns = ['ants', 'explore', 'decay', 'time', 'path_pruning']
     
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     

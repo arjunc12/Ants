@@ -29,3 +29,11 @@ pruning/*
 *.sh
 
 *.zip
+
+*.bib
+
+datasets/*
+
+*.jpg
+
+*.jpeg

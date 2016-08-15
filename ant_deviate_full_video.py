@@ -42,7 +42,7 @@ ADD_PRUNE = 0.1
 MIN_ADD = 1
 
 MAX = False
-INIT_WEIGHT_FACTOR = 10
+INIT_WEIGHT_FACTOR = 100
 MAX_PATH_LENGTH = 20
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
@@ -412,6 +412,19 @@ def check_graph_weights(G):
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
 
+def check_graph(G):
+    for u, v in G.edges_iter():
+        weight = G[u][v]['weight']
+        assert weight >= MIN_PHEROMONE
+        wt = 0
+        units = G[u][v]['units']
+        for unit in G[u][v]['units']:
+            assert unit > MIN_PHEROMONE
+            wt += unit
+        if wt != weight:
+            print u, v, units, wt, weight
+        assert wt == weight
+
 def decay_edges(G, nonzero_edges, decay):
     zero_edges = []
     for i in nonzero_edges:
@@ -425,16 +438,31 @@ def decay_edges(G, nonzero_edges, decay):
             zero_edges.append(Ninv[(u, v)])
     return zero_edges
 
+def edge_weight(G, u, v):
+    return sum(G[u][v]['units'])
+
+def decay_units(G, u, v, decay):
+    nonzero_units = []
+    for unit in G[u][v]['units']:
+        unit = max(unit - decay, MIN_PHEROMONE)
+        assert unit >= MIN_PHEROMONE
+        if unit > MIN_PHEROMONE:
+            nonzero_units.append(unit)
+    G[u][v]['units'] = nonzero_units
+    
 def decay_graph(G, decay):
-    '''
-    Decrease the weight on all edges by the prescribed decay amount
-    '''
     for u, v in G.edges_iter():
+        decay_units(G, u, v, decay)
+        wt = edge_weight(G, u, v)
+        assert wt >= MIN_PHEROMONE
+        G[u][v]['weight'] = wt
+        '''
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
-        x = max(MIN_PHEROMONE, wt - decay)
+        x = max(MIN_PHEROMONE, wt - (decay * seconds))
         assert wt >= MIN_PHEROMONE
         G[u][v]['weight'] = x
+        '''
 
 def get_weights(G, start, candidates):
     '''
@@ -687,10 +715,11 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
             fig = PP.figure()
         for u, v in G.edges_iter():
             G[u][v]['weight'] = MIN_PHEROMONE
+            G[u][v]['units'] = []
         for u, v in P:
             G[u][v]['weight'] += pheromone_add * INIT_WEIGHT_FACTOR
-            nonzero_edges.add(Ninv[(u, v)])
-        
+            G[u][v]['units'] += [pheromone_add] * INIT_WEIGHT_FACTOR
+                    
         if iter == 0 and print_graph:
             color_graph(G, 'g', pheromone_thickness, "graph_before")
         print str(iter) + ": " + pher_str
@@ -718,6 +747,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         max_cost = 0
         costs = []
         while steps <= max_steps:
+            #check_graph(G)
             cost = float(len(nonzero_edges))
             max_cost = max(max_cost, cost)
             costs.append(cost)
@@ -745,6 +775,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
                     paths[j].append(prev)
                     explore[j] = False
                     G2[curr][prev]['weight'] += pheromone_add
+                    G2[curr][prev]['units'].append(pheromone_add)
                     nonzero_edges.add(Ninv[(curr, prev)])
                 else:
                     if curr == origins[j]:
@@ -753,13 +784,15 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
                     explore[j] = ex
                     paths[j].append(next)
                     G2[curr][next]['weight'] += pheromone_add
+                    G2[curr][next]['units'].append(pheromone_add)
                     nonzero_edges.add(Ninv[(curr, next)])
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
                                     
-            zero_edges = decay_edges(G2, nonzero_edges, pheromone_decay)
-            for zero_edge in zero_edges:
-                nonzero_edges.remove(zero_edge)
+            decay_graph(G2, pheromone_decay)
+            #zero_edges = decay_edges(G2, nonzero_edges, pheromone_decay)
+            #for zero_edge in zero_edges:
+            #    nonzero_edges.remove(zero_edge)
                 
             G = G2
             steps += 1

@@ -43,7 +43,7 @@ MIN_ADD = 1
 
 MAX = False
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 20
+MAX_PATH_LENGTH = 15
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -692,7 +692,7 @@ def walk_to_path(walk):
     for i, node in enumerate(walk):
         if node not in visited:
             path.append(node)
-            visited[node] = i
+            visited[node] = len(path) - 1
         else:
             prev = visited[node]
             for j in xrange(prev + 1, len(path)):
@@ -805,7 +805,11 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
                         path = walk_to_path(walks[j])
+                        if path[-1] == nest:
+                            path = path[::-1]
+                            assert path[-1] == target
                         path_counts[tuple(path)] += 1
+                            
                         curr_entropy = entropy(path_counts.values())
                         if max_entropy == None:
                             max_entropy = curr_entropy
@@ -986,7 +990,7 @@ def main():
     #PP.savefig("fig_simple.pdf")
     #PP.close()
 
-    # Run recovery algorithm.
+     Run recovery algorithm.
     deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, explore, print_graph, \
             max_steps, cost_plot)
 

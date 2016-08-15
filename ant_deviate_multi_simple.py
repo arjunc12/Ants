@@ -845,7 +845,7 @@ def walk_to_path(walk):
     for i, node in enumerate(walk):
         if node not in visited:
             path.append(node)
-            visited[node] = i
+            visited[node] = len(path) - 1
         else:
             prev = visited[node]
             for j in xrange(prev + 1, len(path)):
@@ -1135,15 +1135,15 @@ def main():
     #G = full_grid()
     G = simple_multi_network()
 
-    nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
-    PP.draw()
+    #nx.draw(G,pos=pos,with_labels=False,node_size=node_size,edge_color=edge_color,node_color=node_color,width=edge_width)
+    #PP.draw()
     #PP.show()
-    PP.savefig("fig_multi_simple.pdf")
-    PP.close()
+    #PP.savefig("fig_multi_simple.pdf")
+    #PP.close()
 
     # Run recovery algorithm.
-    #deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, explore, print_graph, \
-    #        max_steps, cost_plot)
+    deviate(G,num_iters,num_ants,pheromone_add,pheromone_decay, explore, print_graph, \
+            max_steps, cost_plot)
 
     
     # =========================== Finish ============================

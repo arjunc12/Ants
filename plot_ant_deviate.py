@@ -3,6 +3,9 @@ import pylab
 from sys import argv
 import argparse
 DEBUG = False
+NARROW = False
+COMPLETE = True
+import numpy.ma as ma
 
 def heat(df, group_func, title, strategy, cb_label, sequential=True):
     x = df['explore'].unique()
@@ -18,6 +21,7 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True):
         pos += 1
         max_abs = max(max_abs, abs(val))
     assert pos == len(x) * len(y)
+    z = ma.masked_invalid(z)
     pylab.figure()
     map = 'Reds'
     vmin = 0
@@ -207,15 +211,15 @@ def min_entropy_dist_heat(df, strategy):
     
 def mean_journey_heat(df, strategy):
     def mean_journey_time(group):
-        return pylab.nanmean(group['mean_journey_time']) - 223.13
+        return pylab.nanmean(group['mean_journey_time'])
         
-    heat(df, mean_journey_time, 'mean_journey_time', strategy, 'average time for new ants to find nest', sequential=False)
+    heat(df, mean_journey_time, 'mean_journey_time', strategy, 'average time for new ants to find nest', sequential=True)
     
 def med_journey_heat(df, strategy):
     def med_journey_time(group):
-        return pylab.nanmedian(group['mean_journey_time']) - 164
+        return pylab.nanmedian(group['mean_journey_time'])
         
-    heat(df, med_journey_time, 'median_journey_time', strategy, 'median time for new ants to find nest', sequential=False)
+    heat(df, med_journey_time, 'median_journey_time', strategy, 'median time for new ants to find nest', sequential=True)
     
 def popular_len_heat(df, strategy):
     def mean_popular_len(group):
@@ -228,9 +232,9 @@ def walk_entropy_heat(df, strategy):
         if all(pylab.isnan(group['walk_entropy'])):
             print "walk entropy"
             describe_group(group)
-        return pylab.nanmean(group['walk_entropy']) - 14.47
+        return pylab.nanmean(group['walk_entropy'])
         
-    heat(df, mean_walk_entropy, 'walk_entropy', strategy, 'entropy over all chosen walks', sequential=False)
+    heat(df, mean_walk_entropy, 'walk_entropy', strategy, 'entropy over all chosen walks', sequential=True)
     
 def path_success_rate_heat(df, strategy):
     def path_success_rate(group):
@@ -247,8 +251,8 @@ def walk_success_rate_heat(df, strategy):
         if success_rate == 0:
             print "walk success rate"
             describe_group(group)
-        return success_rate - 0.9933417141012928
-    heat(df, walk_success_rate, 'walk_success_rate', strategy, 'proportion successful walks for new ants', sequential=False)
+        return success_rate
+    heat(df, walk_success_rate, 'walk_success_rate', strategy, 'proportion successful walks for new ants', sequential=True)
 
 def pruning_heat(df, strategy):
     def pruning(group):
@@ -260,11 +264,42 @@ def path_pruning_heat(df, strategy):
     def path_pruning(group):
         if all(pylab.isnan(group['path_pruning'])):
             print "path pruning"
-            print group
+            describe_group(group)
             
         return pylab.nanmean(group['path_pruning'])
             
     heat(df, path_pruning, 'path_pruning', strategy, 'average path pruning done between start and end')
+
+def chosen_path_entropy_heat(df, strategy):
+    def chosen_path_entropy(group):
+        if all(pylab.isnan(group['chosen_path_entropy'])):
+            print "chosen_path_entropy"
+            describe_group(group)
+            
+        return pylab.nanmean(group['chosen_path_entropy'])
+            
+    heat(df, chosen_path_entropy, 'chosen_path_entropy', strategy, 'average entropy over chosen paths')
+
+def walk_pruning_heat(df, strategy):
+    def walk_pruning(group):
+        if all(pylab.isnan(group['walk_pruning'])):
+            print "walk pruning"
+            describe_group(group)
+            
+        return pylab.nanmean(group['walk_pruning'])
+            
+    heat(df, walk_pruning, 'walk_pruning', strategy, 'average walk pruning done between start and end')
+
+def chosen_walk_entropy_heat(df, strategy):
+    def chosen_walk_entropy(group):
+        if all(pylab.isnan(group['chosen_walk_entropy'])):
+            print "chosen_walk_entropy"
+            describe_group(group)
+            
+        return pylab.nanmean(group['chosen_walk_entropy'])
+            
+    heat(df, chosen_walk_entropy, 'chosen_walk_entropy', strategy, 'average entropy over chosen walks')
+
     
 def main():
     filename = argv[1]
@@ -272,14 +307,16 @@ def main():
     
     columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
                'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
-               'connect_time', 'path_pruning']
+               'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
+               'chosen_walk_entropy']
     
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
     if DEBUG:
-        print df['walk_success_rate']
-        print pylab.nanmax(df['walk_success_rate'])
+        print df['walk_pruning']
+        print df['chosen_walk_entropy']
         return None
+    
     
     path_success_rate_heat(df, strategy)
     walk_success_rate_heat(df, strategy)
@@ -294,6 +331,11 @@ def main():
     connect_time_heat(df, strategy)
     
     path_pruning_heat(df, strategy)
+    chosen_path_entropy_heat(df, strategy)
+    
+    walk_pruning_heat(df, strategy)
+    chosen_walk_entropy_heat(df, strategy)
+    
    
 if __name__ == '__main__':
     main() 

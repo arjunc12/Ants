@@ -16,6 +16,7 @@ INIT_WEIGHT = 0
 def reset_graph(G):
     for u, v in G.edges_iter():
         G[u][v]['weight'] = MIN_PHEROMONE
+        G[u][v]['units'] = []
 
 def make_graph(sources, dests):
     assert len(sources) == len(dests)
@@ -25,15 +26,45 @@ def make_graph(sources, dests):
         dest = dests[i]
         G.add_edge(source, dest)
         G[source][dest]['weight'] = INIT_WEIGHT #MIN_PHEROMONE
+        G[source][dest]['units'] = []
     return G
 
+def check_graph(G):
+    for u, v in G.edges_iter():
+        weight = G[u][v]['weight']
+        assert weight >= MIN_PHEROMONE
+        wt = 0
+        for unit in G[u][v]['units']:
+            assert unit > MIN_PHEROMONE
+            wt += unit
+        assert wt == weight
+
+def edge_weight(G, u, v):
+    return sum(G[u][v]['units'])
+
+def decay_units(G, u, v, decay):
+    nonzero_units = []
+    for unit in G[u][v]['units']:
+        unit = max(unit - decay, MIN_PHEROMONE)
+        assert unit >= MIN_PHEROMONE
+        if unit > MIN_PHEROMONE:
+            nonzero_units.append(unit)
+    G[u][v]['units'] = nonzero_units
+    
 def decay_graph(G, decay, seconds=1):
     for u, v in G.edges_iter():
+        decay_amount = decay * seconds
+        decay_units(G, u, v, decay_amount)
+        wt = edge_weight(G, u, v)
+        assert wt >= MIN_PHEROMONE
+        G[u][v]['weight'] = wt
+        '''
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
         x = max(MIN_PHEROMONE, wt - (decay * seconds))
         assert wt >= MIN_PHEROMONE
         G[u][v]['weight'] = x
+        '''
 
 def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
     assert 0 < decay < 1
@@ -53,6 +84,7 @@ def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
     
     likelihood = 1
     G[sources[1]][dests[1]]['weight'] += 1
+    G[sources[1]][dests[1]]['units'].append(1)
     G2 = G.copy()
     for i in xrange(1, len(sources)):
         source = sources[i]
@@ -71,6 +103,7 @@ def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
             decay_graph(G, decay, seconds)
             G2 = G.copy()
         G2[source][dest]['weight'] += 1
+        G2[source][dest]['units'].append(1)
             
         
     return np.log(likelihood), G
