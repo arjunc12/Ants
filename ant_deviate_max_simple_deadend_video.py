@@ -28,7 +28,7 @@ node_color,node_size = [],[]
 edge_color,edge_width = [],[]
 P = []
 path_thickness = 1.5
-pheromone_thickness = 1
+pheromone_thickness = 10
 ant_thickness = 25
 DEBUG_PATHS = True
 OUTPUT_GRAPHS = False
@@ -417,7 +417,7 @@ def color_graph(G, c, w, figname):
         colors[index] = c
         wt = G[u][v]['weight']
         width = wt * w
-        widths[index] = width
+        widths[index] = width * pheromone_thickness
         #if width > 0:
             #print u, v, width
         #unique_weights.add(wt)
@@ -794,15 +794,30 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
                 prev = paths[j][-2]
                 
                 n = G.neighbors(curr)
-                n.remove(prev)
+                if curr != prev:
+                    n.remove(prev)
                 if len(n) == 0:
                     deadend[j] = (curr not in [nest, target])
                     #print curr, deadend[j]
                 elif len(n) > 1:
                     deadend[j] = False
                 
-                if prev == curr:
+                if (prev == curr) or (curr == origins[j]):
                     prev = None
+                next, ex = next_edge(G, curr, explore_prob=explore_prob, prev=prev)
+                add_amt = pheromone_add
+                add_neighbor = next
+                if ex:
+                    add_amt *= 2
+                    next = curr
+                if not deadend[j]:
+                    G2[curr][add_neighbor]['weight'] += add_amt
+                    G2[curr][add_neighbor]['units'].append(add_amt)
+                paths[j].append(next)
+                if next == destinations[j]:
+                    origins[j], destinations[j] = destinations[j], origins[j]
+                
+                '''
                 if explore[j]:
                     paths[j].append(prev)
                     explore[j] = False
@@ -820,6 +835,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
                         G2[curr][next]['units'].append(pheromone_add)
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
+                '''
                                     
             decay_graph(G2, pheromone_decay)
                 
@@ -839,7 +855,6 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         n_colors[Minv[nest]] = 'y'
         
         n_sizes[Minv[target]] = n_sizes[Minv[nest]] = 100
-        
                 
         def init():
             nx.draw(G, pos=pos, with_labels=False, node_size=n_sizes, edge_color=e_colors, node_color=n_colors, width=e_widths)
@@ -854,8 +869,8 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
             n_sizes = [10] * len(node_size)
             
             ax = PP.gca()
-            
-            for n in xrange(num_ants):             
+                        
+            for n in xrange(num_ants):            
                 node = paths[n][frame]
                 index = Minv[node]
                 n_colors[index] = 'k'

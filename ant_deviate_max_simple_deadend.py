@@ -27,7 +27,7 @@ pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
 P = []
-path_thickness = 1.5
+path_thickness = 10
 pheromone_thickness = 1
 ant_thickness = 25
 DEBUG_PATHS = True
@@ -417,7 +417,7 @@ def color_graph(G, c, w, figname):
         colors[index] = c
         wt = G[u][v]['weight']
         width = wt * w
-        widths[index] = width
+        widths[index] = width * pheromone_thickness
         #if width > 0:
             #print u, v, width
         #unique_weights.add(wt)
@@ -809,19 +809,13 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
         costs = []
         curr_entropy = None
         curr_walk_entropy = None
+        max_weight = MIN_PHEROMONE
         while steps <= max_steps:
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
             costs.append(cost)
             prun_write_items = [steps, cost]
-            #prun_str = '%d, %d,' % (steps, cost)
-            #pruning_file.write(pher_str + prun_str + '\n')
-            '''
-            if curr_entropy != None:
-                prun_str += ' ' + str(curr_entropy) + ','
-            if curr_walk_etropy != None:
-                prun_str += ' ' + str(curr_walk_entropy)
-            '''
+            
             if curr_entropy != None:
                 prun_write_items.append(curr_entropy)
             else:
@@ -833,29 +827,76 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                 prun_write_items.append('')
                 
             prun_str = ', '.join(map(str, prun_write_items))
-                
             pruning_file.write(pher_str + prun_str + '\n')
+            
+            for u, v in G.edges():
+                wt = G[u][v]['weight']
+                max_weight = max(max_weight, wt)
+            
             G2 = G.copy()
             for j in xrange(num_ants):
                 curr = currs[j]
                 prev = prevs[j]
                 
-                neighbors = G.neighbors(curr)
-                neighbors.remove(prev)
-                    
-                if len(neighbors) == 0:
-                    deadend[j] = curr not in [nest, target]
-                elif len(neighbors) > 1:
+                n = G.neighbors(curr)
+                if curr != prev:
+                    n.remove(prev)
+                if len(n) == 0:
+                    deadend[j] = (curr not in [nest, target])
+                    #print curr, deadend[j]
+                elif len(n) > 1:
                     deadend[j] = False
                 
-                if prev == curr:
+                if (prev == curr) or (curr == origins[j]):
                     prev = None
+                next, ex = next_edge(G, curr, explore_prob=explore_prob, prev=prev)
+                add_amt = pheromone_add
+                add_neighbor = next
+                if ex:
+                    add_amt *= 2
+                    next = curr
+                if not deadend[j]:
+                    G2[curr][add_neighbor]['weight'] += add_amt
+                    G2[curr][add_neighbor]['units'].append(add_amt)
+                walks[j].append(next)
+                prevs[j] = curr
+                currs[j] = next
+                
+                if next == destinations[j]:
+                    origins[j], destinations[j] = destinations[j], origins[j]
+                    
+                    walk = walks[j]
+                    chosen_walk_counts[tuple(walk)] += 1
+                    
+                    path = walk_to_path(walk)
+                    if path[-1] == nest:
+                        path = path[::-1]
+                        assert path[-1] == target
+                    path_counts[tuple(path)] += 1
+                    
+                    curr_entropy = entropy(path_counts.values())
+                    curr_walk_entropy = entropy(chosen_walk_counts.values())
+                    
+                    if max_entropy == None:
+                        max_entropy = curr_entropy
+                    else:
+                        max_entropy = max(max_entropy, curr_entropy)
+                        
+                    if max_walk_entropy == None:
+                        max_walk_entropy = curr_walk_entropy
+                    else:
+                        max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+                    
+                    walks[j] = [origins[j]]
+                
+                '''
                 if explore[j]:
                     prevs[j] = curr
                     currs[j] = prev
                     explore[j] = False
-                    G2[curr][prev]['weight'] += pheromone_add
-                    G2[curr][prev]['units'].append(pheromone_add)
+                    if not deadend[j]:
+                        G2[curr][prev]['weight'] += pheromone_add
+                        G2[curr][prev]['units'].append(pheromone_add)
                     walks[j].append(currs[j])
                 else:
                     if curr == origins[j]:
@@ -864,8 +905,9 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                     explore[j] = ex
                     prevs[j] = curr
                     currs[j] = next
-                    G2[curr][next]['weight'] += pheromone_add
-                    G2[curr][next]['units'].append(pheromone_add)
+                    if not deadend[j]:
+                        G2[curr][next]['weight'] += pheromone_add
+                        G2[curr][next]['units'].append(pheromone_add)
                     walks[j].append(next)
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
@@ -893,6 +935,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                             max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
                         
                         walks[j] = [origins[j]]
+                '''
                                     
             decay_graph(G2, pheromone_decay)
                 
@@ -902,7 +945,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                 connect_time = steps
         
         if print_graph:        
-            color_graph(G, 'g', pheromone_add / max_weight, "graph_after_max_deviate_simple_deadend" + str(iter))
+            color_graph(G, 'g', pheromone_add / max_weight, "graph_after_deviate_max_simple_deadend" + str(iter))
             
         cost = pheromone_cost(G)
         costs.append(cost)

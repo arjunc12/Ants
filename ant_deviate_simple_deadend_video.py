@@ -18,8 +18,8 @@ from scipy.stats import entropy
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
 
-N = {}    # edge -> edge id
-Ninv = {} # edge id -> edge
+Ninv = {}    # edge -> edge id
+N = {}       # edge id -> edge
 
 #MAX_STEPS= 10000
 MIN_PHEROMONE = 0
@@ -428,6 +428,9 @@ def color_graph(G, c, w, figname):
     PP.savefig(figname + '.png', format='png')
     PP.close()
 
+def edge_weight(G, u, v):
+    return sum(G[u][v]['units'])
+
 def check_graph(G):
     for u, v in G.edges_iter():
         weight = G[u][v]['weight']
@@ -438,22 +441,6 @@ def check_graph(G):
             wt += unit
         assert wt == weight
 
-def decay_edges(G, nonzero_edges, decay):
-    zero_edges = []
-    for i in nonzero_edges:
-        u, v = N[i]
-        wt = G[u][v]['weight']
-        assert wt > MIN_PHEROMONE
-        x = max(MIN_PHEROMONE, wt - decay)
-        assert x >= MIN_PHEROMONE
-        G[u][v]['weight'] = x
-        if x == MIN_PHEROMONE:
-            zero_edges.append(Ninv[(u, v)])
-    return zero_edges
-
-def edge_weight(G, u, v):
-    return sum(G[u][v]['units'])
-
 def decay_units(G, u, v, decay):
     nonzero_units = []
     for unit in G[u][v]['units']:
@@ -462,6 +449,18 @@ def decay_units(G, u, v, decay):
         if unit > MIN_PHEROMONE:
             nonzero_units.append(unit)
     G[u][v]['units'] = nonzero_units
+
+def decay_edges(G, nonzero_edges, decay):
+    zero_edges = []
+    for i in nonzero_edges:
+        u, v = N[i]
+        decay_units(G, u, v, decay)
+        wt = edge_weight(G, u, v)
+        assert wt >= MIN_PHEROMONE
+        G[u][v]['weight'] = wt
+        if wt == MIN_PHEROMONE:
+            zero_edges.append(i)
+    return zero_edges
     
 def decay_graph(G, decay):
     for u, v in G.edges_iter():
@@ -735,12 +734,15 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
     for iter in xrange(num_iters):
         if video:
             fig = PP.figure()
+            
+        nonzero_edges = set()
         for u, v in G.edges_iter():
             G[u][v]['weight'] = MIN_PHEROMONE
             G[u][v]['units'] = []
         for u, v in P:
             G[u][v]['weight'] += pheromone_add * INIT_WEIGHT_FACTOR
             G[u][v]['units'] += [pheromone_add] * INIT_WEIGHT_FACTOR
+            nonzero_edges.add(Ninv[(u, v)])
         
         if iter == 0 and print_graph:
             color_graph(G, 'g', pheromone_thickness, "graph_before")
@@ -769,6 +771,7 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
         unique_weights = set()
         max_cost = 0
         costs = []
+        
         while steps <= max_steps:
             #check_graph(G)
             cost = pheromone_cost(G)
@@ -794,21 +797,38 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
                 prev = paths[j][-2]
                 
                 n = G.neighbors(curr)
-                n.remove(prev)
+                if curr != prev:
+                    n.remove(prev)
                 if len(n) == 0:
                     deadend[j] = (curr not in [nest, target])
                     #print curr, deadend[j]
                 elif len(n) > 1:
                     deadend[j] = False
                 
-                if prev == curr:
+                if (prev == curr) or (curr == origins[j]):
                     prev = None
+                next, ex = next_edge(G, curr, explore_prob=explore_prob, prev=prev)
+                add_amt = pheromone_add
+                add_neighbor = next
+                if ex:
+                    add_amt *= 2
+                    next = curr
+                if not deadend[j]:
+                    G2[curr][add_neighbor]['weight'] += add_amt
+                    G2[curr][add_neighbor]['units'].append(add_amt)
+                    nonzero_edges.add(Ninv[(curr, add_neighbor)])
+                paths[j].append(next)
+                if next == destinations[j]:
+                    origins[j], destinations[j] = destinations[j], origins[j]
+                    
+                '''
                 if explore[j]:
                     paths[j].append(prev)
                     explore[j] = False
                     if not deadend[j]:
                         G2[curr][prev]['weight'] += pheromone_add
                         G2[curr][prev]['units'].append(pheromone_add)
+                        nonzero_edges.add(Ninv[(curr, prev)])
                 else:
                     if curr == origins[j]:
                         prev = None
@@ -818,10 +838,14 @@ def deviate(G,num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob,
                     if not deadend[j]:
                         G2[curr][next]['weight'] += pheromone_add
                         G2[curr][next]['units'].append(pheromone_add)
+                        nonzero_edges.add(Ninv[(curr, next)])
                     if next == destinations[j]:
                         origins[j], destinations[j] = destinations[j], origins[j]
+                '''
                                     
-            decay_graph(G2, pheromone_decay)
+            #decay_graph(G2, pheromone_decay)
+            zero_edges = decay_edges(G2, nonzero_edges, pheromone_decay)
+            nonzero_edges.difference_update(zero_edges)
                 
             G = G2
             steps += 1

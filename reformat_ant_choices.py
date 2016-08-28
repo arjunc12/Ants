@@ -23,6 +23,7 @@ for line in in_file:
     edge = None
     for entry in line[5:]:
         entry = entry.split('-')
+        #entry = entry.split()
         if len(entry) == 2 and entry[0] != '':
             edge = entry
             break
