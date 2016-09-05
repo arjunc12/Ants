@@ -554,10 +554,12 @@ def has_pheromone_path(G, origin, destination):
     G2 = pheromone_subgraph(G, origin, destination)
     return nx.has_path(G2, origin, destination)
     
-def next_edge(G, start, explore_prob=0.1, prev=None):
+def next_edge(G, start, explore_prob=0.1, prev=None, dest=None):
     unexplored = []
     explored = []
     neighbors = G.neighbors(start)
+    if (dest != None) and (dest in neighbors):
+        return dest, False
     max_wt = float("-inf")
     for neighbor in neighbors:
         wt = G[start][neighbor]['weight']
@@ -837,6 +839,7 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
             for j in xrange(num_ants):
                 curr = currs[j]
                 prev = prevs[j]
+                next = None
                 
                 n = G.neighbors(curr)
                 if curr != prev:
@@ -847,17 +850,20 @@ def deviate(G, num_iters, num_ants, pheromone_add, pheromone_decay, explore_prob
                 elif len(n) > 1:
                     deadend[j] = False
                 
-                if (prev == curr) or (curr == origins[j]):
-                    prev = None
-                next, ex = next_edge(G, curr, explore_prob=explore_prob, prev=prev)
-                add_amt = pheromone_add
-                add_neighbor = next
-                if ex:
-                    add_amt *= 2
+                if j / 2 < steps:
+                    if (prev == curr) or (curr == origins[j]):
+                        prev = None
+                    next, ex = next_edge(G, curr, explore_prob=explore_prob, prev=prev, dest=destinations[j])
+                    add_amt = pheromone_add
+                    add_neighbor = next
+                    if ex:
+                        add_amt *= 2
+                        next = curr
+                    if not deadend[j]:
+                        G2[curr][add_neighbor]['weight'] += add_amt
+                        G2[curr][add_neighbor]['units'].append(add_amt)
+                else:
                     next = curr
-                if not deadend[j]:
-                    G2[curr][add_neighbor]['weight'] += add_amt
-                    G2[curr][add_neighbor]['units'].append(add_amt)
                 walks[j].append(next)
                 prevs[j] = curr
                 currs[j] = next
