@@ -254,10 +254,10 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy, outname):
                 i, j = pos / len(explores), pos % len(explores)
                 likelihood, G = decay_likelihood(choices, decay, explore, likelihood_func, G)
                 #likelihood = pos
-                likelihoods[i, j] += likelihood * num_lines
+                likelihoods[i, j] += likelihood# * num_lines
                 #print likelihoods
                 pos += 1
-    likelihoods /= denominator
+    #likelihoods /= denominator
     min_likelihood = float("inf")
     max_likelihood = float("-inf")
     bad_positions = []
