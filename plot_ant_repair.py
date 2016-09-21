@@ -13,19 +13,17 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True):
     z = pylab.zeros((len(y), len(x)))
     grouped = df.groupby(['explore', 'decay'])
     pos = 0
-    max_abs = float('-inf')
     for name, group in grouped:
         val = group_func(group)
         i, j = pos % len(y), pos / len(y)
         z[i, j] = val
         pos += 1
-        max_abs = max(max_abs, abs(val))
     assert pos == len(x) * len(y)
     z = ma.masked_invalid(z)
     pylab.figure()
     map = 'Reds'
     vmin = 0
-    vmax = max_abs
+    vmax = pylab.nanmax(pylab.absolute(z))
     if not sequential:
         map = 'coolwarm'
         vmin = -max_abs
@@ -313,8 +311,12 @@ def main():
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
     if DEBUG:
-        print df['walk_pruning']
-        print df['chosen_walk_entropy']
+        df = df[['explore', 'decay', 'has_path', 'path_entropy']]
+        df = df.groupby(['explore', 'decay'], as_index=False).agg(pylab.mean)
+        print df[(0.3 <= df['explore']) & (df['explore'] <= 0.55) & \
+                 (0.05 <= df['decay']) & (df['decay'] <= 0.15)]
+        df = df[(df['has_path'] == 1) & (df['path_entropy'] == 0)]
+        print df[['explore', 'decay']]
         return None
     
     
