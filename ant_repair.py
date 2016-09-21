@@ -238,6 +238,19 @@ def full_grid():
     init_graph(G)
     
     return G
+    
+def full_grid_nocut():
+    G = nx.grid_2d_graph(11,11)
+    
+    G.graph['name'] = 'full_nocut'
+    G.graph['nests'] = [(0, 5), (10, 5)]
+        
+    for i in range(10):
+        P.append(((i, 5), (i + 1, 5)))
+
+    init_graph(G)
+    
+    return G
 
 def er_network(p=0.5):
     G = nx.grid_2d_graph(11, 11)
@@ -501,10 +514,13 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
     candidates = explored + unexplored
     if candidates == [prev]:
         return prev, False 
-        
-    if (not backtrack) and (prev != None) and (len(explored) > 1):
-        assert prev in explored
-        explored.remove(prev)
+
+    if prev != None:
+        assert prev in candidates
+        if prev in explored:
+            explored.remove(prev)
+        else:
+            unexplored.remove(prev)
     
     if explore_prob == 0 and len(explored) == 0:
         return prev, False
@@ -707,7 +723,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             G[u][v]['units'] = []
         for u, v in P:
             G[u][v]['weight'] += pheromone_add * INIT_WEIGHT_FACTOR
-            G[u][v]['units'].append(pheromone_add * INIT_WEIGHT_FACTOR)
+            G[u][v]['units']+= [pheromone_add] * INIT_WEIGHT_FACTOR
             nonzero_edges.add(Ninv[(u, v)])
         
         if iter == 0 and print_graph:
@@ -747,6 +763,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         curr_walk_entropy = None
         
         while steps <= max_steps:
+            #print steps
             #check_graph(G)
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
@@ -856,6 +873,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             nonzero_edges.difference_update(zero_edges)
                 
             G = G2
+            
+            if connect_time == -1 and has_pheromone_path(G, nests[0], nests[1]):
+                connect_time = steps
+            
             steps += 1
             
         cost = pheromone_cost(G)
@@ -1130,7 +1151,8 @@ def main():
         format='%(levelname)s: %(asctime)s -- %(message)s'
     )
     
-    graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi']
+    graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
+                     'full_nocut']
     strategy_choices = ['uniform', 'max', 'hybrid']
     
 
@@ -1186,6 +1208,8 @@ def main():
         G = simple_network()
     elif graph == 'full':
         G = full_grid()
+    elif graph == 'full_nocut':
+        G = full_grid_nocut()
 
     '''
     nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=edge_color, \
