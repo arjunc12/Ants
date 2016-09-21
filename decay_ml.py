@@ -174,7 +174,6 @@ def max_edge_likelihood(G, source, dest, explore):
 
 def likelihood_heat(sheets, likelihood_func, strategy, outname):
     for sheet in sheets:
-        sheet = sheet
         pylab.figure()
         delta = 0.05
         decays = np.arange(0.05, 1, delta)
@@ -213,10 +212,15 @@ def likelihood_heat(sheets, likelihood_func, strategy, outname):
                 pos += 1
         for i, j in bad_positions:
             likelihoods[i, j] = min_likelihood
-        
+            
+        out_file = open('decay_ml.csv', 'a')
         title_str = ['max likelihood %f at:' % max_likelihood]
         for explore, decay in max_values:
             title_str.append('(e=%0.2f, d=%0.2f)' % (explore, decay))
+            out_str = ', '.join([str(explore), str(decay), strategy, outname])
+            out_file.write('%s\n' % out_str)
+        out_file.close()
+            
         title_str = '\n'.join(title_str)
 
         hm = pylab.pcolormesh(likelihoods, cmap='nipy_spectral')
@@ -240,7 +244,6 @@ def cumulative_likelihood_heat(sheets, likelihood_func, strategy, outname):
     denominator = 0
     pylab.figure()
     for sheet in sheets:
-        sheet = sheet
         print sheet
         G = None
         choices = 'reformated_counts%s.csv' % sheet
@@ -446,8 +449,8 @@ if __name__ == '__main__':
     outname = argv[1]
     sheets = argv[2:]
     
-    #unif_likelihood_heat(sheets, outname)
-    #max_edge_likelihood_heat(sheets, outname)
+    unif_likelihood_heat(sheets, outname)
+    max_edge_likelihood_heat(sheets, outname)
     
     #unif_likelihood_3dplot(sheets, outname)
     #max_edge_likelihood_3dplot(sheets, outname)
@@ -458,5 +461,5 @@ if __name__ == '__main__':
     #cumulative_unif_likelihood_3dplot(sheets, outname)
     #cumulative_max_edge_likelihood_3dplot(sheets, outname)
     
-    cumulative_unif_likelihood_heat(sheets, outname)
-    cumulative_max_edge_likelihood_heat(sheets, outname)
+    #cumulative_unif_likelihood_heat(sheets, outname)
+    #cumulative_max_edge_likelihood_heat(sheets, outname)
