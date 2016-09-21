@@ -9,16 +9,19 @@ from interval_utils import get_times, get_all_times
 
 def hist_times(name, times):
     min_time, max_time = min(times), max(times)
-    times = filter(lambda x : x <= 200, times)
+    mean_time, med_time = pylab.mean(times), pylab.median(times)
+    cutoff = 200
+    times = filter(lambda x : x <= cutoff, times)
     N = len(times)
     
     binsize = 20
     weights = np.ones_like(times)/float(len(times))
-    pylab.hist(times, weights=weights)#, bins=np.arange(0, max(times) + binsize, binsize))
+    pylab.hist(times, weights=weights, bins=np.arange(0, cutoff + binsize, binsize))
     pylab.ylim(0, 1)
     pylab.xlabel('time (seconds)')
     pylab.ylabel('proportion of times in that time range')
-    pylab.title('times between traversals of a unique edge\nN = %d, min = %0.2f, max = %0.2f' % (N, min_time, max_time))
+    pylab.title('times between traversals of a unique edge\nN = %d, min = %0.2f, max = %0.2f\nmean = %0.2f, median = %0.2f' % \
+                 (N, min_time, max_time, mean_time, med_time))
     pylab.savefig('interval_counts_%s.png' % name, format='png', bbox_inches='tight')
     #print "show"
     #pylab.show()
