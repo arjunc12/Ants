@@ -7,7 +7,7 @@ from optparse import OptionParser
 import argparse
 from matplotlib import pylab as PP
 from numpy.random import seed,choice, random
-from numpy import mean,median, array, argmax, where
+from numpy import mean,median, array, argmax, where, subtract
 from collections import defaultdict
 import os
 from matplotlib import animation
@@ -218,6 +218,45 @@ def simple_network():
     init_graph(G)
         
     return G
+    
+def simple_network_nocut():
+    '''
+    Manually builds a simple network with 3 disjoint paths between nest and target
+    '''
+    G = nx.grid_2d_graph(8, 6)
+    
+    G.graph['name'] = 'simple_nocut'
+    G.graph['nests'] = [(0, 3), (7, 3)]
+        
+    for j in xrange(6):
+        if j < 5:
+            G.remove_edge((0, j), (0, j + 1))
+            G.remove_edge((7, j), (7, j + 1))
+        
+        if j != 3:
+            G.remove_edge((0, j), (1, j))
+            G.remove_edge((6, j), (7, j))
+    
+    
+    for j in [1, 2, 4]:
+        for k in xrange(1, 6):
+            G.remove_edge((k, j), (k + 1, j))
+            if 2 <= k <= 5:
+                try:
+                    G.remove_edge((k, j), (k, j + 1))
+                except:
+                    pass
+                try:
+                    G.remove_edge((k, j), (k, j - 1))
+                except:
+                    pass
+    
+    for j in xrange(7):
+        P.append(((j, 3), (j + 1, 3)))
+                                            
+    init_graph(G)
+        
+    return G
 
 def full_grid():
     '''
@@ -391,7 +430,11 @@ def check_graph(G):
             wt += unit
         assert wt == weight
 
-def decay_units(G, u, v, decay):
+def decay_units(G, u, v, decay, time=1):
+    G[u][v]['units'] = subtract(G[u][v]['units'], decay * time)
+    G[u][v]['units'] = G[u][v]['units'][where(G[u][v]['units'] > 0)]
+    G[u][v]['units'] = list(G[u][v]['units'])
+    '''
     nonzero_units = []
     for unit in G[u][v]['units']:
         unit = max(unit - decay, MIN_PHEROMONE)
@@ -399,12 +442,13 @@ def decay_units(G, u, v, decay):
         if unit > MIN_PHEROMONE:
             nonzero_units.append(unit)
     G[u][v]['units'] = nonzero_units
+    '''
 
-def decay_edges(G, nonzero_edges, decay):
+def decay_edges(G, nonzero_edges, decay, time=1):
     zero_edges = []
     for i in nonzero_edges:
         u, v = N[i]
-        decay_units(G, u, v, decay)
+        decay_units(G, u, v, decay, time)
         wt = edge_weight(G, u, v)
         assert wt >= MIN_PHEROMONE
         G[u][v]['weight'] = wt
@@ -412,9 +456,9 @@ def decay_edges(G, nonzero_edges, decay):
             zero_edges.append(i)
     return zero_edges
     
-def decay_graph(G, decay):
+def decay_graph(G, decay, time=1):
     for u, v in G.edges_iter():
-        decay_units(G, u, v, decay)
+        decay_units(G, u, v, decay, time)
         wt = edge_weight(G, u, v)
         assert wt >= MIN_PHEROMONE
         G[u][v]['weight'] = wt
@@ -425,6 +469,32 @@ def decay_graph(G, decay):
         assert wt >= MIN_PHEROMONE
         G[u][v]['weight'] = x
         '''
+
+def decay_graph_exp(G, decay, time=1):
+    assert decay > 0
+    assert decay < 1
+    for u, v in G.edges_iter():
+        G[u][v]['weight'] *= (1 - decay) ** time
+        assert G[u][v]['weight'] >= MIN_PHEROMONE
+        
+def decay_edges_exp(G, nonzero_edges, decay, time=1):
+    zero_edges = []
+    for i in nonzero_edges:
+        u, v = N[i]
+        G[u][v]['weight'] *= (1 - decay) ** time
+        wt = G[u][v]['weight']
+        assert wt >= MIN_PHEROMONE
+        if wt == MIN_PHEROMONE:
+            zero_edges.append(i)
+    return zero_edges
+        
+def decay_graph_const(G, decay, time=1):
+    assert decay > 0
+    assert decay < 1
+    for u, v in G.edges_iter():
+        G[u][v]['weight'] -= decay * time
+        G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
+        assert G[u][v]['weight'] >= MIN_PHEROMONE
 
 def get_weights(G, start, candidates):
     '''
@@ -688,7 +758,7 @@ def walk_to_path(walk):
 
 def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
-            nframes=200, video2=False, cost_plot=False, backtrack=False):
+            nframes=200, video2=False, cost_plot=False, backtrack=False, decay_type='linear'):
     """ """
     
     graph_name = G.graph['name']
@@ -747,14 +817,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         connect_time = -1
                 
         for ant in xrange(num_ants):
-            origins[ant] = nests[ant % len(nests)]
-            origin = origins[ant]
+            origin = nests[ant % len(nests)]
+            origins[ant] = origin
             destinations[ant] = next_destination(origin)
             paths[ant] = [origin, origin]
             walks[ant] = [origin, origin]
             deadend[ant] = False
             
         steps = 1
+        rounds = 1
         max_weight = MIN_PHEROMONE
         unique_weights = set()
         max_cost = 0
@@ -763,7 +834,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         curr_walk_entropy = None
         
         while steps <= max_steps:
-            #print steps
             #check_graph(G)
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
@@ -798,11 +868,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     edge_weights[index].append(None)
                 else:
                     edge_weights[index].append(wt)
+                    
+            edge_traversals = defaultdict(int)
+            max_traversal_count = 0
+                    
             for j in xrange(num_ants):
                 curr = paths[j][-1]
                 prev = paths[j][-2]
                 next = None
-                
+                                
                 if at_dead_end(G, curr, prev):
                     search_mode[j] = True
                 
@@ -827,10 +901,16 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         next = curr
                     if not deadend[j]:
                         G2[curr][add_neighbor]['weight'] += add_amt
-                        G2[curr][add_neighbor]['units'].append(add_amt)
+                        if decay_type == 'linear':
+                            G2[curr][add_neighbor]['units'].append(add_amt)
                         nonzero_edges.add(Ninv[(curr, add_neighbor)])
                 else:
                     next = curr
+                    
+                if curr != next:
+                    edge_traversals[(curr, next)] += 1
+                    max_traversal_count = max(max_traversal_count, edge_traversals[(curr, next)])
+                    
                 paths[j].append(next)
                 walks[j].append(next)
                 
@@ -868,8 +948,14 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 elif next == origins[j]:
                     search_mode[j] = True
                     
-                
-            zero_edges = decay_edges(G2, nonzero_edges, pheromone_decay)
+            decay_func = None
+            if decay_type == 'linear':
+                decay_func = decay_edges
+            elif decay_type == 'constant':
+                decay_func = decay_edges_const
+            elif decay_type == 'exponential':
+                decay_func = decay_edges_exp
+            zero_edges = decay_func(G2, nonzero_edges, pheromone_decay, time=max_traversal_count)
             nonzero_edges.difference_update(zero_edges)
                 
             G = G2
@@ -878,6 +964,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 connect_time = steps
             
             steps += 1
+            rounds += max_traversal_count
             
         cost = pheromone_cost(G)
         costs.append(cost)
@@ -924,6 +1011,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         journey_lengths = []
         walk_counts = defaultdict(int)
         total_steps = 0
+        '''
         print "new ants"
         successful_walks = 0
         failed_walks = 0
@@ -961,6 +1049,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         
         
         walk_entropy = entropy(walk_counts.values())
+        '''
         
         write_items = [int(has_path), cost]
         
@@ -970,11 +1059,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             write_items.append('')
         
         if len(walk_counts.values()) > 0:
-            write_items += [walk_entropy, mean_journey_time, med_journey_time]
+            write_items += [walk_entropy, mean_journey_time, med_journey_time, walk_success_rate]
         else:
-            write_items += ['', '', '']
+            write_items += ['', '', '', '']
         
-        write_items.append(walk_success_rate)
+        #write_items.append(walk_success_rate)
         
         write_items.append(pruning)
         
@@ -1062,13 +1151,14 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             f = PP.draw()
             return f,
         if nframes == -1:
-            nframes = max_steps
+            nframes = steps
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, \
                                           interval = 1000)
             ani.save("ant_" + out_str + str(iter) + ".mp4")
         
+        '''
         def init2():
             PP.clf()
             e_colors = ['k'] * len(edge_color)
@@ -1140,6 +1230,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             ani = animation.FuncAnimation(fig, redraw2, init_func=init2, frames=total_steps, \
                                           interval = 1000)
             ani.save("ant_" + out_str + str(iter) + "a.mp4")
+        '''
             
         print iter + 1   
     
@@ -1152,8 +1243,9 @@ def main():
     )
     
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
-                     'full_nocut']
+                     'full_nocut', 'simple_nocut']
     strategy_choices = ['uniform', 'max', 'hybrid']
+    decay_choices = ['linear', 'constant', 'exponential']
     
 
     usage="usage: %prog [options]"
@@ -1181,6 +1273,7 @@ def main():
     parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=3000)
     parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
+    parser.add_argument("--decay_type", dest="decay_type", default="linear", choices=decay_choices)
 
     args = parser.parse_args()
     # ===============================================================
@@ -1200,6 +1293,7 @@ def main():
     max_steps = args.max_steps
     cost_plot = args.cost_plot
     backtrack = args.backtrack
+    decay_type = args.decay_type
 
     # Build network.
     if graph == 'fig1':
@@ -1210,6 +1304,8 @@ def main():
         G = full_grid()
     elif graph == 'full_nocut':
         G = full_grid_nocut()
+    elif graph == 'simple_nocut':
+        G = simple_network_nocut()
 
     '''
     nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=edge_color, \
@@ -1223,7 +1319,7 @@ def main():
 
     # Run recovery algorithm.
     repair(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps, \
-           num_iters, print_graph, video, frames, video2, cost_plot, backtrack)
+           num_iters, print_graph, video, frames, video2, cost_plot, backtrack, decay_type)
     
     # =========================== Finish ============================
     logging.info("Time to run: %.3f (mins)" %((time.time()-start) / 60))
