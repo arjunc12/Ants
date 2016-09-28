@@ -66,6 +66,14 @@ def decay_graph(G, decay, seconds=1):
         G[u][v]['weight'] = x
         '''
 
+def decay_graph_exp(G, decay, seconds=1):
+    assert decay > 0
+    assert decay < 1
+    decay_prop = (1 - decay) ** seconds
+    for u, v in G.edges_iter():
+        G[u][v]['weight'] *= decay_prop
+        assert G[u][v]['weight'] >= MIN_PHEROMONE
+
 def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
     assert 0 < decay < 1
     df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'])
@@ -84,7 +92,7 @@ def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
     
     likelihood = 1
     G[sources[1]][dests[1]]['weight'] += 1
-    G[sources[1]][dests[1]]['units'].append(1)
+    #G[sources[1]][dests[1]]['units'].append(1)
     G2 = G.copy()
     for i in xrange(1, len(sources)):
         source = sources[i]
@@ -100,7 +108,8 @@ def decay_likelihood(choices, decay, explore, likelihood_func, G=None):
             diff = curr - prev
             seconds = diff.total_seconds()
             G = G2
-            decay_graph(G, decay, seconds)
+            #decay_graph(G, decay, seconds)
+            decay_graph_exp(G, decay, seconds)
             G2 = G.copy()
         G2[source][dest]['weight'] += 1
         G2[source][dest]['units'].append(1)
@@ -174,6 +183,7 @@ def max_edge_likelihood(G, source, dest, explore):
 
 def likelihood_heat(sheets, likelihood_func, strategy, outname):
     for sheet in sheets:
+        print sheet
         pylab.figure()
         delta = 0.05
         decays = np.arange(0.05, 1, delta)
@@ -461,5 +471,5 @@ if __name__ == '__main__':
     #cumulative_unif_likelihood_3dplot(sheets, outname)
     #cumulative_max_edge_likelihood_3dplot(sheets, outname)
     
-    #cumulative_unif_likelihood_heat(sheets, outname)
-    #cumulative_max_edge_likelihood_heat(sheets, outname)
+    cumulative_unif_likelihood_heat(sheets, outname)
+    cumulative_max_edge_likelihood_heat(sheets, outname)
