@@ -236,7 +236,7 @@ def walk_entropy_heat(df, strategy):
     
 def path_success_rate_heat(df, strategy):
     def path_success_rate(group):
-        success_rate = pylab.nansum(group['has_path']) / float(pylab.count_nonzero(~pylab.isnan(group['has_path'])))
+        success_rate = pylab.nanmean(group['has_path'])
         if success_rate == 0:
             print "path success rate"
             describe_group(group)
@@ -311,12 +311,11 @@ def main():
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
     if DEBUG:
+        print "area of interest"
         df = df[['explore', 'decay', 'has_path', 'path_entropy']]
         df = df.groupby(['explore', 'decay'], as_index=False).agg(pylab.mean)
         print df[(0.3 <= df['explore']) & (df['explore'] <= 0.55) & \
                  (0.05 <= df['decay']) & (df['decay'] <= 0.15)]
-        df = df[(df['has_path'] == 1) & (df['path_entropy'] == 0)]
-        print df[['explore', 'decay']]
         return None
     
     
