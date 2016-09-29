@@ -784,7 +784,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
     graph_name = G.graph['name']
     nests = G.graph['nests']
     
-    out_items = ['repair', strategy, graph_name]
+    out_items = ['repair', strategy, graph_name, decay_type]
     if backtrack:
         out_items.append('backtrack')
     out_str = '_'.join(out_items)
