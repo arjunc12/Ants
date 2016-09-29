@@ -685,17 +685,19 @@ def vertex_entropy(G, vertex, explore_prob, prev=None):
     probs = zero + nonzero
     return entropy(probs)
     
-def choice_prob(G, source, dest, explore_prob, prev=None, strategy='max'):
+def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
     neighbors = G.neighbors(source)
     assert dest in neighbors
     assert G[source][dest]['weight'] > 0
+    if prev != None:
+        assert prev in neighbors
+        neighbors.remove(prev)
     total = 0.0
     max_weight = 0
     unexplored = 0
     for n in neighbors:
         wt = G[source][n]['weight']
-        if n != prev:
-            total += wt
+        total += wt
         max_weight = max(wt, max_weight)
         if wt == MIN_PHEROMONE:
             unexplored += 1
@@ -715,18 +717,18 @@ def choice_prob(G, source, dest, explore_prob, prev=None, strategy='max'):
         else:
             return (1 - explore_prob) * (G[source][dest]['weight'] / total)
     
-def path_prob(G, path, explore_prob):
+def path_prob(G, path, explore_prob, strategy='uniform'):
     prob = 1
     prev = None
     for i in xrange(len(path) - 1):
         source = path[i]
         dest = path[i + 1]
-        prob *= choice_prob(G, source, dest, explore_prob, prev)
+        prob *= choice_prob(G, source, dest, explore_prob, prev, strategy)
         prev = source
     return prob
     
-def path_prob_no_explore(G, path):
-    return path_prob(G, path, explore_prob=0)
+def path_prob_no_explore(G, path, strategy='uniform'):
+    return path_prob(G, path, 0, strategy)
     
 def path_entropy(G, path, explore_prob):
     probs = []
@@ -971,9 +973,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             decay_func = None
             if decay_type == 'linear':
                 decay_func = decay_edges
-            elif decay_type == 'constant':
+            elif decay_type == 'const':
                 decay_func = decay_edges_const
-            elif decay_type == 'exponential':
+            elif decay_type == 'exp':
                 decay_func = decay_edges_exp
             zero_edges = decay_func(G2, nonzero_edges, pheromone_decay, time=max_traversal_count)
             nonzero_edges.difference_update(zero_edges)
@@ -1020,10 +1022,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
         path_probs = []
         for path in after_paths:
-            path_probs.append(path_prob_no_explore(G, path))
+            path_probs.append(path_prob_no_explore(G, path, strategy))
         
-        min_etr = entropy(G.number_of_nodes() * [1.0 / G.number_of_nodes()])
-        path_etr = min_etr
+        path_etr = None
         if len(after_paths) > 0:
             path_etr = entropy(path_probs)
             
@@ -1073,7 +1074,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         
         write_items = [int(has_path), cost]
         
-        if len(path_probs) > 0 and path_etr != float("-inf"):
+        if (path_etr != None) and path_etr != float("-inf") and (not PP.isnan(path_etr)):
             write_items.append(path_etr)
         else:
             write_items.append('')
@@ -1265,7 +1266,7 @@ def main():
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut']
     strategy_choices = ['uniform', 'max', 'hybrid']
-    decay_choices = ['linear', 'constant', 'exponential']
+    decay_choices = ['linear', 'const', 'exp']
     
 
     usage="usage: %prog [options]"
@@ -1293,7 +1294,8 @@ def main():
     parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=3000)
     parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
-    parser.add_argument("--decay_type", dest="decay_type", default="linear", choices=decay_choices)
+    parser.add_argument("-dt", "--decay_type", dest="decay_type", default="linear", \
+                        choices=decay_choices)
 
     args = parser.parse_args()
     # ===============================================================
