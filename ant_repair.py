@@ -685,15 +685,35 @@ def vertex_entropy(G, vertex, explore_prob, prev=None):
     probs = zero + nonzero
     return entropy(probs)
     
-def choice_prob(G, source, dest, explore_prob, prev=None):
+def choice_prob(G, source, dest, explore_prob, prev=None, strategy='max'):
     neighbors = G.neighbors(source)
     assert dest in neighbors
     assert G[source][dest]['weight'] > 0
     total = 0.0
+    max_weight = 0
+    unexplored = 0
     for n in neighbors:
+        wt = G[source][n]['weight']
         if n != prev:
-            total += G[source][n]['weight']
-    return (1 - explore_prob) * (G[source][dest]['weight'] / total)
+            total += wt
+        max_weight = max(wt, max_weight)
+        if wt == MIN_PHEROMONE:
+            unexplored += 1
+    if strategy == 'max':
+        max_neighbors =  []
+        for n in neighbors:
+            wt = G[source][n]['weight']
+            if wt == max_weight:
+                max_neighbors.append(n)
+        if dest in max_neighbors:
+            return (1 - explore_prob) * 1.0 / len(max_neighbors)
+        else:
+            return explore_prob
+    else:
+        if G[source][dest]['weight'] == MIN_PHEROMONE:
+            return explore_prob
+        else:
+            return (1 - explore_prob) * (G[source][dest]['weight'] / total)
     
 def path_prob(G, path, explore_prob):
     prob = 1
