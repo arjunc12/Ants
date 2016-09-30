@@ -63,8 +63,6 @@ def init_graph(G):
     for i,u in enumerate(G.nodes_iter()):
         M[i] = u
         Minv[u] = i
-
-    for u,v in G.edges_iter(): G[u][v]['weight'] = MIN_PHEROMONE
     
     for u in G.nodes():
         pos[u] = [u[0],u[1]] # position is the same as the label.
@@ -77,7 +75,11 @@ def init_graph(G):
             node_size.append(10)
             node_color.append('k')
 
-    for i, (u,v) in enumerate(G.edges()):
+    for i, (u,v) in enumerate(G.edges_iter()):
+        G[u][v]['weight'] = MIN_PHEROMONE
+        G[u][v]['forwards_queue'] = []
+        G[u][v]['backwards_queue'] = []
+        
         Ninv[(u, v)] = i
         N[i] = (u, v)        
         Ninv[(v, u)] = i
