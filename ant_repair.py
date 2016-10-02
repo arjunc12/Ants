@@ -46,6 +46,12 @@ MAX = False
 INIT_WEIGHT_FACTOR = 10
 MAX_PATH_LENGTH = 20
 
+
+global EXPLORE_CHANCES
+global EXPLORES
+EXPLORE_CHANCES = 0
+EXPLORES = 0
+
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
 # PARAMETERS:
@@ -62,11 +68,11 @@ MAX_PATH_LENGTH = 20
 def init_graph(G):
     for i,u in enumerate(G.nodes_iter()):
         M[i] = u
-        Minv[u] = i
-    
-    for u in G.nodes():
+        Minv[u] = i    
+        
         pos[u] = [u[0],u[1]] # position is the same as the label.
         
+        G.node[u]['queue'] = []
 
         if u in G.graph['nests']:
             node_size.append(100)
@@ -77,7 +83,11 @@ def init_graph(G):
 
     for i, (u,v) in enumerate(G.edges_iter()):
         G[u][v]['weight'] = MIN_PHEROMONE
+        
+        G[u][v]['fowards'] = sorted((u, v))
         G[u][v]['forwards_queue'] = []
+        
+        G[u][v]['backwards'] = sorted((u, v))[::-1]
         G[u][v]['backwards_queue'] = []
         
         Ninv[(u, v)] = i
@@ -569,16 +579,23 @@ def has_pheromone_path(G, origin, destination):
     
 def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, \
               search=True, backtrack=False):
-    unexplored = []
-    explored = []
+    max_mode = (strategy == 'max') or ((strategy == 'hybrid') and (search == False))
     neighbors = G.neighbors(start)
     if (dest != None) and (dest in neighbors):
         return dest, False
+    
     max_wt = float("-inf")
     for neighbor in neighbors:
         wt = G[start][neighbor]['weight']
         max_wt = max(wt, max_wt)
+    
+    explored = []
+    unexplored = []
+    for neighbor in neighbors:
+        wt = G[start][neighbor]['weight']
         if wt == MIN_PHEROMONE:
+            unexplored.append(neighbor)
+        elif max_mode and (wt < max_wt):
             unexplored.append(neighbor)
         else:
             explored.append(neighbor)
@@ -598,12 +615,8 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         return prev, False
         
     flip = random()
-    max_mode = (strategy == 'max') or ((strategy == 'hybrid') and (search == False))
+    
     if (flip < explore_prob and len(unexplored) > 0) or (len(explored) == 0):
-        if max_mode:
-            for e in explored:
-                if G[start][e]['weight'] < max_wt:
-                    unexplored.append(e)
         next = choice(len(unexplored))
         next = unexplored[next]
         return next, True
@@ -780,6 +793,19 @@ def walk_to_path(walk):
     
     return path
 
+def queue_ant(G, queue_node, ant):
+    G.node[queue_node]['queue'].append(ant)
+            
+def check_queued_nodes(G, queued_nodes, num_ants):
+    queued_ants = []
+    for queued_node in queued_nodes:
+        queue = G.node[queued_node]['queue']
+        assert len(G.node[queued_node]['queue']) > 0
+        for ant in queue:
+            assert ant not in queued_ants
+        queued_ants += list(queue)
+    assert len(queued_ants) == num_ants
+
 def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
             nframes=200, video2=False, cost_plot=False, backtrack=False, decay_type='linear'):
@@ -824,6 +850,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             color_graph(G, 'g', pheromone_thickness, "graph_before")
         print str(iter) + ": " + pher_str
         explore = defaultdict(bool)
+        prevs = {}
+        currs = {}
         paths = {}
         walks = {}
         destinations = {}
@@ -839,14 +867,21 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         max_walk_entropy = None
                 
         connect_time = -1
+        
+        queued_nodes = set()
                 
         for ant in xrange(num_ants):
             origin = nests[ant % len(nests)]
             origins[ant] = origin
             destinations[ant] = next_destination(origin)
-            paths[ant] = [origin, origin]
-            walks[ant] = [origin, origin]
+            paths[ant] = [origin]
+            walks[ant] = [origin]
+            prevs[ant] = None
+            currs[ant] = origin
             deadend[ant] = False
+            queue_ant(G, origin, ant)
+            queued_nodes.add(origin)
+            
             
         steps = 1
         rounds = 1
@@ -858,7 +893,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         curr_walk_entropy = None
         
         while steps <= max_steps:
+            #print steps
             #check_graph(G)
+            #check_queued_nodes(G, queued_nodes, num_ants)
+            print EXPLORE_CHANCES, EXPLORES
+            
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
             costs.append(cost)
@@ -892,7 +931,114 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     edge_weights[index].append(None)
                 else:
                     edge_weights[index].append(wt)
+            
+            empty_nodes = set()
+            new_queue_nodes = set()
+            for queued_node in queued_nodes:
+                queue = G2.node[queued_node]['queue']
+                assert len(queue) > 0
+                next_ant = queue.pop(0)
+                
+                for queued_ant in queue:
+                    paths[queued_ant].append(queued_node)
+                    walks[queued_ant].append(queued_node)
+                if len(queue) == 0:
+                    empty_nodes.add(queued_node)
+                curr = currs[next_ant]
+                prev = prevs[next_ant]
+                next = None
+                                
+                if at_dead_end(G, curr, prev):
+                    search_mode[next_ant] = True
+                
+                n = G.neighbors(curr)
+                if curr != prev and prev != None:
+                    n.remove(prev)
+                if len(n) == 0:
+                    deadend[next_ant] = (curr not in nests)
+                    #print curr, deadend[j]
+                elif len(n) > 1:
+                    deadend[next_ant] = False
                     
+                if (prev == curr) or (curr == origins[next_ant]):
+                    prev = None
+                print EXPLORE_CHANCES, EXPLORES
+                next, ex = next_edge(G, curr, explore_prob, strategy, prev, \
+                                     destinations[next_ant], search_mode[next_ant], backtrack)
+                add_amt = pheromone_add
+                add_neighbor = next
+                if ex:
+                    add_amt *= 2
+                    next = curr
+                queue_ant(G2, next, next_ant)
+                new_queue_nodes.add(next)
+                empty_nodes.discard(next)
+                prevs[next_ant] = curr
+                currs[next_ant] = next
+                if not deadend[next_ant]:
+                    G2[curr][add_neighbor]['weight'] += add_amt
+                    if decay_type == 'linear':
+                        G2[curr][add_neighbor]['units'].append(add_amt)
+                    nonzero_edges.add(Ninv[(curr, add_neighbor)])
+                    
+                paths[next_ant].append(next)
+                walks[next_ant].append(next)
+                
+                if next == destinations[next_ant]:
+                    origins[next_ant], destinations[next_ant] = destinations[next_ant], origins[next_ant]
+                    search_mode[next_ant] = False
+                    
+                    walk = walks[next_ant]
+                    chosen_walk_counts[tuple(walk)] += 1
+                    
+                    path = walk_to_path(walk)
+                    start = path[0]
+                    end = path[-1]
+                    idx1 = nests.index(start)
+                    idx2 = nests.index(end)
+                    if idx2 > idx1:
+                        path = path[::-1]
+                    path_counts[tuple(path)] += 1
+                    
+                    curr_entropy = entropy(path_counts.values())
+                    curr_walk_entropy = entropy(chosen_walk_counts.values())
+                    
+                    if max_entropy == None:
+                        max_entropy = curr_entropy
+                    else:
+                        max_entropy = max(max_entropy, curr_entropy)
+                        
+                    if max_walk_entropy == None:
+                        max_walk_entropy = curr_walk_entropy
+                    else:
+                        max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+                    
+                    walks[next_ant] = [origins[next_ant]]
+                    
+                elif next == origins[next_ant]:
+                    search_mode[next_ant] = True
+            
+            queued_nodes.difference_update(empty_nodes)
+            queued_nodes.update(new_queue_nodes)
+            
+            decay_func = None
+            if decay_type == 'linear':
+                decay_func = decay_edges
+            elif decay_type == 'const':
+                decay_func = decay_edges_const
+            elif decay_type == 'exp':
+                decay_func = decay_edges_exp
+            zero_edges = decay_func(G2, nonzero_edges, pheromone_decay, time=1)
+            nonzero_edges.difference_update(zero_edges)
+                
+            G = G2
+            
+            if connect_time == -1 and has_pheromone_path(G, nests[0], nests[1]):
+                connect_time = steps
+            
+            steps += 1
+            
+            '''        
             edge_traversals = defaultdict(int)
             max_traversal_count = 0
                     
@@ -989,7 +1135,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             
             steps += 1
             rounds += max_traversal_count
-            
+            '''
+                    
         cost = pheromone_cost(G)
         costs.append(cost)
         max_cost = max(max_cost, cost)
