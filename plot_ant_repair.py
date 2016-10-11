@@ -311,11 +311,8 @@ def main():
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
     if DEBUG:
-        print "area of interest"
-        df = df[['explore', 'decay', 'has_path', 'path_entropy']]
-        df = df.groupby(['explore', 'decay'], as_index=False).agg(pylab.mean)
-        print df[(0.3 <= df['explore']) & (df['explore'] <= 0.55) & \
-                 (0.05 <= df['decay']) & (df['decay'] <= 0.15)]
+        for name, group in df.groupby(['explore', 'decay']):
+            print name
         return None
     
     
