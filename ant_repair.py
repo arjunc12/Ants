@@ -44,13 +44,15 @@ MIN_ADD = 1
 
 MAX = False
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 15
+MAX_PATH_LENGTH = 20
 
 
 global EXPLORE_CHANCES
 global EXPLORES
 EXPLORE_CHANCES = 0
 EXPLORES = 0
+
+DRAW_AND_QUIT = False
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -463,7 +465,7 @@ def check_graph(G):
 
 def decay_units(G, u, v, decay, time=1):
     G[u][v]['units'] = subtract(G[u][v]['units'], decay * time)
-    G[u][v]['units'] = G[u][v]['units'][where(G[u][v]['units'] > 0)]
+    G[u][v]['units'] = G[u][v]['units'][where(G[u][v]['units'] > MIN_PHEROMONE)]
     G[u][v]['units'] = list(G[u][v]['units'])
     '''
     nonzero_units = []
@@ -508,6 +510,7 @@ def decay_graph_exp(G, decay, time=1):
     assert decay < 1
     for u, v in G.edges_iter():
         G[u][v]['weight'] *= (1 - decay) ** time
+        G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
         assert G[u][v]['weight'] >= MIN_PHEROMONE
         
 def decay_edges_exp(G, nonzero_edges, decay, time=1):
@@ -517,6 +520,7 @@ def decay_edges_exp(G, nonzero_edges, decay, time=1):
     for i in nonzero_edges:
         u, v = N[i]
         G[u][v]['weight'] *= (1 - decay) ** time
+        G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
         if wt == MIN_PHEROMONE:
@@ -1278,8 +1282,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         for path in after_paths:
             path_probs.append(path_prob_no_explore(G, path, strategy))
         
+        prob_sum = sum(path_probs)
+        if prob_sum == 0:
+            has_path = False
+        
         path_etr = None
-        if len(after_paths) > 0:
+        if (len(path_probs) > 0) and (prob_sum > 0):
             path_etr = entropy(path_probs)
             
         journey_times = []
@@ -1525,15 +1533,15 @@ def main():
     elif graph == 'tiny':
         G = tiny_grid()
 
-    '''
-    nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=edge_color, \
-            node_color=node_color, width=edge_width)
-    PP.draw()
-    #print "show"
-    #PP.show()
-    PP.savefig("%s.pdf" % G.graph['name'])
-    PP.close()
-    '''
+    if DRAW_AND_QUIT:
+        nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=edge_color, \
+                node_color=node_color, width=edge_width)
+        PP.draw()
+        #print "show"
+        #PP.show()
+        PP.savefig("%s.png" % G.graph['name'], format='png')
+        PP.close()
+        return None
 
     # Run recovery algorithm.
     repair(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps, \

@@ -85,7 +85,7 @@ def get_decay_func(decay_type):
     else:
         raise ValueError("Invalid Decay Type")
 
-def get_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None):
+def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None):
     assert 0 < decay < 1
     df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'])
     df['dt'] = pd.to_datetime(df['dt'])
@@ -113,7 +113,7 @@ def get_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None)
         dest = dests[i]
         
         log_likelihood += np.log(likelihood_func(G, source, dest, explore))
-        if likelihood == 0:
+        if log_likelihood == float("-inf"):
             break
         
         curr = dts[i]
@@ -128,28 +128,27 @@ def get_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None)
         if decay_type == 'linear':
             G2[source][dest]['units'].append(1)
                
-    return np.log(likelihood), G
+    return log_likelihood, G
 
-def get_max_likelihoods(likelihood_matrix, decays, explores):
+def max_likelihood_estimates(likelihoods, decays, explores):
     max_likelihood = float("-inf")
     max_values = []
     pos = 0
     for decay in decays:
         for explore in explores:
             i, j = pos / len(explores), pos % len(explores)
+            pos += 1
             likelihood = likelihoods[i, j]
+            if likelihood == float("-inf"):
+                continue
             if likelihood > max_likelihood:
                 max_values = [(explore, decay)]
                 max_likelihood = likelihood
             elif max_likelihood == likelihood:
                 max_values.append((explore, decay))
-            pos += 1
     return max_likelihood, max_values
     
-def get_likelihood_matrix(sheet, decay, explore, delta, likelihood_func, decay_type):
-    delta = 0.05
-    decays = np.arange(delta, 1, delta)
-    explores = np.arange(delta, 1, delta)
+def likelihood_matrix(sheet, explores, decays, likelihood_func, decay_type):
     likelihoods = pylab.zeros((len(decays), len(explores)))
     G = None
     choices = 'reformated_counts%s.csv' % sheet
@@ -158,14 +157,11 @@ def get_likelihood_matrix(sheet, decay, explore, delta, likelihood_func, decay_t
     for decay in decays:
         for explore in explores:
             i, j = pos / len(explores), pos % len(explores)
-            likelihood, G = decay_likelihood(choices, decay, explore, likelihood_func, G)
+            likelihood, G = param_likelihood(choices, decay, explore, likelihood_func, decay_type, G)
             #likelihood = pos
             likelihoods[i, j] = likelihood
-            pos += 1
-    
-    max_likelihood, max_values = get_max_likelihoods(likelihoods, decays, explores)        
-    likelihoods = ma.masked_invalid(likelihoods)
-    return likelihoods, max_likelihood, max_values
+            pos += 1        
+    return likelihoods
 
 def uniform_likelihood(G, source, dest, explore):
     w = G[source][dest]['weight']
@@ -569,7 +565,8 @@ def make_title_str(max_likelihood, max_values):
     return title_str
 
 def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, decays, outname):
-    title_Str = make_title_str(max_likelihood, max_values)
+    likelihoods = ma.masked_invalid(likelihoods)
+    title_str = make_title_str(max_likelihood, max_values)
     pylab.figure()
     hm = pylab.pcolormesh(likelihoods, cmap='nipy_spectral')
     cb = pylab.colorbar(hm)
@@ -582,31 +579,39 @@ def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, deca
     pylab.title(title_str)
     pylab.savefig(outname, format="png", transparent=True,bbox_inches='tight')
     pylab.close()
-    print "plotted"
 
 def ml_heat(label, sheets, strategies, decay_types, delta=0.05, cumulative=False):
+    decays = np.arange(delta, 1, delta)
+    explores = np.arange(delta, 1, delta)
     for strategy in strategies:
+        print strategy
         likelihood_func = get_likelihood_func(strategy)
         for decay_type in decay_types:
-            out_str = 'repair_ml_%s_%s_%s' % (strategy, decay_type, label)
+            print decay_type
+            out_str = 'repair_ml_%s_%s' % (strategy, decay_type)
             cumulative_likelihoods = None
             for sheet in sheets:
-                likelihoods, max_likelihood, max_values = get_likelihood_matrix(sheet, \
-                                       decay_type, explore, delta, likelihood_func, decay_type)
+                print sheet
+                likelihoods = likelihood_matrix(sheet, explores, decays, likelihood_func,\
+                                                decay_type)
+                max_likelihood, max_values = max_likelihood_estimates(likelihoods, decays, explores)
+                outname = '%s_%s.png' % (out_str, sheet)   
+                plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, \
+                                     decays, outname)
+                
                 if cumulative:
-                    if cumulative_likelihoods == None:
+                    if not isinstance(cumulative_likelihoods, np.ndarray):
                         cumulative_likelihoods = np.copy(likelihoods)
                     else:
                         cumulative_likelihoods += likelihoods
-                outname = '%s_%s.png' % (out_str, sheet)   
-                plot_likelihood(likelihoods, max_likelihood, max_values, explores, \
-                                decays, outname)
+            
             if cumulative:
-                outname = 'cumulative_%s.png' % out_str
-                max_likelihoods, max_values = \
-                             get_max_likelihoods(cumulative_likelihoods, decays, explores)
-                plot_likelihood(cumulative_likelihoods, max_likelihood, max_values, \
+                outname = 'cumulative_%s_%s.png' % (out_str, label)
+                max_likelihood, max_values = max_likelihood_estimates(cumulative_likelihoods,\
+                                                              decays, explores)
+                plot_likelihood_heat(cumulative_likelihoods, max_likelihood, max_values, \
                                 explores, decays, outname)
+                print "plotted"
                 
     
 if __name__ == '__main__':
@@ -633,7 +638,7 @@ if __name__ == '__main__':
     delta = args.delta
     cumulative = args.cumulative
     
-    print label, sheets, strategies, decays, delta, cumulative
+    ml_heat(label, sheets, strategies, decay_types, delta, cumulative)
         
     #unif_likelihood_heat(sheets, outname)
     #max_edge_likelihood_heat(sheets, outname)
