@@ -10,6 +10,7 @@ import numpy.ma as ma
 
 
 MIN_PHEROMONE = 0
+MIN_DETECTABLE_PHEROMONE = 1.2
 INIT_WEIGHT = 0
 #THRESHOLD = 1
 #EXPLORE_PROB = 0.1
@@ -30,18 +31,32 @@ def make_graph(sources, dests):
         G[source][dest]['units'] = []
     return G
 
-def check_graph(G):
+def check_graph(G, check_units=False):
     for u, v in G.edges_iter():
         weight = G[u][v]['weight']
         assert weight >= MIN_PHEROMONE
-        wt = 0
-        for unit in G[u][v]['units']:
-            assert unit > MIN_PHEROMONE
-            wt += unit
-        assert wt == weight
+        if check_units:
+            units = G[u][v]['units']
+            if len(units) == 0:
+                assert weight == MIN_PHEROMONE
+            else:
+                wt = 0
+                for unit in G[u][v]['units']:
+                    assert unit > MIN_PHEROMONE
+                    wt += unit
+                assert wt == weight
 
 def edge_weight(G, u, v):
-    return sum(G[u][v]['units'])
+    units = G[u][v]['units']
+    wt = MIN_PHEROMONE
+    if len(units) > 0:
+        wt = 0
+        for unit in units:
+            assert unit > MIN_PHEROMONE
+            wt += unit
+        assert wt > MIN_PHEROMONE
+    assert wt >= MIN_PHEROMONE
+    return wt
 
 def decay_units(G, u, v, decay, seconds = 1):
     nonzero_units = []
@@ -56,13 +71,11 @@ def decay_graph_const(G, decay, seconds=1):
     wt = G[u][v]['weight']
     assert wt >= MIN_PHEROMONE
     x = max(MIN_PHEROMONE, wt - (decay * seconds))
-    assert wt >= MIN_PHEROMONE
     G[u][v]['weight'] = x
     
 def decay_graph_linear(G, decay, seconds=1):
     for u, v in G.edges_iter():
-        decay_amount = decay * seconds
-        decay_units(G, u, v, decay_amount)
+        decay_units(G, u, v, decay, seconds)
         wt = edge_weight(G, u, v)
         assert wt >= MIN_PHEROMONE
         G[u][v]['weight'] = wt
@@ -72,8 +85,9 @@ def decay_graph_exp(G, decay, seconds=1):
     assert decay < 1
     decay_prop = (1 - decay) ** seconds
     for u, v in G.edges_iter():
-        G[u][v]['weight'] *= decay_prop
-        assert G[u][v]['weight'] >= MIN_PHEROMONE
+        wt = G[u][v]['weight']
+        x = max(MIN_PHEROMONE, wt * ((1 - decay) ** seconds))
+        G[u][v]['weight'] = x
 
 def get_decay_func(decay_type):
     if decay_type == 'const':
@@ -102,6 +116,9 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         reset_graph(G)
         
     decay_func = get_decay_func(decay_type)
+    check_units = False
+    if decay_type == 'linear':
+        check_units = True
     
     log_likelihood = 0
     G[sources[1]][dests[1]]['weight'] += 1
@@ -109,6 +126,9 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         G[sources[1]][dests[1]]['units'].append(1)
     G2 = G.copy()
     for i in xrange(1, len(sources)):
+        check_graph(G, check_units)
+        check_graph(G2, check_units)
+        
         source = sources[i]
         dest = dests[i]
         
@@ -164,23 +184,27 @@ def likelihood_matrix(sheet, explores, decays, likelihood_func, decay_type):
     return likelihoods
 
 def uniform_likelihood(G, source, dest, explore):
-    w = G[source][dest]['weight']
+    chosen_wt = G[source][dest]['weight']
     total = 0.0
     explored = 0
     unexplored = 0
-    for n in G.neighbors(source):
+    neighbors = G.neighbors(source)
+    for n in neighbors:
         wt = G[source][n]['weight']
-        if wt == MIN_PHEROMONE:
+        assert wt >= MIN_PHEROMONE
+        if wt < MIN_DETECTABLE_PHEROMONE:
             unexplored += 1
         else:
             explored += 1
             total += wt
+    assert explored + unexplored == len(neighbors)
     if explored == 0:
+        assert unexplored == len(neighbors)
         return 1.0 / unexplored
-    elif w == MIN_PHEROMONE:
-        return explore / unexplored
+    elif chosen_wt < MIN_DETECTABLE_PHEROMONE:
+        return explore * (1.0 / unexplored)
     else:
-        prob = w / total
+        prob = chosen_wt / total
         return (1 - explore) * prob
     
 def threshold_likelihood(G, source, dest, explore):
@@ -201,7 +225,7 @@ def threshold_likelihood(G, source, dest, explore):
         return explore * (1.0 / len(below))
         
 def max_edge_likelihood(G, source, dest, explore):
-    max_wt = 0
+    max_wt = MIN_PHEROMONE
     max_neighbors = []
     neighbors = G.neighbors(source)
     total = 0.0
@@ -210,7 +234,8 @@ def max_edge_likelihood(G, source, dest, explore):
     chosen_wt = G[source][dest]['weight']
     for n in neighbors:
         wt = G[source][n]['weight']
-        if wt == MIN_PHEROMONE:
+        assert wt >= MIN_PHEROMONE
+        if wt < MIN_DETECTABLE_PHEROMONE:
             unexplored += 1
         else:
             explored += 1
@@ -221,20 +246,27 @@ def max_edge_likelihood(G, source, dest, explore):
             elif wt == max_wt:
                 max_neighbors.append(n)
     if explored == 0:
+        assert unexplored == len(neighbors)
+        assert MIN_PHEROMONE <= chosen_wt < MIN_DETECTABLE_PHEROMONE
         return 1.0 / unexplored
+    assert max_wt >= MIN_DETECTABLE_PHEROMONE
     if dest in max_neighbors:
+        assert chosen_wt == max_wt
         return (1 - explore) / len(max_neighbors)
     else:
+        assert chosen_wt < max_wt
         return explore / (len(neighbors) - len(max_neighbors))
         
 def maxz_edge_likelihood(G, source, dest, explore):
-    max_wt = 0
+    chosen_wt = G[source][dest]['weight']
+    max_wt = MIN_PHEROMONE
     max_neighbors = []
     zero_neighbors = []
     neighbors = G.neighbors(source)
     for n in neighbors:
         wt = G[source][n]['weight']
-        if wt == MIN_PHEROMONE:
+        assert wt >= MIN_PHEROMONE
+        if wt < MIN_DETECTABLE_PHEROMONE:
             zero_neighbors.append(n)
         else:
             if wt > max_wt:
@@ -242,12 +274,16 @@ def maxz_edge_likelihood(G, source, dest, explore):
                 max_neighbors = [n]
             elif wt == max_wt:
                 max_neighbors.append(n)
-                
+
     if dest in max_neighbors:
+        assert max_wt >= MIN_DETECTABLE_PHEROMONE
+        assert chosen_wt == max_wt
         return (1 - explore) / len(max_neighbors)
     elif dest in zero_neighbors:
+        assert MIN_PHEROMONE <= chosen_wt < MIN_DETECTABLE_PHEROMONE
         return explore / (len(zero_neighbors))
     else:
+        assert MIN_DETECTABLE_PHEROMONE <= chosen_wt < max_wt
         return 0      
 
 def likelihood_heat(sheets, likelihood_func, strategy, outname):
@@ -595,15 +631,16 @@ def ml_heat(label, sheets, strategies, decay_types, delta=0.05, cumulative=False
                 likelihoods = likelihood_matrix(sheet, explores, decays, likelihood_func,\
                                                 decay_type)
                 max_likelihood, max_values = max_likelihood_estimates(likelihoods, decays, explores)
-                outname = '%s_%s.png' % (out_str, sheet)   
-                plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, \
-                                     decays, outname)
+                outname = '%s_%s.png' % (out_str, sheet)
                 
                 if cumulative:
                     if not isinstance(cumulative_likelihoods, np.ndarray):
                         cumulative_likelihoods = np.copy(likelihoods)
                     else:
                         cumulative_likelihoods += likelihoods
+                else:
+                    plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, \
+                                     decays, outname)
             
             if cumulative:
                 outname = 'cumulative_%s_%s.png' % (out_str, label)
