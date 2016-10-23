@@ -24,6 +24,7 @@ N = {}       # edge id -> edge
 
 #MAX_STEPS= 10000
 MIN_PHEROMONE = 0
+PHEROMONE_THRESHOLD = 1
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
@@ -624,7 +625,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
     unexplored = []
     for neighbor in neighbors:
         wt = G[start][neighbor]['weight']
-        if wt == MIN_PHEROMONE:
+        if wt <= PHEROMONE_THRESHOLD:
             unexplored.append(neighbor)
         elif max_mode and (wt < max_wt):
             unexplored.append(neighbor)
@@ -661,7 +662,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
 def count_nonzero(G, curr):
     count = 0
     for neighbor in G.neighbors(curr):
-        if G[curr][neighbor]['weight'] > MIN_PHEROMONE:
+        if G[curr][neighbor]['weight'] > PHEROMONE_THRESHOLD:
             count += 1
     return count
     
@@ -730,38 +731,111 @@ def vertex_entropy(G, vertex, explore_prob, prev=None):
         zero[i] /= len(zero)
     probs = zero + nonzero
     return entropy(probs)
-    
-def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
+
+def uniform_likelihood(G, source, dest, explore, prev=None):
+    chosen_wt = G[source][dest]['weight']
+    total = 0.0
+    explored = 0
+    unexplored = 0
     neighbors = G.neighbors(source)
-    assert dest in neighbors
-    assert G[source][dest]['weight'] > 0
+    if prev != None:
+        assert prev in neighbors
+        neighbors.remove(prev)
+    for n in neighbors:
+        wt = G[source][n]['weight']
+        assert wt >= MIN_PHEROMONE
+        if wt < PHEROMONE_THRESHOLD:
+            unexplored += 1
+        else:
+            explored += 1
+            total += wt
+    assert explored + unexplored == len(neighbors)
+    if explored == 0:
+        assert unexplored == len(neighbors)
+        return 1.0 / unexplored
+    elif chosen_wt < PHEROMONE_THRESHOLD:
+        return explore * (1.0 / unexplored)
+    else:
+        prob = chosen_wt / total
+        return (1 - explore) * prob
+        
+def max_edge_likelihood(G, source, dest, explore, prev=None):
+    max_wt = MIN_PHEROMONE
+    max_neighbors = []
+    neighbors = G.neighbors(source)
     if prev != None:
         assert prev in neighbors
         neighbors.remove(prev)
     total = 0.0
-    max_weight = 0
+    explored = 0
     unexplored = 0
+    chosen_wt = G[source][dest]['weight']
     for n in neighbors:
         wt = G[source][n]['weight']
-        total += wt
-        max_weight = max(wt, max_weight)
-        if wt == MIN_PHEROMONE:
+        assert wt >= MIN_PHEROMONE
+        if wt < PHEROMONE_THRESHOLD:
             unexplored += 1
-    if strategy == 'max':
-        max_neighbors =  []
-        for n in neighbors:
-            wt = G[source][n]['weight']
-            if wt == max_weight:
+        else:
+            explored += 1
+            total += wt
+            if wt > max_wt:
+                max_wt = wt
+                max_neighbors = [n]
+            elif wt == max_wt:
                 max_neighbors.append(n)
-        if dest in max_neighbors:
-            return (1 - explore_prob) * 1.0 / len(max_neighbors)
-        else:
-            return explore_prob
+    if explored == 0:
+        assert unexplored == len(neighbors)
+        assert MIN_PHEROMONE <= chosen_wt < PHEROMONE_THRESHOLD
+        return 1.0 / unexplored
+    assert max_wt >= PHEROMONE_THRESHOLD
+    if dest in max_neighbors:
+        assert chosen_wt == max_wt
+        return (1 - explore) / len(max_neighbors)
     else:
-        if G[source][dest]['weight'] == MIN_PHEROMONE:
-            return explore_prob
+        assert chosen_wt < max_wt
+        return explore / (len(neighbors) - len(max_neighbors))
+        
+def maxz_edge_likelihood(G, source, dest, explore, prev=None):
+    chosen_wt = G[source][dest]['weight']
+    max_wt = MIN_PHEROMONE
+    max_neighbors = []
+    zero_neighbors = []
+    neighbors = G.neighbors(source)
+    if prev != None:
+        assert prev in neighbors
+        neighbors.remove(prev)
+    for n in neighbors:
+        wt = G[source][n]['weight']
+        assert wt >= MIN_PHEROMONE
+        if wt < PHEROMONE_THRESHOLD:
+            zero_neighbors.append(n)
         else:
-            return (1 - explore_prob) * (G[source][dest]['weight'] / total)
+            if wt > max_wt:
+                max_wt = wt
+                max_neighbors = [n]
+            elif wt == max_wt:
+                max_neighbors.append(n)
+
+    if dest in max_neighbors:
+        assert max_wt >= PHEROMONE_THRESHOLD
+        assert chosen_wt == max_wt
+        return (1 - explore) / len(max_neighbors)
+    elif dest in zero_neighbors:
+        assert MIN_PHEROMONE <= chosen_wt < PHEROMONE_THRESHOLD
+        return explore / (len(zero_neighbors))
+    else:
+        assert PHEROMONE_THRESHOLD <= chosen_wt < max_wt
+        return 0
+    
+def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
+    likelihood_func = None
+    if strategy == 'uniform':
+        likelihood_func = uniform_likelihood
+    elif strategy in ['max', 'hybrid']:
+        likelihood_func = max_edge_likelihood
+    elif strategy in ['maxz', 'hybridz']:
+        likelihood_func = maxz_edge_likelihood
+    return lilelihood_func(G, source, dest, explore_prob, prev)
     
 def path_prob(G, path, explore_prob, strategy='uniform'):
     prob = 1
@@ -1496,6 +1570,8 @@ def main():
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
     parser.add_argument("-dt", "--decay_type", dest="decay_type", default="linear", \
                         choices=decay_choices)
+    parser.add_argument("-t", "--threshold", dest="threshold", type=float, default=0, \
+                        help="minimum detectable pheromone threshold")
 
     args = parser.parse_args()
     # ===============================================================
