@@ -24,7 +24,7 @@ N = {}       # edge id -> edge
 
 #MAX_STEPS= 10000
 MIN_PHEROMONE = 0
-PHEROMONE_THRESHOLD = 0
+PHEROMONE_THRESHOLD = 1
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
@@ -558,6 +558,8 @@ def rand_edge(G, start, candidates = None):
         assert start != None
         candidates = G.neighbors(start)
     weights = get_weights(G, start, candidates)
+    if sum(weights) == 0:
+        print start, candidates, weights
     weights = weights / float(sum(weights))
     next = candidates[choice(len(candidates),1,p=weights)[0]]
     return next
