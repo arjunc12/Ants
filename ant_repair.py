@@ -24,7 +24,7 @@ N = {}       # edge id -> edge
 
 #MAX_STEPS= 10000
 MIN_PHEROMONE = 0
-PHEROMONE_THRESHOLD = 1
+PHEROMONE_THRESHOLD = 0
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
@@ -625,7 +625,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
     unexplored = []
     for neighbor in neighbors:
         wt = G[start][neighbor]['weight']
-        if wt <= PHEROMONE_THRESHOLD:
+        if wt < PHEROMONE_THRESHOLD:
             unexplored.append(neighbor)
         elif max_mode and (wt < max_wt):
             unexplored.append(neighbor)
@@ -835,7 +835,7 @@ def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
         likelihood_func = max_edge_likelihood
     elif strategy in ['maxz', 'hybridz']:
         likelihood_func = maxz_edge_likelihood
-    return lilelihood_func(G, source, dest, explore_prob, prev)
+    return likelihood_func(G, source, dest, explore_prob, prev)
     
 def path_prob(G, path, explore_prob, strategy='uniform'):
     prob = 1
@@ -911,6 +911,25 @@ def check_queued_nodes(G, queued_nodes, num_ants):
             assert ant not in queued_ants
         queued_ants += list(queue)
     assert len(queued_ants) == num_ants
+
+def path_to_edges(path):
+    edges = []
+    for i in xrange(len(path) - 2):
+        edges.append(Ninv[(path[i], path[i + 1])])
+    return edges
+
+def wasted_edges(G, useful_edges):
+    wasted_edges = 0
+    wasted_edge_weight = 0
+    for u, v in G.edges_iter():
+        wt = G[u][v]['weight']
+        if wt >= PHEROMONE_THRESHOLD:
+            edge_id = Ninv[(u, v)]
+            if edge_id not in useful_edges:
+                wasted_edges += 1
+                wasted_edge_weight += wt
+    return wasted_edges, wasted_edge_weight
+                
 
 def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
@@ -1033,7 +1052,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 wt = G[u][v]['weight']
                 unique_weights.add(wt)
                 max_weight = max(max_weight, wt)
-                if wt == MIN_PHEROMONE:
+                if wt < PHEROMONE_THRESHOLD:
                     edge_weights[index].append(None)
                 else:
                     edge_weights[index].append(wt)
@@ -1073,6 +1092,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     prev = None
                 next, ex = next_edge(G, curr, explore_prob, strategy, prev, \
                                      destinations[next_ant], search_mode[next_ant], backtrack)
+                #print "next", next, "ex", ex
                 traversals.append((next_ant, curr, next, ex))
                 add_amt = pheromone_add
                 add_neighbor = next
@@ -1350,19 +1370,25 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         nest, target = nests[0], nests[1]
                 
         has_path = has_pheromone_path(G, nest, target)
-        print "has path", has_path
         after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
         path_probs = []
-        for path in after_paths:
-            path_probs.append(path_prob_no_explore(G, path, strategy))
         
-        prob_sum = sum(path_probs)
-        if prob_sum == 0:
-            has_path = False
+        useful_edges = set()
+        for path in after_paths:
+            path_prob = path_prob_no_explore(G, path, strategy)
+            if path_prob > 0:
+                path_probs.append(path_prob)
+                edges = path_to_edges(path)
+                useful_edges.update(edges)
+        wasted_edge_count, wasted_edge_weight = wasted_edges(G, useful_edges)
         
         path_etr = None
-        if (len(path_probs) > 0) and (prob_sum > 0):
+        if len(path_probs) > 0:
             path_etr = entropy(path_probs)
+        else:
+            has_path = False
+            
+        print "has path", has_path
             
         journey_times = []
         journey_lengths = []
@@ -1448,6 +1474,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             write_items.append(curr_walk_entropy)
         else:
             write_items.append('')
+        write_items += [wasted_edge_count, wasted_edge_weight]
         
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
