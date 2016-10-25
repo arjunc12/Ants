@@ -298,6 +298,21 @@ def chosen_walk_entropy_heat(df, strategy):
             
     heat(df, chosen_walk_entropy, 'chosen_walk_entropy', strategy, 'average entropy over chosen walks')
 
+def wasted_edge_count_heat(df, strategy):
+    make_heat(df, strategy, 'wasted_edge_count', 'number of edges not contributing to any path')
+    
+def wasted_edge_weight_heat(df, strategy):
+    make_heat(df, strategy, 'wasted_edge_weight', 'weight of edges not contributing to any path')
+    
+def make_heat(df, strategy, metric, description):
+    def metric_heat(group):
+        if all(pylab.isnan(group[metric])):
+            print metric
+            describe_group(group)
+            
+        return pylab.nanmean(group[metric])
+        
+    heat(df, metric_heat, metric, strategy, description)
     
 def main():
     filename = argv[1]
@@ -306,13 +321,18 @@ def main():
     columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
                'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
                'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
-               'chosen_walk_entropy']
+               'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight']
     
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
     if DEBUG:
+        pos = 0
         for name, group in df.groupby(['explore', 'decay']):
             print name
+            pos += 1
+        l1 = len(df['explore'].unique())
+        l2 = len(df['decay'].unique())
+        print l1, l2, l1 * l2, pos
         return None
     
     
@@ -334,6 +354,8 @@ def main():
     walk_pruning_heat(df, strategy)
     chosen_walk_entropy_heat(df, strategy)
     
+    wasted_edge_count_heat(df, strategy)
+    wasted_edge_weight_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 
