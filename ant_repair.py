@@ -273,6 +273,17 @@ def simple_network_nocut():
         
     return G
 
+def square_grid_nocut(gridsize, gridname):
+    G = nx.grid_2d_graph(gridsize, gridsize)
+    G.graph['name'] = gridname + '_nocut'
+    G.graph['nests'] = [(0, gridsize // 2), (gridsize - 1, gridsize // 2)]
+    
+    for i in xrange(gridsize - 1):
+        P.append(((i, gridsize // 2), (i + 1, gridsize // 2)))
+    init_graph(G)
+    
+    return G
+
 def square_grid(gridsize, gridname):
     G = nx.grid_2d_graph(gridsize, gridsize)
     G.graph['name'] = gridname
@@ -288,6 +299,9 @@ def square_grid(gridsize, gridname):
 
 def small_grid():
     return square_grid(7, 'small')
+    
+def small_grid_nocut():
+    return square_grid_nocut(7, 'small')
 
 def full_grid():
     '''
@@ -561,7 +575,7 @@ def rand_edge(G, start, candidates = None):
     if sum(weights) == 0:
         print start, candidates, weights
     weights = weights / float(sum(weights))
-    next = candidates[choice(len(candidates),1,p=weights)[0]]
+    next = candidates[choice(len(candidates), 1, p=weights)[0]]
     return next
 
 def max_edge(G, start, candidates=None):
@@ -1002,14 +1016,16 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             origin = nests[ant % len(nests)]
             origins[ant] = origin
             destinations[ant] = next_destination(origin)
-            paths[ant] = [origin]
-            walks[ant] = [origin]
-            prevs[ant] = None
-            currs[ant] = origin
+            prev, curr = P[choice(len(P))]
+            if origins[ant] == P[-1][-1]:
+                prev, curr = curr, prev
+            paths[ant] = [prev, curr]
+            walks[ant] = [prev, curr]
+            prevs[ant] = prev
+            currs[ant] = curr
             deadend[ant] = False
-            queue_ant(G, origin, ant)
-            queued_nodes.add(origin)
-            
+            queue_ant(G, curr, ant)
+            queued_nodes.add(curr)            
             
         steps = 1
         rounds = 1
@@ -1118,7 +1134,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 
                 
                 if next == destinations[next_ant]:
-                    origins[next_ant], destinations[next_ant] = destinations[next_ant], origins[next_ant]
+                    orig, dest = origins[next_ant], destinations[next_ant]
+                    origins[next_ant], destinations[next_ant] = dest, orig
                     search_mode[next_ant] = False
                     
                     walk = walks[next_ant]
@@ -1127,8 +1144,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     path = walk_to_path(walk)
                     start = path[0]
                     end = path[-1]
-                    idx1 = nests.index(start)
-                    idx2 = nests.index(end)
+                    idx1 = nests.index(orig)
+                    idx2 = nests.index(dest)
                     if idx2 > idx1:
                         path = path[::-1]
                     path_counts[tuple(path)] += 1
