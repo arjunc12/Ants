@@ -10,7 +10,7 @@ import numpy.ma as ma
 
 
 MIN_PHEROMONE = 0
-MIN_DETECTABLE_PHEROMONE = 1.15
+MIN_DETECTABLE_PHEROMONE = 0.9
 INIT_WEIGHT = 0
 #THRESHOLD = 1
 #EXPLORE_PROB = 0.1
@@ -192,7 +192,7 @@ def uniform_likelihood(G, source, dest, explore):
     for n in neighbors:
         wt = G[source][n]['weight']
         assert wt >= MIN_PHEROMONE
-        if wt < MIN_DETECTABLE_PHEROMONE:
+        if wt <= MIN_DETECTABLE_PHEROMONE:
             unexplored += 1
         else:
             explored += 1
@@ -201,28 +201,11 @@ def uniform_likelihood(G, source, dest, explore):
     if explored == 0:
         assert unexplored == len(neighbors)
         return 1.0 / unexplored
-    elif chosen_wt < MIN_DETECTABLE_PHEROMONE:
+    elif chosen_wt <= MIN_DETECTABLE_PHEROMONE:
         return explore * (1.0 / unexplored)
     else:
         prob = chosen_wt / total
         return (1 - explore) * prob
-    
-def threshold_likelihood(G, source, dest, explore):
-    above = []
-    below = []
-    wt = G[source][dest]['weight']
-    above_total = 0.0
-    for n in G.neighbors(source):
-        w = G[source][n]['weight']
-        if w >= THRESHOLD:
-            above.append(n)
-            above_total += w
-        else:
-            below.append(n)
-    if dest in above:
-        return (1 - explore) * (wt / above_total)
-    else:
-        return explore * (1.0 / len(below))
         
 def max_edge_likelihood(G, source, dest, explore):
     max_wt = MIN_PHEROMONE
@@ -235,7 +218,7 @@ def max_edge_likelihood(G, source, dest, explore):
     for n in neighbors:
         wt = G[source][n]['weight']
         assert wt >= MIN_PHEROMONE
-        if wt < MIN_DETECTABLE_PHEROMONE:
+        if wt <= MIN_DETECTABLE_PHEROMONE:
             unexplored += 1
         else:
             explored += 1
@@ -247,7 +230,7 @@ def max_edge_likelihood(G, source, dest, explore):
                 max_neighbors.append(n)
     if explored == 0:
         assert unexplored == len(neighbors)
-        assert MIN_PHEROMONE <= chosen_wt < MIN_DETECTABLE_PHEROMONE
+        assert MIN_PHEROMONE <= chosen_wt <= MIN_DETECTABLE_PHEROMONE
         return 1.0 / unexplored
     assert max_wt >= MIN_DETECTABLE_PHEROMONE
     if dest in max_neighbors:
@@ -266,7 +249,7 @@ def maxz_edge_likelihood(G, source, dest, explore):
     for n in neighbors:
         wt = G[source][n]['weight']
         assert wt >= MIN_PHEROMONE
-        if wt < MIN_DETECTABLE_PHEROMONE:
+        if wt <= MIN_DETECTABLE_PHEROMONE:
             zero_neighbors.append(n)
         else:
             if wt > max_wt:
@@ -280,7 +263,7 @@ def maxz_edge_likelihood(G, source, dest, explore):
         assert chosen_wt == max_wt
         return (1 - explore) / len(max_neighbors)
     elif dest in zero_neighbors:
-        assert MIN_PHEROMONE <= chosen_wt < MIN_DETECTABLE_PHEROMONE
+        assert MIN_PHEROMONE <= chosen_wt <= MIN_DETECTABLE_PHEROMONE
         return explore / (len(zero_neighbors))
     else:
         assert MIN_DETECTABLE_PHEROMONE <= chosen_wt < max_wt

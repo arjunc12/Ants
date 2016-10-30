@@ -572,8 +572,6 @@ def rand_edge(G, start, candidates = None):
         assert start != None
         candidates = G.neighbors(start)
     weights = get_weights(G, start, candidates)
-    if sum(weights) == 0:
-        print start, candidates, weights
     weights = weights / float(sum(weights))
     next = candidates[choice(len(candidates), 1, p=weights)[0]]
     return next
@@ -605,7 +603,7 @@ def pheromone_subgraph(G, origin=None, destination=None):
     '''
     G2 = nx.Graph()
     for u, v in G.edges_iter():
-        if G[u][v]['weight'] > MIN_PHEROMONE:
+        if G[u][v]['weight'] > PHEROMONE_THRESHOLD:
             G2.add_edge(u, v)
     if origin not in G2:
         G2.add_node(origin)
@@ -624,9 +622,105 @@ def pheromone_connectivity(G, origin, destination, limit=15):
 def has_pheromone_path(G, origin, destination):
     G2 = pheromone_subgraph(G, origin, destination)
     return nx.has_path(G2, origin, destination)
+
+def next_edge_uniform(G, start, explore_prob, candidates=None):
+    if candidates == None:
+        candidates = G.neighbors(start)
+    
+    total_wt = 0.0
+    explored = []
+    unexplored = []
+    explored_weights = []
+    for candidate in candidates:
+        wt = G[start][candidate]['weight']
+        if wt <= PHEROMONE_THRESHOLD:
+            unexplored.append(candidate)
+        else:
+            explored.append(candidate)
+            explored_weights.append(wt)
+            total_wt += wt
+    flip = random()
+    if (flip < explore_prob and len(unexplored) > 0) or (len(explored) == 0):
+        next = choice(len(unexplored))
+        next = unexplored[next]
+        return next, True 
+    else:
+        explored_weights = array(explored_weights)
+        explored_weights /= total_wt
+        next = explored[choice(len(explored), 1, p=explored_weights)[0]]
+        return next, False
+    
+def next_edge_max(G, start, explore_prob, candidates=None):
+    if candidates == None:
+        candidates = G.neighbors(start)
+        
+    max_wt = float("-inf")
+    for candidate in candidates:
+        max_wt = max(max_wt, G[start][candidate]['weight'])
+    
+    max_neighbors = []
+    nonmax_neighbors = []
+    for candidate in candidates:
+        wt = G[start][candidate]['weight']
+        if wt == max_wt and wt > PHEROMONE_THRESHOLD:
+            max_neighbors.append(candidate)
+        else:
+            nonmax_neighbors.append(candidate)
+            
+    flip = random()
+    if (flip < explore_prob and len(nonmax_neighbors) > 0) or (len(max_neighbors) == 0):
+        next = choice(len(nonmax_neighbors))
+        next = nonmax_neighbors[next]
+        return next, True
+    else:
+        next = choice(len(max_neighbors))
+        next = max_neighbors[next]
+        return next, False
+        
+def next_edge_maxz(G, start, explore_prob, candidates=None):
+    if candidates == None:
+        candidates = G.neighbors(start)
+        
+    max_wt = float("-inf")
+    for candidate in candidates:
+        max_wt = max(max_wt, G[start][candidate]['weight'])
+    
+    max_neighbors = []
+    nonmax_neighbors = []
+    for candidate in candidates:
+        wt = G[start][candidate]['weight']
+        if wt == max_wt and wt > PHEROMONE_THRESHOLD:
+            max_neighbors.append(candidate)
+        elif wt <= PHEROMONE_THRESHOLD:
+            nonmax_neighbors.append(candidate)
+            
+    flip = random()
+    if (flip < explore_prob and len(nonmax_neighbors) > 0) or (len(max_neighbors) == 0):
+        next = choice(len(nonmax_neighbors))
+        next = nonmax_neighbors[next]
+        return next, True
+    else:
+        next = choice(len(max_neighbors))
+        next = max_neighbors[next]
+        return next, False
     
 def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, \
               search=True, backtrack=False):
+    candidates = G.neighbors(start)
+    if candidates == [prev]:
+        return prev, False
+    if (prev != None) and (not backtrack):
+        assert prev in candidates
+        candidates.remove(prev)
+    choice_func = None
+    if (strategy == 'uniform') or (strategy in ['hybrid', 'hybridz'] and search):
+        choice_func = next_edge_uniform
+    elif (strategy == 'max') or (strategy == 'hybrid' and not search):
+        choice_func = next_edge_max
+    elif (strategy == 'maxz') or (strategy == 'hybridz' and not search):
+        choice_func = next_edge_maxz
+    return choice_func(G, start, explore_prob, candidates)
+    '''
     max_mode = (strategy == 'max') or ((strategy == 'hybrid') and (search == False))
     neighbors = G.neighbors(start)
     if (dest != None) and (dest in neighbors):
@@ -674,6 +768,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         return max_edge(G, start, explored), False
     else:
         return rand_edge(G, start, explored), False
+    '''
 
 def count_nonzero(G, curr):
     count = 0
@@ -1585,7 +1680,7 @@ def main():
     
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut', 'small', 'tiny']
-    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz']
+    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz']
     decay_choices = ['linear', 'const', 'exp']
     
 
