@@ -1484,7 +1484,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         nest, target = nests[0], nests[1]
                 
         has_path = has_pheromone_path(G, nest, target)
-        after paths = []
+        after_paths = []
         if has_path:
             after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
         path_probs = []
