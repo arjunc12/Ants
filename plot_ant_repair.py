@@ -337,25 +337,25 @@ def main():
     
     
     path_success_rate_heat(df, strategy)
-    walk_success_rate_heat(df, strategy)
+    #walk_success_rate_heat(df, strategy)
     
-    mean_journey_heat(df, strategy)
-    med_journey_heat(df, strategy)
+    #mean_journey_heat(df, strategy)
+    #med_journey_heat(df, strategy)
     path_entropy_heat(df, strategy)
-    cost_heat(df, strategy)
-    walk_entropy_heat(df, strategy)
+    #cost_heat(df, strategy)
+    #walk_entropy_heat(df, strategy)
     
-    pruning_heat(df, strategy)
-    connect_time_heat(df, strategy)
+    #pruning_heat(df, strategy)
+    #connect_time_heat(df, strategy)
     
-    path_pruning_heat(df, strategy)
-    chosen_path_entropy_heat(df, strategy)
+    #path_pruning_heat(df, strategy)
+    #chosen_path_entropy_heat(df, strategy)
     
-    walk_pruning_heat(df, strategy)
-    chosen_walk_entropy_heat(df, strategy)
+    #walk_pruning_heat(df, strategy)
+    #chosen_walk_entropy_heat(df, strategy)
     
-    wasted_edge_count_heat(df, strategy)
-    wasted_edge_weight_heat(df, strategy)
+    #wasted_edge_count_heat(df, strategy)
+    #wasted_edge_weight_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 
