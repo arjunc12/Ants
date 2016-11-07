@@ -14,6 +14,9 @@ from matplotlib import animation
 from scipy.stats import spearmanr
 from scipy.stats import entropy
 
+from graphs import *
+from choice_functions import *
+
 #seed(10301949)
 
 Minv = {} # node tuple -> node id
@@ -27,18 +30,10 @@ PHEROMONE_THRESHOLD = 0
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
-P = []
+#P = []
 EDGE_THICKNESS = 10
 pheromone_thickness = 1
 ant_thickness = 25
-DEBUG_PATHS = True
-OUTPUT_GRAPHS = False
-
-DEAD_END = False
-BREAK = False
-BACKTRACK = False
-ADD_PRUNE = 0.1
-MIN_ADD = 1
 
 INIT_WEIGHT_FACTOR = 10
 MAX_PATH_LENGTH = 20
@@ -51,7 +46,7 @@ EXPLORES = 0
 
 DRAW_AND_QUIT = False
 
-DEBUG = True
+DEBUG = False
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -68,8 +63,13 @@ DEBUG = True
 
 def init_graph(G):
     '''
+    initializes the graph for drawing
     
+    sets all edge weights to 0, and creates mapping between each node and an integer, and
+    between each edge and an integer
     '''
+    
+    # map each node to an integer
     for i,u in enumerate(sorted(G.nodes())):
         M[i] = u
         Minv[u] = i    
@@ -84,7 +84,11 @@ def init_graph(G):
         else:
             node_size.append(10)
             node_color.append('k')
-
+            
+            
+    # map each edge to an integer
+    # since this is an undirected graph, both orientations of an edge map to same integer
+    # each integer maps to one of the two orientations of the edge
     for i, (u,v) in enumerate(sorted(G.edges())):
         G[u][v]['weight'] = MIN_PHEROMONE
         
@@ -98,324 +102,16 @@ def init_graph(G):
         N[i] = (u, v)        
         Ninv[(v, u)] = i
         
-        if (u, v) in P:
+        init_path = G.graph['init_path']
+        if (u, v) in init_path:
             edge_color.append('g')
             edge_width.append(10)
-        elif (v, u) in P:
-            edge_color.append('g')
-            edge_width.append(10)
-        else:
-            edge_color.append('k')
-            edge_width.append(1)
-            
-    for (u, v) in G.edges():
-        assert (u, v) in Ninv
-
-def fig1_network():
-    """ Manually builds the Figure 1 networks. """
-    G = nx.grid_2d_graph(11,11)
-    
-    G.graph['name'] = 'fig1'
-    G.graph['nests'] = [(3,2), (8, 3)]
-
-    # horizontal edges.
-    G.remove_edge((1,9),(2,9))
-    G.remove_edge((3,9),(4,9))
-    G.remove_edge((6,9),(7,9))
-    G.remove_edge((8,9),(9,9))
-    G.remove_edge((1,8),(2,8))
-    G.remove_edge((8,8),(9,8))
-    G.remove_edge((5,7),(6,7))
-    G.remove_edge((9,7),(10,7))
-    G.remove_edge((1,6),(2,6))
-    G.remove_edge((5,6),(6,6))
-    G.remove_edge((9,6),(10,6))
-    G.remove_edge((1,5),(2,5))
-    G.remove_edge((5,5),(6,5))
-    G.remove_edge((7,5),(8,5))
-    G.remove_edge((0,4),(1,4))
-    G.remove_edge((2,4),(3,4))
-    G.remove_edge((5,4),(6,4))
-    G.remove_edge((7,4),(8,4))
-    G.remove_edge((0,3),(1,3))
-    #G.remove_edge((2,3),(3,3))
-    G.remove_edge((3,3),(4,3)) # e
-    G.remove_edge((3,2),(4,2))
-    G.remove_edge((6,2),(7,2))
-    G.remove_edge((0,1),(1,1))
-    G.remove_edge((3,1),(4,1))
-    G.remove_edge((8,1),(9,1))
-
-    # vertical edges.
-    G.remove_edge((1,0),(1,1))
-    G.remove_edge((1,3),(1,4))
-    G.remove_edge((1,5),(1,6))
-    G.remove_edge((1,9),(1,8))
-    #G.remove_edge((2,3),(2,4))
-    G.remove_edge((2,5),(2,6))
-    G.remove_edge((2,8),(2,9))
-    G.remove_edge((3,1),(3,2))
-    #G.remove_edge((3,3),(3,4))
-    G.remove_edge((3,9),(3,10))
-    G.remove_edge((4,1),(4,2))
-    G.remove_edge((4,9),(4,10))
-    G.remove_edge((5,4),(5,5))
-    G.remove_edge((5,6),(5,7))
-    G.remove_edge((6,2),(6,3))
-    G.remove_edge((6,4),(6,5))
-    G.remove_edge((6,6),(6,7))
-    G.remove_edge((6,9),(6,10))
-    G.remove_edge((7,2),(7,3))
-    G.remove_edge((7,4),(7,5))
-    G.remove_edge((7,9),(7,10))
-    G.remove_edge((8,0),(8,1))
-    G.remove_edge((8,4),(8,5))
-    G.remove_edge((8,8),(8,9))
-    G.remove_edge((9,0),(9,1))
-    G.remove_edge((9,6),(9,7))
-    G.remove_edge((9,8),(9,9))
-    G.remove_edge((4,2),(4,3))
-    G.remove_edge((4,3),(4,4))
-    
-    P.append(((7, 3), (8, 3)))
-    P.append(((6, 3), (7, 3)))
-    P.append(((5, 3), (6, 3)))
-    P.append(((4, 3), (5, 3)))
-    P.append(((3, 2), (3, 3)))
-
-    init_graph(G)
-    
-    return G
-
-def simple_network():
-    '''
-    Manually builds a simple network with 3 disjoint paths between nest and target
-    '''
-    G = nx.grid_2d_graph(8, 6)
-    
-    G.graph['name'] = 'simple'
-    G.graph['nests'] = [(0, 3), (7, 3)]
-        
-    for j in xrange(6):
-        if j < 5:
-            G.remove_edge((0, j), (0, j + 1))
-            G.remove_edge((7, j), (7, j + 1))
-        
-        if j != 3:
-            G.remove_edge((0, j), (1, j))
-            G.remove_edge((6, j), (7, j))
-    
-    
-    for j in [1, 2, 4]:
-        for k in xrange(1, 6):
-            G.remove_edge((k, j), (k + 1, j))
-            if 2 <= k <= 5:
-                try:
-                    G.remove_edge((k, j), (k, j + 1))
-                except:
-                    pass
-                try:
-                    G.remove_edge((k, j), (k, j - 1))
-                except:
-                    pass
-    
-    for j in xrange(7):
-        if j != 5:
-            P.append(((j, 3), (j + 1, 3)))
-    
-    G.remove_edge((5, 3), (6, 3))
-                                            
-    init_graph(G)
-        
-    return G
-    
-def simple_network_nocut():
-    '''
-    Manually builds a simple network with 3 disjoint paths between nest and target
-    '''
-    G = nx.grid_2d_graph(8, 6)
-    
-    G.graph['name'] = 'simple_nocut'
-    G.graph['nests'] = [(0, 3), (7, 3)]
-        
-    for j in xrange(6):
-        if j < 5:
-            G.remove_edge((0, j), (0, j + 1))
-            G.remove_edge((7, j), (7, j + 1))
-        
-        if j != 3:
-            G.remove_edge((0, j), (1, j))
-            G.remove_edge((6, j), (7, j))
-    
-    
-    for j in [1, 2, 4]:
-        for k in xrange(1, 6):
-            G.remove_edge((k, j), (k + 1, j))
-            if 2 <= k <= 5:
-                try:
-                    G.remove_edge((k, j), (k, j + 1))
-                except:
-                    pass
-                try:
-                    G.remove_edge((k, j), (k, j - 1))
-                except:
-                    pass
-    
-    for j in xrange(7):
-        P.append(((j, 3), (j + 1, 3)))
-                                            
-    init_graph(G)
-        
-    return G
-
-def square_grid_nocut(gridsize, gridname):
-    G = nx.grid_2d_graph(gridsize, gridsize)
-    G.graph['name'] = gridname + '_nocut'
-    G.graph['nests'] = [(0, gridsize // 2), (gridsize - 1, gridsize // 2)]
-    
-    for i in xrange(gridsize - 1):
-        P.append(((i, gridsize // 2), (i + 1, gridsize // 2)))
-    init_graph(G)
-    
-    return G
-
-def square_grid(gridsize, gridname):
-    G = nx.grid_2d_graph(gridsize, gridsize)
-    G.graph['name'] = gridname
-    G.graph['nests'] = [(0, gridsize // 2), (gridsize - 1, gridsize // 2)]
-    
-    G.remove_edge((gridsize // 2 - 1, gridsize // 2), (gridsize // 2, gridsize // 2))
-    for i in xrange(gridsize - 1):
-        if i != gridsize // 2 - 1:
-            P.append(((i, gridsize // 2), (i + 1, gridsize // 2)))
-    init_graph(G)
-    
-    return G
-
-def small_grid():
-    return square_grid(7, 'small')
-    
-def small_grid_nocut():
-    return square_grid_nocut(7, 'small_nocut')
-
-def full_grid():
-    '''
-    Manually builds a full 11x11 grid graph, puts two nests at opposite ends of the middle
-    of the grid, and removes the very middle edge
-    '''
-    G = nx.grid_2d_graph(11,11)
-    
-    G.graph['name'] = 'full'
-    G.graph['nests'] = [(0, 5), (10, 5)]
-    
-    G.remove_edge((4, 5), (5, 5))
-    
-    for i in range(10):
-        if i != 4:
-            P.append(((i, 5), (i + 1, 5)))
-
-    init_graph(G)
-    
-    return G
-    
-def full_grid_nocut():
-    G = nx.grid_2d_graph(11,11)
-    
-    G.graph['name'] = 'full_nocut'
-    G.graph['nests'] = [(0, 5), (10, 5)]
-        
-    for i in range(10):
-        P.append(((i, 5), (i + 1, 5)))
-
-    init_graph(G)
-    
-    return G
-
-def er_network(p=0.5):
-    G = nx.grid_2d_graph(11, 11)
-    
-    G.graph['name'] = 'er'
-    G.graph['nests'] = [(0, 5), (10, 5)]
-    
-    for u in G.nodes():
-        for v in G.nodes():
-            if u == nest and v == target:
-                continue
-            if v == nest and u == target:
-                continue
-            if u != v:
-                if random() <= p:
-                    G.add_edge(u, v)
-                else:
-                    if G.has_edge(u, v):
-                        G.remove_edge(u, v)
-    if not nx.has_path(G, nest, target):
-        return None
-    short_path = nx.shortest_path(G, nest, target)
-    if len(short_path) <= 3:
-        return None
-    #print short_path
-    idx = choice(range(1, len(short_path) - 1))
-    #print idx
-    G.remove_edge(short_path[idx], short_path[idx + 1])
-    for i in xrange(idx):
-        P.append((short_path[i], short_path[i + 1]))
-    for i in xrange(idx + 1, len(short_path) - 1):
-        P.append((short_path[i], short_path[i + 1]))
-    #print P
-        
-    if not nx.has_path(G, nest, target):
-        return None
-    
-    for i,u in enumerate(G.nodes_iter()):
-        M[i] = u
-        Minv[u] = i
-        pos[u] = [u[0],u[1]] # position is the same as the label.
-
-        if (u[0] == nest) or (u == target):
-            node_size.append(100)
-            node_color.append('r')
-        else:
-            node_size.append(10)
-            node_color.append('k') 
-        
-    for u,v in G.edges_iter():
-        G[u][v]['weight'] = MIN_PHEROMONE
-        if (u, v) in P or (v, u) in P:
+        elif (v, u) in init_path:
             edge_color.append('g')
             edge_width.append(10)
         else:
             edge_color.append('k')
             edge_width.append(1)
-    
-    for i, (u,v) in enumerate(G.edges()):
-        Ninv[(u, v)] = i
-        N[i] = (u, v)        
-        Ninv[(v, u)] = i
-            
-    return G
-
-def color_path(G, path, c, w, figname):
-    """
-    Given a path, colors that path on the graph and then outputs the colored path to a
-    file
-    """
-    colors, widths = edge_color[:], edge_width[:]
-    for i in xrange(len(path) - 1):
-        edge = (path[i], path[i + 1])
-        index = None
-        try:
-            index = Ninv[edge]
-        except KeyError:
-            index = Ninv[(path[i + 1], path[i])]
-        colors[index] = c
-        widths[index] += w
-        
-    nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors, node_color=node_color, width=widths)
-    PP.draw()
-    #PP.show()
-    PP.savefig(figname)
-    PP.close()
     
 def color_graph(G, c, w, figname, cost=None):
     '''
@@ -578,106 +274,6 @@ def has_pheromone_path(G, origin, destination):
     G2 = pheromone_subgraph(G, origin, destination)
     return nx.has_path(G2, origin, destination)
 
-def next_edge_uniform(G, start, explore_prob, candidates=None):
-    if candidates == None:
-        candidates = G.neighbors(start)
-    
-    total_wt = 0.0
-    explored = []
-    unexplored = []
-    explored_weights = []
-    for candidate in candidates:
-        wt = G[start][candidate]['weight']
-        if wt <= PHEROMONE_THRESHOLD:
-            unexplored.append(candidate)
-        else:
-            explored.append(candidate)
-            explored_weights.append(wt)
-            total_wt += wt
-    flip = random()
-    if (flip < explore_prob and len(unexplored) > 0) or (len(explored) == 0):
-        next = choice(len(unexplored))
-        next = unexplored[next]
-        return next, True 
-    else:
-        explored_weights = array(explored_weights)
-        explored_weights /= total_wt
-        next = explored[choice(len(explored), 1, p=explored_weights)[0]]
-        return next, False
-    
-def next_edge_max(G, start, explore_prob, candidates=None):
-    if candidates == None:
-        candidates = G.neighbors(start)
-        
-    max_wt = float("-inf")
-    for candidate in candidates:
-        max_wt = max(max_wt, G[start][candidate]['weight'])
-    
-    max_neighbors = []
-    nonmax_neighbors = []
-    for candidate in candidates:
-        wt = G[start][candidate]['weight']
-        if wt == max_wt and wt > PHEROMONE_THRESHOLD:
-            max_neighbors.append(candidate)
-        else:
-            nonmax_neighbors.append(candidate)
-            
-    flip = random()
-    if (flip < explore_prob and len(nonmax_neighbors) > 0) or (len(max_neighbors) == 0):
-        next = choice(len(nonmax_neighbors))
-        next = nonmax_neighbors[next]
-        return next, True
-    else:
-        next = choice(len(max_neighbors))
-        next = max_neighbors[next]
-        return next, False
-        
-def next_edge_maxz(G, start, explore_prob, candidates=None):
-    if candidates == None:
-        candidates = G.neighbors(start)
-        
-    max_wt = float("-inf")
-    for candidate in candidates:
-        max_wt = max(max_wt, G[start][candidate]['weight'])
-    
-    max_neighbors = []
-    nonmax_neighbors = []
-    for candidate in candidates:
-        wt = G[start][candidate]['weight']
-        if wt == max_wt and wt > PHEROMONE_THRESHOLD:
-            max_neighbors.append(candidate)
-        elif wt <= PHEROMONE_THRESHOLD:
-            nonmax_neighbors.append(candidate)
-            
-    flip = random()
-    if (flip < explore_prob and len(nonmax_neighbors) > 0) or (len(max_neighbors) == 0):
-        next = choice(len(nonmax_neighbors))
-        next = nonmax_neighbors[next]
-        return next, True
-    else:
-        next = choice(len(max_neighbors))
-        next = max_neighbors[next]
-        return next, False
-    
-def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, \
-              search=True, backtrack=False):
-    candidates = G.neighbors(start)
-    if (dest != None) and (dest in candidates):
-        return dest, False
-    if candidates == [prev]:
-        return prev, False
-    if (prev != None) and (not backtrack):
-        assert prev in candidates
-        candidates.remove(prev)
-    choice_func = None
-    if (strategy == 'uniform') or (strategy in ['hybrid', 'hybridz'] and search):
-        choice_func = next_edge_uniform
-    elif (strategy == 'max') or (strategy == 'hybrid' and not search):
-        choice_func = next_edge_max
-    elif (strategy == 'maxz') or (strategy == 'hybridz' and not search):
-        choice_func = next_edge_maxz
-    return choice_func(G, start, explore_prob, candidates)
-
 def count_nonzero(G, curr):
     count = 0
     for neighbor in G.neighbors(curr):
@@ -711,111 +307,6 @@ def vertex_entropy(G, vertex, explore_prob, prev=None):
         zero[i] /= len(zero)
     probs = zero + nonzero
     return entropy(probs)
-
-def uniform_likelihood(G, source, dest, explore, prev=None):
-    chosen_wt = G[source][dest]['weight']
-    total = 0.0
-    explored = 0
-    unexplored = 0
-    neighbors = G.neighbors(source)
-    if prev != None:
-        assert prev in neighbors
-        neighbors.remove(prev)
-    for n in neighbors:
-        wt = G[source][n]['weight']
-        assert wt >= MIN_PHEROMONE
-        if wt < PHEROMONE_THRESHOLD:
-            unexplored += 1
-        else:
-            explored += 1
-            total += wt
-    assert explored + unexplored == len(neighbors)
-    if explored == 0:
-        assert unexplored == len(neighbors)
-        return 1.0 / unexplored
-    elif chosen_wt < PHEROMONE_THRESHOLD:
-        return explore * (1.0 / unexplored)
-    else:
-        prob = chosen_wt / total
-        return (1 - explore) * prob
-        
-def max_edge_likelihood(G, source, dest, explore, prev=None):
-    max_wt = MIN_PHEROMONE
-    max_neighbors = []
-    neighbors = G.neighbors(source)
-    if prev != None:
-        assert prev in neighbors
-        neighbors.remove(prev)
-    total = 0.0
-    explored = 0
-    unexplored = 0
-    chosen_wt = G[source][dest]['weight']
-    for n in neighbors:
-        wt = G[source][n]['weight']
-        assert wt >= MIN_PHEROMONE
-        if wt < PHEROMONE_THRESHOLD:
-            unexplored += 1
-        else:
-            explored += 1
-            total += wt
-            if wt > max_wt:
-                max_wt = wt
-                max_neighbors = [n]
-            elif wt == max_wt:
-                max_neighbors.append(n)
-    if explored == 0:
-        assert unexplored == len(neighbors)
-        assert MIN_PHEROMONE <= chosen_wt < PHEROMONE_THRESHOLD
-        return 1.0 / unexplored
-    assert max_wt >= PHEROMONE_THRESHOLD
-    if dest in max_neighbors:
-        assert chosen_wt == max_wt
-        return (1 - explore) / len(max_neighbors)
-    else:
-        assert chosen_wt < max_wt
-        return explore / (len(neighbors) - len(max_neighbors))
-        
-def maxz_edge_likelihood(G, source, dest, explore, prev=None):
-    chosen_wt = G[source][dest]['weight']
-    max_wt = MIN_PHEROMONE
-    max_neighbors = []
-    zero_neighbors = []
-    neighbors = G.neighbors(source)
-    if prev != None:
-        assert prev in neighbors
-        neighbors.remove(prev)
-    for n in neighbors:
-        wt = G[source][n]['weight']
-        assert wt >= MIN_PHEROMONE
-        if wt < PHEROMONE_THRESHOLD:
-            zero_neighbors.append(n)
-        else:
-            if wt > max_wt:
-                max_wt = wt
-                max_neighbors = [n]
-            elif wt == max_wt:
-                max_neighbors.append(n)
-
-    if dest in max_neighbors:
-        assert max_wt >= PHEROMONE_THRESHOLD
-        assert chosen_wt == max_wt
-        return (1 - explore) / len(max_neighbors)
-    elif dest in zero_neighbors:
-        assert MIN_PHEROMONE <= chosen_wt < PHEROMONE_THRESHOLD
-        return explore / (len(zero_neighbors))
-    else:
-        assert PHEROMONE_THRESHOLD <= chosen_wt < max_wt
-        return 0
-    
-def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
-    likelihood_func = None
-    if strategy == 'uniform':
-        likelihood_func = uniform_likelihood
-    elif strategy in ['max', 'hybrid']:
-        likelihood_func = max_edge_likelihood
-    elif strategy in ['maxz', 'hybridz']:
-        likelihood_func = maxz_edge_likelihood
-    return likelihood_func(G, source, dest, explore_prob, prev)
     
 def path_prob(G, path, explore_prob, strategy='uniform'):
     prob = 1
@@ -893,7 +384,7 @@ def wasted_edges(G, useful_edges):
     wasted_edge_weight = 0
     for u, v in G.edges_iter():
         wt = G[u][v]['weight']
-        if wt >= PHEROMONE_THRESHOLD:
+        if wt > PHEROMONE_THRESHOLD:
             edge_id = Ninv[(u, v)]
             if edge_id not in useful_edges:
                 wasted_edges += 1
@@ -903,7 +394,8 @@ def wasted_edges(G, useful_edges):
 
 def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
-            nframes=200, video2=False, cost_plot=False, backtrack=False, decay_type='linear'):
+            nframes=200, video2=False, cost_plot=False, backtrack=False, \
+            decay_type='linear', queue_lim=1):
     """ """
     
     graph_name = G.graph['name']
@@ -931,12 +423,14 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
     for iter in xrange(num_iters):
         if video:
             fig = PP.figure()
+        
+        init_path = G.graph['init_path']
             
         nonzero_edges = set()
         for u, v in G.edges_iter():
             G[u][v]['weight'] = MIN_PHEROMONE
             G[u][v]['units'] = []
-        for u, v in P:
+        for u, v in init_path:
             G[u][v]['weight'] += pheromone_add * INIT_WEIGHT_FACTOR
             if decay_type == 'linear':
                 G[u][v]['units']+= [pheromone_add] * INIT_WEIGHT_FACTOR
@@ -970,8 +464,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             origin = nests[ant % len(nests)]
             origins[ant] = origin
             destinations[ant] = next_destination(origin)
-            prev, curr = P[choice(len(P))]
-            if origins[ant] == P[-1][-1]:
+            prev, curr = init_path[choice(len(init_path))]
+            if origins[ant] == init_path[-1][-1]:
                 prev, curr = curr, prev
             if curr == destinations[ant]:
                 origins[ant], destinations[ant] = destinations[ant], origins[ant]
@@ -1008,8 +502,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         while steps <= max_steps:
             if DEBUG:
                 print "steps", steps
-                #check_graph(G)
-                #check_queued_nodes(G, queued_nodes, num_ants)
+                check_graph(G)
+                check_queued_nodes(G, queued_nodes, num_ants)
                         
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
@@ -1034,16 +528,27 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             empty_nodes = set()
             new_queue_nodes = set()
             moved_ants = set()
-            #print "queued nodes before", queued_nodes
+            if DEBUG:
+                print "queued nodes before", queued_nodes
             traversals = []
             added_edges = []
             for queued_node in queued_nodes:
                 queue = G2.node[queued_node]['queue']
                 assert len(queue) > 0
-                next_ant = queue.pop(0)
-                moved_ants.add(next_ant)
-                if DEBUG:
-                    print "queue node", queued_node, "queue", queue, "next ant", next_ant
+                
+                qlim = queue_lim
+                if qlim == -1:
+                    qlim = len(queue)
+                else:
+                    qlim = min(qlim, len(queue))
+                
+                next_ants = []
+                for i in xrange(qlim):
+                    if queue[i] not in moved_ants:
+                        next_ants.append(queue[i])
+                for next_ant in next_ants:
+                    queue.remove(next_ant)
+                #next_ant = queue.pop(0)
                 
                 for queued_ant in queue:
                     if queued_ant not in moved_ants:
@@ -1051,91 +556,96 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         walks[queued_ant].append(queued_node)
                 if len(queue) == 0:
                     empty_nodes.add(queued_node)
+                    
+                for next_ant in next_ants:
+                    moved_ants.add(next_ant)
+                    if DEBUG:
+                        print "queue node", queued_node, "queue", queue, "next ant", next_ant                
                 
-                curr = currs[next_ant]
-                prev = prevs[next_ant]
-                next = None
+                    curr = currs[next_ant]
+                    prev = prevs[next_ant]
+                    next = None
                                 
-                if at_dead_end(G, curr, prev):
-                    search_mode[next_ant] = True
+                    if at_dead_end(G, curr, prev):
+                        search_mode[next_ant] = True
                 
-                n = G.neighbors(curr)
-                if curr != prev and prev != None:
-                    n.remove(prev)
-                if len(n) == 0:
-                    deadend[next_ant] = (curr not in nests)
-                    #print curr, deadend[j]
-                elif len(n) > 1:
-                    deadend[next_ant] = False
+                    n = G.neighbors(curr)
+                    if curr != prev and prev != None:
+                        n.remove(prev)
+                    if len(n) == 0:
+                        deadend[next_ant] = (curr not in nests)
+                        #print curr, deadend[j]
+                    elif len(n) > 1:
+                        deadend[next_ant] = False
                     
-                if (prev == curr) or (curr == origins[next_ant]):
-                    prev = None
-                next, ex = next_edge(G, curr, explore_prob, strategy, prev, \
-                                     destinations[next_ant], search_mode[next_ant], backtrack)
-                if DEBUG:
-                    print "next", next, "ex", ex
-                traversals.append((next_ant, curr, next, ex))
-                add_amt = pheromone_add
-                add_neighbor = next
-                if ex:
-                    add_amt *= 2
-                    next = curr
-                queue_ant(G2, next, next_ant)
-                new_queue_nodes.add(next)
-                empty_nodes.discard(next)
-                prevs[next_ant] = curr
-                currs[next_ant] = next
-                if not deadend[next_ant]:
-                    G2[curr][add_neighbor]['weight'] += add_amt
-                    if decay_type == 'linear':
-                        G2[curr][add_neighbor]['units'].append(add_amt)
-                    nonzero_edges.add(Ninv[(curr, add_neighbor)])
-                added_edges.append((curr, add_neighbor))
+                    if (prev == curr) or (curr == origins[next_ant]):
+                        prev = None
+                    next, ex = next_edge(G, curr, explore_prob, strategy, prev, \
+                                         destinations[next_ant], search_mode[next_ant], backtrack)
+                    if DEBUG:
+                        print "next", next, "ex", ex
+                    traversals.append((next_ant, curr, next, ex))
+                    add_amt = pheromone_add
+                    add_neighbor = next
+                    if ex:
+                        add_amt *= 2
+                        next = curr
+                    queue_ant(G2, next, next_ant)
+                    new_queue_nodes.add(next)
+                    empty_nodes.discard(next)
+                    prevs[next_ant] = curr
+                    currs[next_ant] = next
+                    if not deadend[next_ant]:
+                        G2[curr][add_neighbor]['weight'] += add_amt
+                        if decay_type == 'linear':
+                            G2[curr][add_neighbor]['units'].append(add_amt)
+                        nonzero_edges.add(Ninv[(curr, add_neighbor)])
+                    added_edges.append((curr, add_neighbor))
                     
-                paths[next_ant].append(next)
-                walks[next_ant].append(next)
-                if DEBUG:
-                    print "updated path", paths[next_ant]
+                    paths[next_ant].append(next)
+                    walks[next_ant].append(next)
+                    if DEBUG:
+                        print "updated path", paths[next_ant]
                 
                 
-                if next == destinations[next_ant]:
-                    orig, dest = origins[next_ant], destinations[next_ant]
-                    origins[next_ant], destinations[next_ant] = dest, orig
-                    search_mode[next_ant] = False
+                    if next == destinations[next_ant]:
+                        orig, dest = origins[next_ant], destinations[next_ant]
+                        origins[next_ant], destinations[next_ant] = dest, orig
+                        search_mode[next_ant] = False
                     
-                    walk = walks[next_ant]
-                    chosen_walk_counts[tuple(walk)] += 1
+                        walk = walks[next_ant]
+                        chosen_walk_counts[tuple(walk)] += 1
                     
-                    path = walk_to_path(walk)
-                    start = path[0]
-                    end = path[-1]
-                    idx1 = nests.index(orig)
-                    idx2 = nests.index(dest)
-                    if idx2 > idx1:
-                        path = path[::-1]
-                    path_counts[tuple(path)] += 1
+                        path = walk_to_path(walk)
+                        start = path[0]
+                        end = path[-1]
+                        idx1 = nests.index(orig)
+                        idx2 = nests.index(dest)
+                        if idx2 > idx1:
+                            path = path[::-1]
+                        path_counts[tuple(path)] += 1
                     
-                    curr_entropy = entropy(path_counts.values())
-                    curr_walk_entropy = entropy(chosen_walk_counts.values())
+                        curr_entropy = entropy(path_counts.values())
+                        curr_walk_entropy = entropy(chosen_walk_counts.values())
                     
-                    if max_entropy == None:
-                        max_entropy = curr_entropy
-                    else:
-                        max_entropy = max(max_entropy, curr_entropy)
+                        if max_entropy == None:
+                            max_entropy = curr_entropy
+                        else:
+                            max_entropy = max(max_entropy, curr_entropy)
                         
-                    if max_walk_entropy == None:
-                        max_walk_entropy = curr_walk_entropy
-                    else:
-                        max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+                        if max_walk_entropy == None:
+                            max_walk_entropy = curr_walk_entropy
+                        else:
+                            max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
                     
-                    walks[next_ant] = [origins[next_ant]]
+                        walks[next_ant] = [origins[next_ant]]
                     
-                elif next == origins[next_ant]:
-                    search_mode[next_ant] = True
+                    elif next == origins[next_ant]:
+                        search_mode[next_ant] = True
             if DEBUG:
                 print "traversals", traversals
                 print "emptied nodes", empty_nodes
-                #print "new queued nodes", new_queue_nodes
+                print "new queued nodes", new_queue_nodes
             queued_nodes.difference_update(empty_nodes)
             queued_nodes.update(new_queue_nodes)
             if DEBUG:
@@ -1185,6 +695,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             n_colors[Minv[nest]] = 'm'
             n_sizes[Minv[nest]] = 100
         
+        '''
         if DEBUG:
             print "paths"
             for ant in xrange(num_ants):
@@ -1193,6 +704,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             for index in edge_weights:
                 print N[index]
                 print edge_weights[index]
+        '''
                                 
         def init():
             nx.draw(G, pos=pos, with_labels=False, node_size=n_sizes, edge_color=e_colors,\
@@ -1217,14 +729,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             #if frame > 0:
             #    frame -= 1
             max_units = max_weight / pheromone_add
-            '''
-            for index in edge_weights:
-                wt = edge_weights[index][frame]
-                if wt != None:
-                    #units = wt / pheromone_add
-                    e_widths[index] = 1 + (wt / max_wt) #1 + 5 * (units / max_units)
-                    e_colors[index] = 'g'
-            '''
+            
             e_colors = []
             e_widths = []
             for u, v in sorted(G.edges()):
@@ -1235,9 +740,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     e_widths.append(1)
                 else:
                     e_colors.append('g')
-                    e_widths.append(1 + (edge_wt / max_wt))
-                if DEBUG:
-                    print index, N[index], pos[N[index][0]], pos[N[index][1]], wt
+                    e_widths.append(1 + (edge_wt / max_weight))
             
             for nest in nests:
                 n_colors[Minv[nest]] = 'm'
@@ -1377,7 +880,8 @@ def main():
     )
     
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
-                     'full_nocut', 'simple_nocut', 'small', 'tiny']
+                     'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
+                     'medium_nocut']
     strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz']
     decay_choices = ['linear', 'const', 'exp']
     
@@ -1411,6 +915,7 @@ def main():
                         choices=decay_choices)
     parser.add_argument("-t", "--threshold", dest="threshold", type=float, default=0, \
                         help="minimum detectable pheromone threshold")
+    parser.add_argument('-ql', '--queue_limit', type=int, dest='queue_lim', default=1)
 
     args = parser.parse_args()
     # ===============================================================
@@ -1431,6 +936,7 @@ def main():
     cost_plot = args.cost_plot
     backtrack = args.backtrack
     decay_type = args.decay_type
+    queue_lim = args.queue_lim
 
     # Build network.
     if graph == 'fig1':
@@ -1447,7 +953,12 @@ def main():
         G = small_grid()
     elif graph == 'tiny':
         G = tiny_grid()
-
+    elif graph == 'medium':
+        G = medium_network()
+    elif graph == 'medium_nocut':
+        G = medium_network_nocut()
+    init_graph(G)
+    
     if DRAW_AND_QUIT:
         nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=edge_color, \
                 node_color=node_color, width=edge_width, nodelist = sorted(G.nodes()), \
@@ -1460,8 +971,10 @@ def main():
         return None
 
     # Run recovery algorithm.
+    
     repair(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps, \
-           num_iters, print_graph, video, frames, video2, cost_plot, backtrack, decay_type)
+           num_iters, print_graph, video, frames, video2, cost_plot, backtrack, \
+           decay_type, queue_lim)
     
     # =========================== Finish ============================
     logging.info("Time to run: %.3f (mins)" %((time.time()-start) / 60))
