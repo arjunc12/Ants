@@ -195,8 +195,9 @@ def mean_entropy_heat(df, strategy):
 def path_entropy_heat(df, strategy):
     def path_entropy(group):
         if all(pylab.isnan(group['path_entropy'])):
-            print "path entropy"
-            describe_group(group)
+            pass
+            #print "path entropy"
+            #describe_group(group)
         return pylab.nanmean(group['path_entropy'])
         
     heat(df, path_entropy, 'path_entropy', strategy, 'entropy over all possible paths')
@@ -238,8 +239,9 @@ def path_success_rate_heat(df, strategy):
     def path_success_rate(group):
         success_rate = pylab.nanmean(group['has_path'])
         if success_rate == 0:
-            print "path success rate"
-            describe_group(group)
+            pass
+            #print "path success rate"
+            #describe_group(group)
         return success_rate
     heat(df, path_success_rate, 'path_success_rate', strategy, 'proportion of times ants successfully created a path')
     
@@ -337,11 +339,15 @@ def main():
     
     
     path_success_rate_heat(df, strategy)
+    path_entropy_heat(df, strategy)
+    
+    wasted_edge_count_heat(df, strategy)
+    wasted_edge_weight_heat(df, strategy)
+    
     #walk_success_rate_heat(df, strategy)
     
     #mean_journey_heat(df, strategy)
     #med_journey_heat(df, strategy)
-    path_entropy_heat(df, strategy)
     #cost_heat(df, strategy)
     #walk_entropy_heat(df, strategy)
     
@@ -353,9 +359,6 @@ def main():
     
     #walk_pruning_heat(df, strategy)
     #chosen_walk_entropy_heat(df, strategy)
-    
-    #wasted_edge_count_heat(df, strategy)
-    #wasted_edge_weight_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 
