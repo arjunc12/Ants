@@ -1,7 +1,7 @@
 import numpy as np
 import networkx as nx
 from numpy.random import random, choice
-MIN_DETECTABLE_PHEROMONE = 2.1
+MIN_DETECTABLE_PHEROMONE =1
 MIN_PHEROMONE = 0
 PHEROMONE_THRESHOLD = 0
 

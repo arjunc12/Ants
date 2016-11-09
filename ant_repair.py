@@ -157,6 +157,9 @@ def color_graph(G, c, w, figname, cost=None):
     PP.close()
 
 def edge_weight(G, u, v):
+    '''
+    computes the weight of an edge by summing up the weight of the units
+    '''
     return sum(G[u][v]['units'])
 
 def check_graph(G):
@@ -170,20 +173,20 @@ def check_graph(G):
         assert wt == weight
 
 def decay_units(G, u, v, decay, time=1):
+    '''
+    decreases weight of each pheromone unit on edge (u,v) according to decay rate and time
+    '''
     G[u][v]['units'] = subtract(G[u][v]['units'], decay * time)
     G[u][v]['units'] = G[u][v]['units'][where(G[u][v]['units'] > MIN_PHEROMONE)]
     G[u][v]['units'] = list(G[u][v]['units'])
-    '''
-    nonzero_units = []
-    for unit in G[u][v]['units']:
-        unit = max(unit - decay, MIN_PHEROMONE)
-        assert unit >= MIN_PHEROMONE
-        if unit > MIN_PHEROMONE:
-            nonzero_units.append(unit)
-    G[u][v]['units'] = nonzero_units
-    '''
 
 def decay_edges_linear(G, nonzero_edges, decay, time=1):
+    '''
+    decays weight on all nonzero edges according to linear decay.  Every unit loses
+    decay*time in weight until it reaches the minimum pheromone level.
+    
+    Returns all edges that are at the minimum pheromone level after decaying
+    '''
     zero_edges = []
     for i in nonzero_edges:
         u, v = N[i]
@@ -196,6 +199,9 @@ def decay_edges_linear(G, nonzero_edges, decay, time=1):
     return zero_edges
     
 def decay_graph_linear(G, decay, time=1):
+    '''
+    decays all edges in the graph using linear decay
+    '''
     assert decay > 0
     assert decay < 1
     for u, v in G.edges_iter():
@@ -203,15 +209,12 @@ def decay_graph_linear(G, decay, time=1):
         wt = edge_weight(G, u, v)
         assert wt >= MIN_PHEROMONE
         G[u][v]['weight'] = wt
-        '''
-        wt = G[u][v]['weight']
-        assert wt >= MIN_PHEROMONE
-        x = max(MIN_PHEROMONE, wt - (decay * seconds))
-        assert wt >= MIN_PHEROMONE
-        G[u][v]['weight'] = x
-        '''
 
 def decay_graph_exp(G, decay, time=1):
+    '''
+    Decays the graph according to exponential decay.  Every edge reduces in weight by a
+    specified proportion
+    '''
     assert decay > 0
     assert decay < 1
     for u, v in G.edges_iter():
@@ -220,6 +223,9 @@ def decay_graph_exp(G, decay, time=1):
         assert G[u][v]['weight'] >= MIN_PHEROMONE
         
 def decay_edges_exp(G, nonzero_edges, decay, time=1):
+    '''
+    decays graph according to exponential decay
+    '''
     assert decay > 0
     assert decay < 1
     zero_edges = []
@@ -234,6 +240,9 @@ def decay_edges_exp(G, nonzero_edges, decay, time=1):
     return zero_edges
         
 def decay_graph_const(G, decay, time=1):
+    '''
+    decays graph according to constant decay.  Every edge loses a constant amount of weight
+    '''
     assert decay > 0
     assert decay < 1
     for u, v in G.edges_iter():
@@ -242,6 +251,9 @@ def decay_graph_const(G, decay, time=1):
         assert G[u][v]['weight'] >= MIN_PHEROMONE
 
 def print_weights(G):
+    '''
+    prints out weights of all edges in the graph
+    '''
     for u, v in G.edges_iter():
         print u, v, G[u][v]['weight'], G[u][v]['units']
 
@@ -254,10 +266,16 @@ def get_weights(G, start, candidates):
 
 def pheromone_subgraph(G, origin=None, destination=None):
     '''
+    Generates the subgraph induced by the edges with pheromone
     
+    G - graph with pheromone edges
+    
+    origin, destination - nest and target vertices that should be included even if not
+    adjacent to a pheromone edge
     '''
     G2 = nx.Graph()
     for u, v in G.edges_iter():
+        # need enough pheromone for the ant to be able to detect it on that edge
         if G[u][v]['weight'] > PHEROMONE_THRESHOLD:
             G2.add_edge(u, v)
     if origin not in G2:
@@ -267,14 +285,34 @@ def pheromone_subgraph(G, origin=None, destination=None):
     return G2
     
 def pheromone_paths(G, origin, destination, limit=15):
+    '''
+    computes all paths between the origin and destination that use only pheromone edges
+    does this by enumerating all paths in the pheromone subgraph
+    
+    G - graph with pheromone edges
+    
+    origin, destination - vertices between which to find all paths
+    '''
     G2 = pheromone_subgraph(G, origin, destination)
     return list(nx.all_simple_paths(G2, origin, destination, limit))
 
 def has_pheromone_path(G, origin, destination):
+    '''
+    Checks whether there exists a pheromone path between origin and destination.  Does
+    this by checking there is a path between origin and destination in the pheromone
+    subgraph.
+    
+    G - graph with pheromone edges
+    
+    origin, destination - vertices between which to check for a path
+    '''
     G2 = pheromone_subgraph(G, origin, destination)
     return nx.has_path(G2, origin, destination)
 
 def count_nonzero(G, curr):
+    '''
+    Counts the number of neighboring edges with pheromone above the detection threshold
+    '''
     count = 0
     for neighbor in G.neighbors(curr):
         if G[curr][neighbor]['weight'] > PHEROMONE_THRESHOLD:
@@ -282,33 +320,28 @@ def count_nonzero(G, curr):
     return count
     
 def pheromone_cost(G):
+    '''
+    Counts the total number of pheromone edges in the graph G
+    '''
     G2 = nx.Graph()
     for u, v in G.edges_iter():
-        if G[u][v]['weight'] > MIN_PHEROMONE:
+        if G[u][v]['weight'] > PHEROMONE_THRESHOLD:
             G2.add_edge(u, v)
     return G2.number_of_edges()
     
-def vertex_entropy(G, vertex, explore_prob, prev=None):
-    assert 0 < explore_prob < 1
-    nonzero = []
-    zero = []
-    for n in G.neighbors(vertex):
-        if n != prev:
-            w = G[vertex][n]['weight']
-            if w == 0:
-                zero.append(explore_prob)
-            else:
-                nonzero.append(w)
-    total = float(sum(nonzero))
-    for i in xrange(len(nonzero)):
-        nonzero[i] /= total
-        nonzero[i] *= (1 - explore_prob)
-    for i in xrange(len(zero)):
-        zero[i] /= len(zero)
-    probs = zero + nonzero
-    return entropy(probs)
-    
 def path_prob(G, path, explore_prob, strategy='uniform'):
+    '''
+    computes the probability of the ant taking a particular path on graph G according to
+    the edge weights, explore probability, and choice function
+    
+    G - graph which ant traverses
+    
+    path - a path on G which the ant traverses
+    
+    explore_prob - probability that the ant takes an explore step
+    
+    strategy - the choice function the ant uses to determine its next step
+    '''
     prob = 1
     prev = None
     for i in xrange(len(path) - 1):
@@ -319,9 +352,16 @@ def path_prob(G, path, explore_prob, strategy='uniform'):
     return prob
     
 def path_prob_no_explore(G, path, strategy='uniform'):
+    '''
+    computes the probability of an ant taking a particular path on a graph G when explore
+    steps are not allowed
+    '''
     return path_prob(G, path, 0, strategy)
 
 def pruning_plot(costs, figname, max_cost=None):
+    '''
+    plots the edge cost over time
+    '''
     if max_cost == None:
         max_cost = max(costs)
     assert max_cost in costs
@@ -334,21 +374,40 @@ def pruning_plot(costs, figname, max_cost=None):
     PP.savefig(figname + '.png', format='png')
     
 def at_dead_end(G, curr, prev):
+    '''
+    Checks if an ant is at a dead end.  We define a dead end as such: if the only edge
+    with pheromone is the edge that the ant traversed on the previous step, then the ant
+    is at a dead end, i.e. following pheromone did not allow the ant to reach the nest
+    '''
     for n in G.neighbors(curr):
-        if n != prev and G[curr][n]['weight'] > MIN_PHEROMONE:
+        if n != prev and G[curr][n]['weight'] > PHEROMONE_THRESHOLD:
             return False
     return True
 
 def walk_to_path(walk):
+    '''
+    Converts a walk on a graph to a path by removing all cycles in the path
+    '''
     assert len(walk) >= 2
     assert walk[0] != walk[-1]
     path = []
+    
+    '''
+    path does not have repeated vertices, so keep track of visited vertices on walk
+    maps each vertex to the first position in the walk at which that vertex was
+    visited
+    '''
     visited = {}
     for i, node in enumerate(walk):
         if node not in visited:
+            # new node, goes into the path
             path.append(node)
             visited[node] = len(path) - 1
         else:
+            '''
+            visited node, meaning our walk has cycled back to a vertex.  Thus we excise 
+            all vertices that are part of that cycle from the path.
+            '''
             prev = visited[node]
             for j in xrange(prev + 1, len(path)):
                 del visited[path[j]]
@@ -360,9 +419,17 @@ def walk_to_path(walk):
     return path
 
 def queue_ant(G, queue_node, ant):
+    '''
+    adds an ant to the queue at a particular node in the graph
+    '''
     G.node[queue_node]['queue'].append(ant)
             
 def check_queued_nodes(G, queued_nodes, num_ants):
+    '''
+    Checks whether the queued nodes are correct.  Checks that each queued node has a 
+    non-empty queue; checks that every ant appears in one of the queues, and that no
+    ant appears in more than one queue
+    '''
     queued_ants = []
     for queued_node in queued_nodes:
         queue = G.node[queued_node]['queue']
@@ -374,12 +441,19 @@ def check_queued_nodes(G, queued_nodes, num_ants):
     assert len(queued_ants) == num_ants
 
 def path_to_edges(path):
+    '''
+    converts a path represented as a series of vertices to a path represented as a series
+    of edges
+    '''
     edges = []
     for i in xrange(len(path) - 2):
         edges.append(Ninv[(path[i], path[i + 1])])
     return edges
 
 def wasted_edges(G, useful_edges):
+    '''
+    
+    '''
     wasted_edges = 0
     wasted_edge_weight = 0
     for u, v in G.edges_iter():
@@ -740,7 +814,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     e_widths.append(1)
                 else:
                     e_colors.append('g')
-                    e_widths.append(1 + (edge_wt / max_weight))
+                    e_widths.append(1 + 25 * (edge_wt / max_weight))
             
             for nest in nests:
                 n_colors[Minv[nest]] = 'm'
@@ -758,7 +832,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, \
-                                          interval = 1000)
+                                          interval = 300)
             ani.save("ant_" + out_str + str(iter) + ".mp4")
             
         if print_graph:        

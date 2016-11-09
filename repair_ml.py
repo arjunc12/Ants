@@ -10,7 +10,7 @@ import numpy.ma as ma
 from choice_functions import *
 
 MIN_PHEROMONE = 0
-MIN_DETECTABLE_PHEROMONE = 2.1
+MIN_DETECTABLE_PHEROMONE = 0
 INIT_WEIGHT = 0
 #THRESHOLD = 1
 #EXPLORE_PROB = 0.1

@@ -112,7 +112,7 @@ def simple_network():
     G.graph['init_path'] = []
     for j in xrange(7):
         if j != 5:
-            G.graph['init_path'].graph['init_path'].append(((j, 3), (j + 1, 3)))
+            G.graph['init_path'].append(((j, 3), (j + 1, 3)))
     
     G.remove_edge((5, 3), (6, 3))
                                             
