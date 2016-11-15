@@ -1,4 +1,7 @@
 import networkx as nx
+import pylab
+import argparse
+from kruskal import kruskal
 
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
@@ -368,3 +371,62 @@ def er_network(p=0.5):
         return None
             
     return G
+
+def grid_span():
+    grid = full_grid()
+    spanning_tree1 = kruskal(grid.nodes(), sorted(grid.edges()))
+    spanning_tree2 = kruskal(grid.nodes(), reversed(sorted(grid.edges())))
+    grid.remove_edges_from(grid.edges())
+    grid.add_edges_from(spanning_tree1 + spanning_tree2)
+    grid.graph['name'] = 'grid_span'
+    return grid
+
+def get_graph(graph_name):
+    G = None
+    if graph_name == 'fig1':
+        G = fig1_network()
+    elif graph_name == 'simple':
+        G = simple_network()
+    elif graph_name == 'full':
+        G = full_grid()
+    elif graph_name == 'full_nocut':
+        G = full_grid_nocut()
+    elif graph_name == 'simple_nocut':
+        G = simple_network_nocut()
+    elif graph_name == 'small':
+        G = small_grid()
+    elif graph_name == 'tiny':
+        G = tiny_grid()
+    elif graph_name == 'medium':
+        G = medium_network()
+    elif graph_name == 'medium_nocut':
+        G = medium_network_nocut()
+    elif graph_name == 'grid_span':
+        G = grid_span()
+    return G
+    
+def main():
+    graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
+                     'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
+                     'medium_nocut', 'grid_span']
+    parser = argparse.ArgumentParser()
+    parser.add_argument("graphs", nargs='+', choices=graph_choices)
+    
+    args = parser.parse_args()
+    graphs = args.graphs
+    
+    for graph in graphs:
+        G = get_graph(graph)
+        pos = {}
+        for node in G.nodes():
+            pos[node] = (node[0], node[1])
+        nx.draw(G, pos=pos, with_labels=False)
+        pylab.draw()
+        #print "show"
+        #PP.show()
+        pylab.savefig("%s.png" % G.graph['name'], format='png')
+        pylab.close()
+    
+    
+if __name__ == '__main__':
+    main()
