@@ -379,6 +379,18 @@ def grid_span():
     grid.remove_edges_from(grid.edges())
     grid.add_edges_from(spanning_tree1 + spanning_tree2)
     grid.graph['name'] = 'grid_span'
+    for i in range(10):
+        if i != 4:
+            grid.add_edge((i, 5), (i + 1, 5))
+            grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
+    return grid
+    
+def grid_span2():
+    grid = grid_span()
+    grid.graph['name'] = 'grid_span2'
+    for i in range(10):
+        if grid.has_edge((0, i), (0, i + 1)):
+            grid.remove_edge((0, i), (0, i + 1))
     return grid
 
 def get_graph(graph_name):
@@ -403,12 +415,14 @@ def get_graph(graph_name):
         G = medium_network_nocut()
     elif graph_name == 'grid_span':
         G = grid_span()
+    elif graph_name == 'grid_span2':
+        G = grid_span2()
     return G
     
 def main():
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span']
+                     'medium_nocut', 'grid_span', 'grid_span2']
     parser = argparse.ArgumentParser()
     parser.add_argument("graphs", nargs='+', choices=graph_choices)
     
