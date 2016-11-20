@@ -1,7 +1,7 @@
 import numpy as np
 import networkx as nx
 from numpy.random import random, choice
-MIN_DETECTABLE_PHEROMONE =1
+MIN_DETECTABLE_PHEROMONE = 0
 MIN_PHEROMONE = 0
 PHEROMONE_THRESHOLD = 0
 
@@ -126,7 +126,7 @@ def uniform_likelihood(G, source, dest, explore, prev=None):
     if explored == 0:
         assert unexplored == len(neighbors)
         return 1.0 / unexplored
-    elif chosen_wt <= PHEROMONE_THRESHOLD:
+    elif chosen_wt <= MIN_DETECTABLE_PHEROMONE:
         return explore * (1.0 / unexplored)
     else:
         prob = chosen_wt / total
@@ -190,7 +190,7 @@ def maxz_edge_likelihood(G, source, dest, explore, prev=None):
                 max_neighbors.append(n)
 
     if dest in max_neighbors:
-        assert max_wt > PHEROMONE_THRESHOLD
+        assert max_wt > MIN_DETECTABLE_PHEROMONE
         assert chosen_wt == max_wt
         return (1 - explore) / len(max_neighbors)
     elif dest in zero_neighbors:
