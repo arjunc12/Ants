@@ -216,9 +216,10 @@ def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, deca
     pylab.savefig(outname, format="png", transparent=True,bbox_inches='tight')
     pylab.close()
 
-def ml_heat(label, sheets, strategies, decay_types, delta=0.05, cumulative=False):
-    decays = np.arange(delta, 1, delta)
-    explores = np.arange(delta, 1, delta)
+def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
+            emax=0.95, delta=0.05, cumulative=False):
+    decays = np.arange(dmin, dmax + delta, delta)
+    explores = np.arange(emin, emax + delta, delta)
     for strategy in strategies:
         print strategy
         likelihood_func = get_likelihood_func(strategy)
@@ -263,13 +264,18 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--decay_types', nargs='+', choices=decay_choices, required=True)
     parser.add_argument('-dt', '--delta', type=float, default=0.05)
     parser.add_argument('-c', '--cumulative', action='store_true')
+    parser.add_argument('-dmin', type=float, default=0.05)
+    parser.add_argument('-dmax', type=float, default=0.95)
+    parser.add_argument('-emin', type=float, default=0.05)
+    parser.add_argument('-emax', type=float, default=0.95)
     
     args = parser.parse_args()
     label = args.label
     sheets = args.sheets
     strategies = args.strategies
     decay_types = args.decay_types
+    dmin, dmax, emin, emax = args.dmin, args.dmax, args.emin, args.emax
     delta = args.delta
     cumulative = args.cumulative
     
-    ml_heat(label, sheets, strategies, decay_types, delta, cumulative)
+    ml_heat(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, delta, cumulative)
