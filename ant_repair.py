@@ -17,7 +17,7 @@ from scipy.stats import entropy
 from graphs import *
 from choice_functions import *
 
-#seed(10301949)
+#seed(10301948)
 
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
@@ -153,9 +153,6 @@ def color_graph(G, c, w, figname, cost=None):
             #print u, v, width
         #unique_weights.add(wt)
     #print len(unique_weights)
-    if cost != None:
-        print "cost", cost
-        PP.title('cost = %d' % cost)
     nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors,\
             node_color=node_color, width=widths, nodelist = sorted(G.nodes()), \
             edgelist = sorted(G.edges()))
@@ -284,8 +281,10 @@ def pheromone_subgraph(G, origin=None, destination=None):
     G2 = nx.Graph()
     for u, v in G.edges_iter():
         # need enough pheromone for the ant to be able to detect it on that edge
-        if G[u][v]['weight'] > PHEROMONE_THRESHOLD:
+        wt = G[u][v]['weight']
+        if wt > PHEROMONE_THRESHOLD:
             G2.add_edge(u, v)
+            G2[u][v]['weight'] = wt
     if origin not in G2:
         G2.add_node(origin)
     if destination not in G2:
@@ -399,6 +398,8 @@ def walk_to_path(walk):
     Converts a walk on a graph to a path by removing all cycles in the path
     '''
     assert len(walk) >= 2
+    if walk[0] == walk[-1]:
+        print walk
     assert walk[0] != walk[-1]
     path = []
     
@@ -474,8 +475,44 @@ def wasted_edges(G, useful_edges):
                 wasted_edges += 1
                 wasted_edge_weight += wt
     return wasted_edges, wasted_edge_weight
-                
 
+def max_neighbors(G, source, prev=None):
+    candidates = G.neighbors(source)
+    if prev != None:
+        assert prev in candidates
+        candidates.remove(prev)
+    max_wt = float("-inf")
+    max_neighbors = []
+    for candidate in candidates:
+        wt = G[source][candidate]['weight']
+        if wt > max_wt:
+            max_wt = wt
+            max_neighbors = [candidate]
+        elif wt == max_wt:
+            max_neighbors.append(candidate)
+    return max_neighbors
+    
+def maximal_paths(G, source, dest, limit=None):
+    queue = [[source]]
+    max_paths = []
+    while len(queue) > 0:
+        curr_path = queue.pop(0)
+        if limit != None and len(curr_path) > limit:
+            continue
+        curr = curr_path[-1]
+        prev = None
+        if len(curr_path) > 1:
+            prev = curr_path[-2]
+        max_n = max_neighbors(G, curr, prev)
+        for max_neighbor in max_n:
+            if max_neighbor not in curr_path:
+                new_path = curr_path + [max_neighbor]
+                if max_neighbor == dest:
+                    max_paths.append(new_path)
+                else:
+                    queue.append(new_path)
+    return max_paths
+    
 def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
             nframes=200, video2=False, cost_plot=False, backtrack=False, \
@@ -550,12 +587,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             origins[ant] = origin
             destinations[ant] = next_destination(origin)
             prev, curr = init_path[choice(len(init_path))]
-        
+            '''
             if origins[ant] == init_path[-1][-1]:
                 prev, curr = curr, prev
             if curr == destinations[ant]:
                 origins[ant], destinations[ant] = destinations[ant], origins[ant]
+            '''
             paths[ant] = [prev, curr]
+            if destinations[ant] in paths[ant]:
+                origins[ant], destinations[ant] = destinations[ant], origins[ant]
             walks[ant] = [prev, curr]
             prevs[ant] = prev
             currs[ant] = curr
@@ -583,7 +623,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             else:
                 edge_weights[index].append(wt)
     
-        #print "path len", len(paths[0])    
+        #print "path len", len(paths[0])  
+        critical_edges_file = None
+        if graph_name == 'simple':
+            critical_edges_file = open('critical_edges.csv', 'a')
         while steps <= max_steps:            
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
@@ -603,6 +646,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             prun_str = ', '.join(map(str, prun_write_items))
             
             #pruning_file.write(pher_str + prun_str + '\n')
+            
+            if graph_name == 'simple':
+                w1 = G[(1, 3)][(2, 3)]['weight']
+                w2 = G[(1, 3)][(1, 4)]['weight']
+                critical_str = '%d, %f, %f\n' % (steps, w1, w2)
+                critical_edges_file.write(critical_str)
+            
             G2 = G.copy()
         
             empty_nodes = set()
@@ -874,7 +924,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         has_path = has_pheromone_path(G, nest, target)
         after_paths = []
         if has_path:
-            after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
+            if strategy == 'uniform':
+                after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
+            else:
+                after_paths = maximal_paths(pheromone_subgraph(G), nest, target)
         path_probs = []
     
         useful_edges = set()
@@ -955,7 +1008,7 @@ def main():
     
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span', 'grid_span2']
+                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er']
     strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz']
     decay_choices = ['linear', 'const', 'exp']
     
@@ -1014,6 +1067,8 @@ def main():
 
     # Build network.
     G = get_graph(graph)
+    if G == None:
+        return
     init_graph(G)
     
     if DRAW_AND_QUIT:
