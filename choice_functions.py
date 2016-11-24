@@ -130,7 +130,9 @@ def uniform_likelihood(G, source, dest, explore, prev=None):
         return explore * (1.0 / unexplored)
     else:
         prob = chosen_wt / total
-        return (1 - explore) * prob
+        if unexplored > 0:
+            prob *= (1 - explore)
+        return prob
         
 def max_edge_likelihood(G, source, dest, explore, prev=None):
     max_wt = MIN_PHEROMONE
@@ -163,10 +165,14 @@ def max_edge_likelihood(G, source, dest, explore, prev=None):
     assert max_wt > MIN_DETECTABLE_PHEROMONE
     if dest in max_neighbors:
         assert chosen_wt == max_wt
-        return (1 - explore) / len(max_neighbors)
+        prob = 1.0 / len(neighbors)
+        if unexplored > 0:
+            prob *= (1 - explore)
+        return prob
     else:
         assert chosen_wt < max_wt
-        return explore / (len(neighbors) - len(max_neighbors))
+        assert unexplored > 0
+        return explore * (1.0 / (len(neighbors) - len(max_neighbors)))
         
 def maxz_edge_likelihood(G, source, dest, explore, prev=None):
     chosen_wt = G[source][dest]['weight']
@@ -192,7 +198,10 @@ def maxz_edge_likelihood(G, source, dest, explore, prev=None):
     if dest in max_neighbors:
         assert max_wt > MIN_DETECTABLE_PHEROMONE
         assert chosen_wt == max_wt
-        return (1 - explore) / len(max_neighbors)
+        prob = 1.0 / len(max_neighbors)
+        if len(zero_neighbors) > 0:
+            prob *= (1 - explore)
+        return prob
     elif dest in zero_neighbors:
         assert MIN_PHEROMONE <= chosen_wt <= MIN_DETECTABLE_PHEROMONE
         return explore / (len(zero_neighbors))
