@@ -2,6 +2,9 @@ import networkx as nx
 import pylab
 import argparse
 from kruskal import kruskal
+from random import random, choice
+
+ER_PROB = 0.03
 
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
@@ -337,15 +340,20 @@ def er_network(p=0.5):
     G = nx.grid_2d_graph(11, 11)
     
     G.graph['name'] = 'er'
-    G.graph['nests'] = [(0, 5), (10, 5)]
+    nests = [(0, 5), (10, 5)]
+    nest, target = nests
+    G.graph['nests'] = nests
     
-    for u in G.nodes():
-        for v in G.nodes():
+    node_list = G.nodes()
+    
+    for i in xrange(len(node_list)):
+        for j in xrange(i):
+            u, v = node_list[i], node_list[j]
             if u == nest and v == target:
                 continue
-            if v == nest and u == target:
+            elif v == nest and u == target:
                 continue
-            if u != v:
+            elif u != v:
                 if random() <= p:
                     G.add_edge(u, v)
                 else:
@@ -392,6 +400,14 @@ def grid_span2():
         if grid.has_edge((0, i), (0, i + 1)):
             grid.remove_edge((0, i), (0, i + 1))
     return grid
+    
+def grid_span3():
+    grid = grid_span2()
+    grid.graph['name'] = 'grid_span3'
+    for i in range(10):
+        if grid.has_edge((10, i), (10, i + 1)):
+            grid.remove_edge((10, i), (10, i + 1))
+    return grid
 
 def get_graph(graph_name):
     G = None
@@ -417,12 +433,16 @@ def get_graph(graph_name):
         G = grid_span()
     elif graph_name == 'grid_span2':
         G = grid_span2()
+    elif graph_name == 'grid_span3':
+        G = grid_span3()
+    elif graph_name == 'er':
+        G = er_network(ER_PROB)
     return G
     
 def main():
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span', 'grid_span2']
+                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er']
     parser = argparse.ArgumentParser()
     parser.add_argument("graphs", nargs='+', choices=graph_choices)
     
@@ -431,10 +451,34 @@ def main():
     
     for graph in graphs:
         G = get_graph(graph)
+        if G == None:
+            continue
+        path = G.graph['init_path']
+        print path
+        nests = G.graph['nests']
         pos = {}
-        for node in G.nodes():
+        node_sizes = []
+        node_colors = []
+        for node in sorted(G.nodes()):
             pos[node] = (node[0], node[1])
-        nx.draw(G, pos=pos, with_labels=False)
+            if node in nests:
+                node_sizes.append(100)
+                node_colors.append('m')
+            else:
+                node_sizes.append(10)
+                node_colors.append('r')
+        edge_widths = []
+        edge_colors = []
+        for u, v in sorted(G.edges()):
+            if (u, v) in path or (v, u) in path:
+                edge_widths.append(10)
+                edge_colors.append('g')
+            else:
+                edge_widths.append(1)
+                edge_colors.append('k')
+        nx.draw(G, pos=pos, with_labels=False, nodelist=sorted(G.nodes()), \
+                edgelist=sorted(G.edges()), width=edge_widths, edge_color=edge_colors, \
+                node_size=node_sizes, node_color=node_colors)
         pylab.draw()
         #print "show"
         #PP.show()
