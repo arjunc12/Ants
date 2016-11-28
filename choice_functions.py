@@ -130,10 +130,9 @@ def uniform_likelihood(G, source, dest, explore, prev=None):
         return explore * (1.0 / unexplored)
     else:
         prob = chosen_wt / total
-        if unexplored > 0:
-            prob *= (1 - explore)
+        prob *= (1 - explore)
         return prob
-        
+             
 def max_edge_likelihood(G, source, dest, explore, prev=None):
     max_wt = MIN_PHEROMONE
     max_neighbors = []
@@ -141,38 +140,34 @@ def max_edge_likelihood(G, source, dest, explore, prev=None):
     if prev != None:
         assert prev in neighbors
         neighbors.remove(prev)
-    total = 0.0
-    explored = 0
-    unexplored = 0
     chosen_wt = G[source][dest]['weight']
     for n in neighbors:
         wt = G[source][n]['weight']
         assert wt >= MIN_PHEROMONE
-        if wt <= MIN_DETECTABLE_PHEROMONE:
-            unexplored += 1
-        else:
+        max_wt = max(wt, max_wt)
+    
+    explored = 0
+    unexplored = 0
+    for n in neighbors:
+        wt = G[source][n]['weight']
+        if wt == max_wt and wt > MIN_DETECTABLE_PHEROMONE:
             explored += 1
-            total += wt
-            if wt > max_wt:
-                max_wt = wt
-                max_neighbors = [n]
-            elif wt == max_wt:
-                max_neighbors.append(n)
+        else:
+            unexplored += 1
+    
     if explored == 0:
         assert unexplored == len(neighbors)
         assert MIN_PHEROMONE <= chosen_wt <= MIN_DETECTABLE_PHEROMONE
         return 1.0 / unexplored
-    assert max_wt > MIN_DETECTABLE_PHEROMONE
-    if dest in max_neighbors:
-        assert chosen_wt == max_wt
-        prob = 1.0 / len(neighbors)
-        if unexplored > 0:
-            prob *= (1 - explore)
+        
+    if chosen_wt == max_wt:
+        prob = 1.0 / explored
+        prob *= (1 - explore)
         return prob
     else:
         assert chosen_wt < max_wt
         assert unexplored > 0
-        return explore * (1.0 / (len(neighbors) - len(max_neighbors)))
+        return explore * (1.0 / unexplored)
         
 def maxz_edge_likelihood(G, source, dest, explore, prev=None):
     chosen_wt = G[source][dest]['weight']
