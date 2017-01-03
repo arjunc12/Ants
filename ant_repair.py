@@ -17,7 +17,12 @@ from scipy.stats import entropy
 from graphs import *
 from choice_functions import *
 
-#seed(10301948)
+import sys
+from random import randint
+
+SEED_MAX = 4294967295
+SEED_VAL = randint(0, SEED_MAX)
+#seed(SEED_VAL)
 
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
@@ -139,16 +144,21 @@ def color_graph(G, c, w, figname, cost=None):
     '''
     colors, widths = edge_color[:], edge_width[:]
     #unique_weights = set()
-    for u, v in G.edges():
+    for u, v in sorted(G.edges()):
         index = None
         try:
             index = Ninv[(u, v)]
         except KeyError:
             index = Ninv[(v, u)]
-        colors[index] = c
+        
         wt = G[u][v]['weight']
-        width = 1 + (wt * w * EDGE_THICKNESS)
-        widths[index] = width
+        if wt > MIN_PHEROMONE:
+            width = 1 + (wt * w)
+            widths[index] = width
+            colors[index] = c
+        else:
+            widths[index] = 1
+            colors[index] = 'k'
         #if width > 0:
             #print u, v, width
         #unique_weights.add(wt)
@@ -223,7 +233,12 @@ def decay_graph_exp(G, decay, time=1):
     assert decay > 0
     assert decay < 1
     for u, v in G.edges_iter():
-        G[u][v]['weight'] *= (1 - decay) ** time
+        before_weight = G[u][v]['weight']
+        after_weight = before_weight * ((1 - decay) ** time)
+        if before_weight == after_weight:
+            G[u][v]['weight'] = MIN_PHEROMONE
+        else:
+            G[u][v]['weight'] = after_weight
         G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
         assert G[u][v]['weight'] >= MIN_PHEROMONE
         
@@ -236,7 +251,12 @@ def decay_edges_exp(G, nonzero_edges, decay, time=1):
     zero_edges = []
     for i in nonzero_edges:
         u, v = N[i]
-        G[u][v]['weight'] *= (1 - decay) ** time
+        before_weight = G[u][v]['weight']
+        after_weight = before_weight * ((1 - decay) ** time)
+        if before_weight == after_weight:
+            G[u][v]['weight'] = MIN_PHEROMONE
+        else:
+            G[u][v]['weight'] = after_weight
         G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
         wt = G[u][v]['weight']
         assert wt >= MIN_PHEROMONE
@@ -485,7 +505,9 @@ def max_neighbors(G, source, prev=None):
     max_neighbors = []
     for candidate in candidates:
         wt = G[source][candidate]['weight']
-        if wt > max_wt:
+        if wt <= PHEROMONE_THRESHOLD:
+            continue
+        elif wt > max_wt:
             max_wt = wt
             max_neighbors = [candidate]
         elif wt == max_wt:
@@ -559,7 +581,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         clear_queues(G)
     
         if iter == 0 and print_graph:
-            pass #color_graph(G, 'g', pheromone_thickness, "graph_before")
+            color_graph(G, 'g', pheromone_thickness, "graph_before_%s" % graph_name)
         print str(iter) + ": " + pher_str
         explore = defaultdict(bool)
         prevs = {}
@@ -587,6 +609,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             origins[ant] = origin
             destinations[ant] = next_destination(origin)
             prev, curr = init_path[choice(len(init_path))]
+            if random() <= 0.5:
+                prev, curr = curr, prev
             '''
             if origins[ant] == init_path[-1][-1]:
                 prev, curr = curr, prev
@@ -703,11 +727,17 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             
                     curr = currs[next_ant]
                     prev = prevs[next_ant]
-                    next = None
                             
-                    if at_dead_end(G, curr, prev):
+                    if curr != origins[next_ant] and (not search_mode[next_ant])\
+                                                 and at_dead_end(G, curr, prev):
                         search_mode[next_ant] = True
             
+                    exp_prob = explore_prob
+                    if search_mode[next_ant]:
+                        exp_prob = explore_prob
+                    elif curr == origins[next_ant]:
+                        exp_prob = 0
+                    
                     n = G.neighbors(curr)
                     if curr != prev and prev != None:
                         n.remove(prev)
@@ -717,10 +747,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     elif len(n) > 1:
                         deadend[next_ant] = False
                 
-                    if (prev == curr) or (curr == origins[next_ant]):
+                    if (prev == curr) or (curr == origins[next_ant] and not search_mode[next_ant]):
                         prev = None
-                    next, ex = next_edge(G, curr, explore_prob, strategy, prev, \
-                                         destinations[next_ant], search_mode[next_ant], backtrack)
+                    
+                    next, ex = next_edge(G, curr, exp_prob, strategy, prev, \
+                                         destinations[next_ant], search_mode[next_ant], \
+                                         backtrack)
+                                         
                     traversals.append((next_ant, curr, next, ex))
                     add_amt = pheromone_add
                     add_neighbor = next
@@ -889,7 +922,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             ani.save("ant_" + out_str + str(iter) + ".mp4")
         
         if print_graph:        
-            color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
+            color_graph(G, 'g', 25 * (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
                         % (out_str, max_steps, explore_prob, pheromone_decay), cost)
             print "graph colored"
     
@@ -927,9 +960,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             if strategy == 'uniform':
                 after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
             else:
-                after_paths = maximal_paths(pheromone_subgraph(G), nest, target)
+                after_paths = maximal_paths(pheromone_subgraph(G), nest, target, limit=50)
         path_probs = []
-    
+        path_lenghts = []
         useful_edges = set()
         for path in after_paths:
             path_prob = path_prob_no_explore(G, path, strategy)
@@ -937,6 +970,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 path_probs.append(path_prob)
                 edges = path_to_edges(path)
                 useful_edges.update(edges)
+                path_lengths.append(len(path))
         wasted_edge_count, wasted_edge_weight = wasted_edges(G, useful_edges)
     
         path_etr = None
@@ -944,6 +978,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             path_etr = entropy(path_probs)
         else:
             has_path = False
+        
+        mean_path_len = None
+        if len(path_lengths) > 0:
+            mean_path_len = mean(path_lengths)
         
         print "has path", has_path
         print "path entropy", path_etr
@@ -994,6 +1032,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         else:
             write_items.append('')
         write_items += [wasted_edge_count, wasted_edge_weight]
+        
+        if mean_path_len != None:
+            write_items.append(mean_path_len)
+        else:
+            write_items.append('')
     
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
@@ -1008,7 +1051,11 @@ def main():
     
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er']
+                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
+                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut', \
+                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
+                     'vert_grid1', 'vert_grid2', 'vert_grid3']
+                     
     strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz']
     decay_choices = ['linear', 'const', 'exp']
     
