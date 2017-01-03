@@ -12,6 +12,7 @@ parser.add_argument('-g', nargs='+', dest='graphs', required=True)
 parser.add_argument('-d', nargs='+', dest='decays', required=True)
 parser.add_argument('-n', dest='nsteps', type=int, required=True)
 parser.add_argument('-l', dest='steps_label', required=True)
+parser.add_argument('--sandbox', action='store_true')
 
 args = parser.parse_args()
 strategies = args.strategies
@@ -19,11 +20,15 @@ graphs = args.graphs
 decays = args.decays
 nsteps = args.nsteps
 steps_label = args.steps_label
+sandbox = args.sandbox
 
 for strategy in strategies:
     for graph in graphs:
         for decay in decays:
-            descriptor = 'repair_%s_%s_%s' % (strategy, graph, decay)
+            prog_name = 'repair'
+            if sandbox:
+                prog_name += '_sandbox'
+            descriptor = '%s_%s_%s_%s' % (prog_name, strategy, graph, decay)
             fname1 = 'ant_%s.csv' % descriptor
             fname2 = 'ant_%s%d.csv' % (descriptor, nsteps)
             scp_command = 'scp %s/%s %s' % (doritos_dir, fname2, fname1)

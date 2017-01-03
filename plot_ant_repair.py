@@ -7,7 +7,7 @@ NARROW = False
 COMPLETE = True
 import numpy.ma as ma
 
-def heat(df, group_func, title, strategy, cb_label, sequential=True):
+def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     x = df['explore'].unique()
     y = df['decay'].unique()
     z = pylab.zeros((len(y), len(x)))
@@ -18,17 +18,20 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True):
         i, j = pos % len(y), pos / len(y)
         z[i, j] = val
         pos += 1
+    if pos != len(x) * len(y):
+        print pos, len(x), len(y), len(x) * len(y)
     assert pos == len(x) * len(y)
     z = ma.masked_invalid(z)
     pylab.figure()
     map = 'Reds'
     vmin = 0
-    vmax = pylab.nanmax(pylab.absolute(z))
+    if vmax == None:
+        vmax = pylab.nanmax(pylab.absolute(z))
     if not sequential:
         map = 'coolwarm'
         vmin = -max_abs
     #print title, vmin, vmax, map
-    hm = pylab.pcolormesh(z, cmap=map, clim=(vmin, vmax))
+    hm = pylab.pcolormesh(z, cmap=map, vmin=vmin, vmax=vmax, clim=(vmin, vmax))
     cb = pylab.colorbar(hm)
     cb.set_clim(vmin, vmax)
     cb.ax.set_ylabel(cb_label)
@@ -243,7 +246,8 @@ def path_success_rate_heat(df, strategy):
             #print "path success rate"
             #describe_group(group)
         return success_rate
-    heat(df, path_success_rate, 'path_success_rate', strategy, 'proportion of times ants successfully created a path')
+    heat(df, path_success_rate, 'path_success_rate', strategy, \
+         'proportion of times ants successfully created a path', sequential=True, vmax=1)
     
 def walk_success_rate_heat(df, strategy):
     def walk_success_rate(group):
@@ -305,6 +309,9 @@ def wasted_edge_count_heat(df, strategy):
     
 def wasted_edge_weight_heat(df, strategy):
     make_heat(df, strategy, 'wasted_edge_weight', 'weight of edges not contributing to any path')
+
+def mean_path_len_heat(df, strategy):
+    make_heat(df, strategy, 'mean_path_len', 'average pheromone path length')
     
 def make_heat(df, strategy, metric, description):
     def metric_heat(group):
@@ -323,7 +330,7 @@ def main():
     columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
                'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
                'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
-               'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight']
+               'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len']
     
     df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
     
@@ -359,6 +366,8 @@ def main():
     
     #walk_pruning_heat(df, strategy)
     #chosen_walk_entropy_heat(df, strategy)
+    
+    mean_path_len_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 

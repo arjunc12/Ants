@@ -86,7 +86,10 @@ def decay_graph_exp(G, decay, seconds=1):
     decay_prop = (1 - decay) ** seconds
     for u, v in G.edges_iter():
         wt = G[u][v]['weight']
-        x = max(MIN_PHEROMONE, wt * ((1 - decay) ** seconds))
+        new_wt = wt * ((1 - decay) ** seconds)
+        if new_wt == wt:
+            new_wt = MIN_PHEROMONE
+        x = max(MIN_PHEROMONE, new_wt)
         G[u][v]['weight'] = x
 
 def get_decay_func(decay_type):
@@ -190,6 +193,8 @@ def get_likelihood_func(strategy):
         return max_edge_likelihood
     elif strategy == 'maxz':
         return maxz_edge_likelihood
+    elif strategy == 'rank':
+        return rank_likelihood
     else:
         raise ValueError('invalid strategy')
 
@@ -253,7 +258,7 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
                 
     
 if __name__ == '__main__':
-    strategy_choices = ['uniform', 'max', 'maxz']
+    strategy_choices = ['uniform', 'max', 'maxz', 'rank']
     decay_choices = ['linear', 'const', 'exp']
     
     parser = argparse.ArgumentParser()

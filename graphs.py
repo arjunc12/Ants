@@ -2,9 +2,11 @@ import networkx as nx
 import pylab
 import argparse
 from kruskal import kruskal
-from random import random, choice
+from random import random, choice, sample
 
-ER_PROB = 0.03
+ER_PROB = 0.05
+
+BARABASI_NEIGHBORS = 3
 
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
@@ -314,7 +316,7 @@ def full_grid():
     G.remove_edge((4, 5), (5, 5))
     
     G.graph['init_path'] = []
-    for i in range(10):
+    for i in xrange(10):
         if i != 4:
             G.graph['init_path'].append(((i, 5), (i + 1, 5)))
 
@@ -334,6 +336,71 @@ def full_grid_nocut():
 
     #init_graph(G)
     
+    return G
+    
+def modified_grid():
+    G = full_grid()
+    G.graph['name'] = 'mod_grid'
+    
+    for i in xrange(1, 10):
+        G.remove_edge((i, 5), (i, 6))
+        G.remove_edge((i, 5), (i, 4))
+        
+    return G
+    
+def modified_grid_n(n):
+    assert 0 < n < 4
+    G = full_grid()
+    G.graph['name'] = 'mod_grid%d' % n
+    
+    for i in xrange(5 - n, 5):
+        G.remove_edge((i, 5), (i, 6))
+        G.remove_edge((i, 5), (i, 4))
+        
+    for i in xrange(5, 5 + n):
+        G.remove_edge((i, 5), (i, 6))
+        G.remove_edge((i, 5), (i, 4))
+        
+    return G
+    
+def modified_grid_1():
+    return modified_grid_n(1)
+    
+def modified_grid_2():
+    return modified_grid_n(2)
+    
+def modified_grid_2():
+    return modified_grid_n(2)
+    
+def modified_grid_3():
+    return modified_grid_n(3)
+    
+def modified_grid_nocut():
+    G = full_grid_nocut()
+    G.graph['name'] = 'mod_grid_nocut'
+    
+    for i in xrange(1, 10):
+        G.remove_edge((i, 5), (i, 6))
+        G.remove_edge((i, 5), (i, 4))
+        
+    return G
+    
+def half_grid():
+    G = full_grid()
+    G.graph['name'] = 'half_grid'
+    
+    for i in xrange(1, 10):
+        for j in xrange(10):
+            G.remove_edge((i, j), (i, j + 1))
+    return G
+    
+def half_grid_nocut():
+    G = full_grid_nocut()
+    G.graph['name'] = 'half_grid_nocut'
+    
+    for i in xrange(1, 10):
+        for j in xrange(10):
+            G.remove_edge((i, j), (i, j + 1))
     return G
 
 def er_network(p=0.5):
@@ -359,6 +426,9 @@ def er_network(p=0.5):
                 else:
                     if G.has_edge(u, v):
                         G.remove_edge(u, v)
+                        
+    G.graph['init_path'] = []
+    '''
     if not nx.has_path(G, nest, target):
         return None
     short_path = nx.shortest_path(G, nest, target)
@@ -367,7 +437,7 @@ def er_network(p=0.5):
     #print short_path
     idx = choice(range(1, len(short_path) - 1))
     #print idx
-    G.graph['init_path'] = []
+    
     G.remove_edge(short_path[idx], short_path[idx + 1])
     for i in xrange(idx):
         G.graph['init_path'].append((short_path[i], short_path[i + 1]))
@@ -376,6 +446,21 @@ def er_network(p=0.5):
     #print P
         
     if not nx.has_path(G, nest, target):
+        return None
+    '''
+    
+    for i in xrange(10):
+        if i != 4:
+            G.add_edge((i, 5), (i + 1, 5))
+            G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+            
+    if G.has_edge((4, 5), (5, 5)):
+        G.remove_edge((4, 5), (5, 5))
+            
+    #print nx.shortest_path_length(G, (4, 5), (5, 5))
+    if not nx.has_path(G, nest, target):
+        return None
+    elif nx.shortest_path_length(G, (4, 5), (5, 5)) > 8:
         return None
             
     return G
@@ -409,6 +494,97 @@ def grid_span3():
             grid.remove_edge((10, i), (10, i + 1))
     return grid
 
+def barabasi_albert():
+    G = nx.barabasi_albert_graph(121, BARABASI_NEIGHBORS)
+    G = nx.convert_node_labels_to_integers(G)
+    mapping = {}
+    for node in G.nodes():
+        i = node / 11
+        j = node % 11
+        mapping[node] = (i, j)
+    nx.relabel_nodes(G, mapping, copy=False)
+    G.graph['name'] = 'barabasi'
+    nests = [(0, 5), (10, 5)]
+    nest, target = nests
+    G.graph['nests'] = nests
+    G.graph['init_path'] = []
+    
+    '''
+    if not nx.has_path(G, nest, target):
+        print "no barabasi path"
+        return None
+    short_path = nx.shortest_path(G, nest, target)
+    if len(short_path) <= 3:
+        print "barabasi path too short"
+        return None
+    #print short_path
+    idx = choice(range(1, len(short_path) - 1))
+    #print idx
+    G.remove_edge(short_path[idx], short_path[idx + 1])
+    for i in xrange(idx):
+        G.graph['init_path'].append((short_path[i], short_path[i + 1]))
+    for i in xrange(idx + 1, len(short_path) - 1):
+        G.graph['init_path'].append((short_path[i], short_path[i + 1]))
+    #print P
+        
+    if not nx.has_path(G, nest, target):
+        print "now no barabasi path"
+        return None
+    '''
+    
+    for i in xrange(10):
+        if i != 4:
+            G.add_edge((i, 5), (i + 1, 5))
+            G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+            
+    if G.has_edge((4, 5), (5, 5)):
+        G.remove_edge((4, 5), (5, 5))
+            
+    #print nx.shortest_path_length(G, (4, 5), (5, 5))
+    if not nx.has_path(G, nest, target):
+        return None
+    elif nx.shortest_path_length(G, (4, 5), (5, 5)) > 8:
+        return None
+            
+    return G
+    
+def vertical_grid():
+    G = full_grid()
+    G.graph['name'] = 'vert_grid'
+    
+    for i in xrange(1, 10):
+        if i != 5:
+            G.remove_edge((4, i), (5, i))
+            
+    return G
+    
+def vertical_grid_n(n):
+    assert 0 < n < 4
+    G = full_grid()
+    G.graph['name'] = 'vert_grid%d' % n
+    
+    for i in xrange(5 - n, 5):
+        G.remove_edge((4, i), (5, i))
+        #G.remove_edge((i, 5), (i, 4))
+        
+    for i in xrange(6, 6+ n):
+        G.remove_edge((4, i), (5, i))
+        #G.remove_edge((i, 5), (i, 4))
+        
+    return G
+    
+def vertical_grid_1():
+    return vertical_grid_n(1)
+    
+def vertical_grid_2():
+    return vertical_grid_n(2)
+    
+def vertical_grid_2():
+    return vertical_grid_n(2)
+    
+def vertical_grid_3():
+    return vertical_grid_n(3)
+
 def get_graph(graph_name):
     G = None
     if graph_name == 'fig1':
@@ -417,8 +593,12 @@ def get_graph(graph_name):
         G = simple_network()
     elif graph_name == 'full':
         G = full_grid()
+    elif graph_name == 'half_grid':
+        G = half_grid()
     elif graph_name == 'full_nocut':
         G = full_grid_nocut()
+    elif graph_name == 'half_grid_nocut':
+        G = half_grid_nocut()
     elif graph_name == 'simple_nocut':
         G = simple_network_nocut()
     elif graph_name == 'small':
@@ -437,12 +617,37 @@ def get_graph(graph_name):
         G = grid_span3()
     elif graph_name == 'er':
         G = er_network(ER_PROB)
+    elif graph_name == 'mod_grid':
+        G = modified_grid()
+    elif graph_name == 'mod_grid1':
+        G = modified_grid_1()
+    elif graph_name == 'mod_grid2':
+        G = modified_grid_2()
+    elif graph_name == 'mod_grid3':
+        G = modified_grid_3()    
+    elif graph_name == 'mod_grid_nocut':
+        G = modified_grid_nocut()
+    elif graph_name == 'barabasi':
+        G = barabasi_albert()
+    elif graph_name == 'vert_grid':
+        G = vertical_grid()
+    elif graph_name == 'vert_grid1':
+        G = vertical_grid_1()
+    elif graph_name == 'vert_grid2':
+        G = vertical_grid_2()
+    elif graph_name == 'vert_grid3':
+        G = vertical_grid_3()
+    else:
+        raise ValueError("invalid graph name")
     return G
     
 def main():
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er']
+                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
+                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut', \
+                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
+                     'vert_grid1', 'vert_grid2', 'vert_grid3']
     parser = argparse.ArgumentParser()
     parser.add_argument("graphs", nargs='+', choices=graph_choices)
     
@@ -452,10 +657,14 @@ def main():
     for graph in graphs:
         G = get_graph(graph)
         if G == None:
+            print "no graph"
             continue
         path = G.graph['init_path']
-        print path
         nests = G.graph['nests']
+        for n1 in nests:
+            for n2 in nests:
+                if G.has_edge(n1, n2):
+                    G.remove_edge(n1, n2)
         pos = {}
         node_sizes = []
         node_colors = []

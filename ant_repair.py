@@ -23,6 +23,7 @@ from random import randint
 SEED_MAX = 4294967295
 SEED_VAL = randint(0, SEED_MAX)
 #seed(SEED_VAL)
+#seed(3294967295)
 
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
@@ -55,6 +56,8 @@ DRAW_AND_QUIT = False
 
 DEBUG = False
 
+CHECK_EDGE_QUEUES = False
+
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
 # PARAMETERS:
@@ -71,6 +74,10 @@ DEBUG = False
 def clear_queues(G):
     for u in G.nodes_iter():
         G.node[u]['queue'] = []
+    
+    for u, v in G.edges():
+        G[u][v]['forwards_queue'] = []
+        G[u][v]['backwards_queue'] = []
 
 def init_graph(G):
     '''
@@ -103,10 +110,10 @@ def init_graph(G):
     for i, (u,v) in enumerate(sorted(G.edges())):
         G[u][v]['weight'] = MIN_PHEROMONE
         
-        G[u][v]['fowards'] = sorted((u, v))
+        G[u][v]['forwards'] = tuple(sorted((u, v)))
         G[u][v]['forwards_queue'] = []
         
-        G[u][v]['backwards'] = sorted((u, v))[::-1]
+        G[u][v]['backwards'] = tuple(sorted((u, v))[::-1])
         G[u][v]['backwards_queue'] = []
         
         Ninv[(u, v)] = i
@@ -144,21 +151,16 @@ def color_graph(G, c, w, figname, cost=None):
     '''
     colors, widths = edge_color[:], edge_width[:]
     #unique_weights = set()
-    for u, v in sorted(G.edges()):
+    for u, v in G.edges():
         index = None
         try:
             index = Ninv[(u, v)]
         except KeyError:
             index = Ninv[(v, u)]
-        
+        colors[index] = c
         wt = G[u][v]['weight']
-        if wt > MIN_PHEROMONE:
-            width = 1 + (wt * w)
-            widths[index] = width
-            colors[index] = c
-        else:
-            widths[index] = 1
-            colors[index] = 'k'
+        width = 1 + (wt * w * EDGE_THICKNESS)
+        widths[index] = width
         #if width > 0:
             #print u, v, width
         #unique_weights.add(wt)
@@ -534,11 +536,30 @@ def maximal_paths(G, source, dest, limit=None):
                 else:
                     queue.append(new_path)
     return max_paths
+
+def print_queues(G):
+    for u in sorted(G.nodes()):
+        if len(G.node[u]['queue']) > 0:
+            print u, G.node[u]['queue']
+        
+    for u, v in sorted(G.edges()):
+        if len(G[u][v]['forwards_queue']) + len(G[u][v]['backwards_queue']) > 0:
+            print u, v
+        if len(G[u][v]['forwards_queue']) > 0:
+            print 'forwards', G[u][v]['forwards_queue']
+        if len(G[u][v]['backwards_queue']) > 0:
+            print 'backwards', G[u][v]['backwards_queue']
+
+def check_path(G, path):
+    for i in xrange(len(path) - 1):
+        u, v = path[i], path[i + 1]
+        if u != v:
+            assert G.has_edge(u, v)
     
 def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
             nframes=200, video2=False, cost_plot=False, backtrack=False, \
-            decay_type='linear', queue_lim=1):
+            decay_type='linear', node_queue_lim=1, edge_queue_lim=1):
     """ """
     
     graph_name = G.graph['name']
@@ -581,10 +602,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         clear_queues(G)
     
         if iter == 0 and print_graph:
-            color_graph(G, 'g', pheromone_thickness, "graph_before_%s" % graph_name)
+            pass #color_graph(G, 'g', pheromone_thickness, "graph_before")
         print str(iter) + ": " + pher_str
         explore = defaultdict(bool)
         prevs = {}
+        prevs2 = {}
+        prevs3 = {}
         currs = {}
         paths = {}
         walks = {}
@@ -622,6 +645,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 origins[ant], destinations[ant] = destinations[ant], origins[ant]
             walks[ant] = [prev, curr]
             prevs[ant] = prev
+            prevs2[ant] = None
+            prevs3[ant] = None
             currs[ant] = curr
             deadend[ant] = False
             queue_ant(G, curr, ant)
@@ -651,7 +676,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         critical_edges_file = None
         if graph_name == 'simple':
             critical_edges_file = open('critical_edges.csv', 'a')
-        while steps <= max_steps:            
+        while steps <= max_steps:   
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
             costs.append(cost)
@@ -686,12 +711,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             added_edges = []
         
             updated_paths_ants = set()
-        
-            for queued_node in queued_nodes:
-                queue = G2.node[queued_node]['queue']
-                assert len(queue) > 0
             
-                qlim = queue_lim
+        
+            #for queued_node in queued_nodes:
+            for queued_node in G2.nodes():
+                queue = G2.node[queued_node]['queue']
+                #queue = G2.node[node]['queue']
+                #assert len(queue) > 0
+            
+                qlim = node_queue_lim
                 if qlim == -1:
                     qlim = len(queue)
             
@@ -699,9 +727,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 q = 0
                 while q < len(queue) and len(next_ants) < qlim:
                     if queue[q] not in moved_ants:
-                        next_ants.append(queue[q])
+                        q_ant = queue[q]
+                        next_ants.append(q_ant)
                     q += 1
-            
+                
             
                 for next_ant in next_ants:
                     queue.remove(next_ant)
@@ -709,10 +738,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             
                 for queued_ant in queue:
                     if queued_ant not in moved_ants:
-                        assert queued_ant not in updated_paths_ants
+                        #assert queued_ant not in updated_paths_ants
                         updated_paths_ants.add(queued_ant)
                         moved_ants.add(queued_ant)
                         paths[queued_ant].append(queued_node)
+                        check_path(G, paths[queued_ant])
                         walks[queued_ant].append(queued_node)
                         path = paths[queued_ant]
                         u, v = path[-1], path[-2]
@@ -727,17 +757,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             
                     curr = currs[next_ant]
                     prev = prevs[next_ant]
-                            
+                    
+
                     if curr != origins[next_ant] and (not search_mode[next_ant])\
                                                  and at_dead_end(G, curr, prev):
                         search_mode[next_ant] = True
             
-                    exp_prob = explore_prob
-                    if search_mode[next_ant]:
-                        exp_prob = explore_prob
-                    elif curr == origins[next_ant]:
-                        exp_prob = 0
-                    
                     n = G.neighbors(curr)
                     if curr != prev and prev != None:
                         n.remove(prev)
@@ -749,78 +774,129 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 
                     if (prev == curr) or (curr == origins[next_ant] and not search_mode[next_ant]):
                         prev = None
+
+                    
+                    exp_prob = explore_prob
+                    if search_mode[next_ant]:
+                        exp_prob = explore_prob
+                    elif curr == origins[next_ant]:
+                        exp_prob = 0
+                    
                     
                     next, ex = next_edge(G, curr, exp_prob, strategy, prev, \
-                                         destinations[next_ant], search_mode[next_ant], \
+                                         destinations[next_ant], search_mode[next_ant],\
                                          backtrack)
-                                         
-                    traversals.append((next_ant, curr, next, ex))
-                    add_amt = pheromone_add
-                    add_neighbor = next
+                                                                   
                     if ex:
-                        add_amt *= 2
-                        next = curr
-                    queue_ant(G2, next, next_ant)
-                    new_queue_nodes.add(next)
-                    empty_nodes.discard(next)
-                    prevs[next_ant] = curr
-                    currs[next_ant] = next
-                    if not deadend[next_ant]:
-                        G2[curr][add_neighbor]['weight'] += add_amt
-                        if decay_type == 'linear':
-                            G2[curr][add_neighbor]['units'].append(add_amt)
-                        nonzero_edges.add(Ninv[(curr, add_neighbor)])
-                    added_edges.append((curr, add_neighbor))
-                
-                    assert next_ant not in updated_paths_ants
-                    paths[next_ant].append(next)
-                    walks[next_ant].append(next)
-                    path = paths[next_ant]
-                    u, v = path[-1], path[-2]
-                    if u != v:
-                        assert G.has_edge(u, v)
-                    updated_paths_ants.add(next_ant)
-            
-            
-                    if next == destinations[next_ant]:
-                        orig, dest = origins[next_ant], destinations[next_ant]
-                        origins[next_ant], destinations[next_ant] = dest, orig
-                        search_mode[next_ant] = False
-                
-                        walk = walks[next_ant]
-                        chosen_walk_counts[tuple(walk)] += 1
-                
-                        path = walk_to_path(walk)
-                        start = path[0]
-                        end = path[-1]
-                        idx1 = nests.index(orig)
-                        idx2 = nests.index(dest)
-                        if idx2 > idx1:
-                            path = path[::-1]
-                        path_counts[tuple(path)] += 1
-                
-                        curr_entropy = entropy(path_counts.values())
-                        curr_walk_entropy = entropy(chosen_walk_counts.values())
-                
-                        if max_entropy == None:
-                            max_entropy = curr_entropy
+                        queue_ant(G2, curr, next_ant)
+                        if not deadend[next_ant]:
+                            G2[curr][next]['weight'] += 2 * pheromone_add
+                            if decay_type == 'linear':
+                                G2[curr][next]['units'].append(2 * pheromone_add)
+                            nonzero_edges.add(Ninv[(curr, next)])
+                        added_edges.append((curr, next))
+                        new_queue_nodes.add(curr)
+                        empty_nodes.discard(curr)
+                        prevs[next_ant] = curr
+                        currs[next_ant] = curr
+                        traversals.append((next_ant, curr, next, True))
+                        paths[next_ant].append(curr)
+                        walks[next_ant].append(curr)
+                    else:
+                        if (curr, next) == G[curr][next]['forwards']:
+                            G2[curr][next]['forwards_queue'].append(next_ant)
+                            if next_ant == 44:
+                                pass #print "ant 44", curr, "curr", next, "next", "forwards queue", G2[curr][next]['forwards_queue']
                         else:
-                            max_entropy = max(max_entropy, curr_entropy)
+                            G2[curr][next]['backwards_queue'].append(next_ant)
+                            if next_ant == 44:
+                                pass #print "ant 44", curr, "curr", next, "next", "backwards queue", G2[curr][next]['backwards_queue']
+                
                     
-                        if max_walk_entropy == None:
-                            max_walk_entropy = curr_walk_entropy
-                        else:
-                            max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
-                
-                        walks[next_ant] = [origins[next_ant]]
-                
-                    elif next == origins[next_ant]:
-                        search_mode[next_ant] = True
+            for u, v in G2.edges():
+                for direction in ['forwards', 'backwards']:
+                    i = 0
+                    curr, next = G2[u][v][direction]
+                    edge_queue = G2[u][v][direction + '_queue']
+                    
+                    eqlim = edge_queue_lim
+                    if edge_queue_lim == -1:
+                        eqlim = len(edge_queue)
+                    if direction == 'backwards':
+                        pass #curr, next = next, curr
+                    while len(edge_queue) > 0 and i < eqlim:
+                        next_ant = edge_queue.pop(0)
+                        i += 1                     
+                        traversals.append((next_ant, curr, next, False))
+                        queue_ant(G2, next, next_ant)
+                        new_queue_nodes.add(next)
+                        empty_nodes.discard(next)
+                        prevs[next_ant] = curr
+                        currs[next_ant] = next
+                        if not deadend[next_ant]:
+                            G2[curr][next]['weight'] += pheromone_add
+                            if decay_type == 'linear':
+                                G2[curr][add_neighbor]['units'].append(pheromone_add)
+                            nonzero_edges.add(Ninv[(curr, next)])
+                        added_edges.append((curr, next))
+                        
+                        paths[next_ant].append(next)
+                        walks[next_ant].append(next)
+                        path = paths[next_ant]
+                        u, v = path[-1], path[-2]
+                        if u != v:
+                            if not G.has_edge(u, v):
+                                print u, v
+                            assert G.has_edge(u, v)
+                        updated_paths_ants.add(next_ant)
         
+        
+                        if next == destinations[next_ant]:
+                            orig, dest = origins[next_ant], destinations[next_ant]
+                            origins[next_ant], destinations[next_ant] = dest, orig
+                            search_mode[next_ant] = False
+            
+                            walk = walks[next_ant]
+                            chosen_walk_counts[tuple(walk)] += 1
+            
+                            path = walk_to_path(walk)
+                            start = path[0]
+                            end = path[-1]
+                            idx1 = nests.index(orig)
+                            idx2 = nests.index(dest)
+                            if idx2 > idx1:
+                                path = path[::-1]
+                            path_counts[tuple(path)] += 1
+            
+                            curr_entropy = entropy(path_counts.values())
+                            curr_walk_entropy = entropy(chosen_walk_counts.values())
+            
+                            if max_entropy == None:
+                                max_entropy = curr_entropy
+                            else:
+                                max_entropy = max(max_entropy, curr_entropy)
+                
+                            if max_walk_entropy == None:
+                                max_walk_entropy = curr_walk_entropy
+                            else:
+                                max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+            
+                            walks[next_ant] = [origins[next_ant]]
+            
+                        elif next == origins[next_ant]:
+                            search_mode[next_ant] = True
+                            
+                    for j in xrange(len(edge_queue)):
+                        next_ant = edge_queue[j]
+                        paths[next_ant].append(curr)
+                        check_path(G, paths[next_ant])
+                        walks[next_ant].append(curr)
+            
+            
             queued_nodes.difference_update(empty_nodes)
             queued_nodes.update(new_queue_nodes)
         
-            assert len(updated_paths_ants) == num_ants
+            #assert len(updated_paths_ants) == num_ants
         
             decay_func = None
             if decay_type == 'linear':
@@ -885,7 +961,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 index = Minv[node]
                 n_colors[index] = 'k'
                 n_sizes[index] += ant_thickness
-                        
+                                        
             #if frame > 0:
             #    frame -= 1
             max_units = max_weight / pheromone_add
@@ -922,7 +998,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             ani.save("ant_" + out_str + str(iter) + ".mp4")
         
         if print_graph:        
-            color_graph(G, 'g', 25 * (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
+            color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
                         % (out_str, max_steps, explore_prob, pheromone_decay), cost)
             print "graph colored"
     
@@ -960,10 +1036,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             if strategy == 'uniform':
                 after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
             else:
-                after_paths = maximal_paths(pheromone_subgraph(G), nest, target, limit=50)
+                after_paths = maximal_paths(pheromone_subgraph(G), nest, target)
         path_probs = []
-        path_lenghts = []
+    
         useful_edges = set()
+        path_lenghts = []
         for path in after_paths:
             path_prob = path_prob_no_explore(G, path, strategy)
             if path_prob > 0:
@@ -978,7 +1055,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             path_etr = entropy(path_probs)
         else:
             has_path = False
-        
+            
         mean_path_len = None
         if len(path_lengths) > 0:
             mean_path_len = mean(path_lengths)
@@ -1040,7 +1117,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
     
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
-        data_file.write(line)    
+        data_file.write(line)
 
 def main():
     start = time.time()
@@ -1052,11 +1129,10 @@ def main():
     graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
                      'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
-                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut', \
-                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
+                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut'\
+                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'vert_grid', 'barabasi', \
                      'vert_grid1', 'vert_grid2', 'vert_grid3']
-                     
-    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz']
+    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank']
     decay_choices = ['linear', 'const', 'exp']
     
 
@@ -1089,7 +1165,8 @@ def main():
                         choices=decay_choices)
     parser.add_argument("-t", "--threshold", dest="threshold", type=float, default=0, \
                         help="minimum detectable pheromone threshold")
-    parser.add_argument('-ql', '--queue_limit', type=int, dest='queue_lim', default=1)
+    parser.add_argument('-nql', '--node_queue_limit', type=int, dest='node_queue_lim', default=1)
+    parser.add_argument('-eql', '--edge_queue_limit', type=int, dest='edge_queue_lim', default=1)
 
     args = parser.parse_args()
     # ===============================================================
@@ -1110,13 +1187,22 @@ def main():
     cost_plot = args.cost_plot
     backtrack = args.backtrack
     decay_type = args.decay_type
-    queue_lim = args.queue_lim
+    node_queue_lim = args.node_queue_lim
+    edge_queue_lim = args.edge_queue_lim
 
     # Build network.
     G = get_graph(graph)
     if G == None:
         return
     init_graph(G)
+    
+    if CHECK_EDGE_QUEUES:
+        for u, v in sorted(G.edges()):
+            print "------------"
+            print u, v
+            print u, v, G[u][v]['forwards'], G[u][v]['backwards']
+            print v, u, G[v][u]['forwards'], G[v][u]['backwards']
+        return None
     
     if DRAW_AND_QUIT:
         nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=edge_color, \
@@ -1132,7 +1218,7 @@ def main():
     # Run recovery algorithm.
     repair(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps,\
                num_iters, print_graph, video, frames, video2, cost_plot, backtrack, \
-               decay_type, queue_lim)
+               decay_type, node_queue_lim, edge_queue_lim)
     
     # =========================== Finish ============================
     logging.info("Time to run: %.3f (mins)" %((time.time()-start) / 60))
