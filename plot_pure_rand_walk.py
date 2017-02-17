@@ -6,6 +6,7 @@ from sys import argv
 
 graphs = argv[1:]
 for graph in graphs:
+    print graph
     df = pd.read_csv('pure_rand_walk_%s.csv' % graph, header=None, \
                      names = ['graph', 'steps', 'path'])
     #print max(df['steps'])
@@ -21,6 +22,8 @@ for graph in graphs:
     pylab.hist(df['steps'])
     pylab.title("N = %d, mean = %0.2f, median = %d, entropy=%0.2f" % \
                 (N, pylab.mean(df['steps']), pylab.median(df['steps']), etr))
+    print 'mean', pylab.mean(df['steps'])
+    print 'std', pylab.std(df['steps'], ddof=1)
     pylab.xlabel('Steps to reach target from nest')
     pylab.ylabel('Count')
-    pylab.savefig('pure_rand_walk_%s.png' % graph, format='png')
+    pylab.savefig('pure_rand_walk_%s.pdf' % graph, format='pdf')

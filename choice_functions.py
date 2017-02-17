@@ -125,7 +125,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         return dest, False
     if candidates == [prev]:
         return prev, False
-    elif type(prev) == list and candidates == prev:
+    elif type(prev) == list and sorted(candidates) == sorted(prev):
         next = choice(len(prev))
         next = prev[next]
         return next, False
@@ -136,6 +136,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
             #assert prev in candidates
             if node in candidates:
                 candidates.remove(node)
+    assert len(candidates) > 0
     choice_func = None
     if (strategy == 'uniform') or (strategy in ['hybrid', 'hybridz'] and search):
         choice_func = next_edge_uniform
@@ -202,8 +203,7 @@ def max_edge_likelihood(G, source, dest, explore, prev=None):
     if explored == 0:
         assert unexplored == len(neighbors)
         assert MIN_PHEROMONE <= chosen_wt <= MIN_DETECTABLE_PHEROMONE
-        #return 1.0 / unexplored
-        return 1 - explore
+        return 1.0 / unexplored
         
     if chosen_wt == max_wt:
         prob = 1.0 / explored
@@ -239,8 +239,7 @@ def maxz_edge_likelihood(G, source, dest, explore, prev=None):
         assert max_wt > MIN_DETECTABLE_PHEROMONE
         assert chosen_wt == max_wt
         prob = 1.0 / len(max_neighbors)
-        if len(zero_neighbors) > 0:
-            prob *= (1 - explore)
+        prob *= (1 - explore)
         return prob
     elif dest in zero_neighbors:
         assert MIN_PHEROMONE <= chosen_wt <= MIN_DETECTABLE_PHEROMONE

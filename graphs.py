@@ -3,10 +3,25 @@ import pylab
 import argparse
 from kruskal import kruskal
 from random import random, choice, sample
+import os
 
-ER_PROB = 0.05
+ER_PROB = 0.3 / 3
 
-BARABASI_NEIGHBORS = 3
+BARABASI_NEIGHBORS = 4
+
+#ROAD_FILE_PATH = 'roadNet-CA.txt'
+
+MAX_ROAD_NODES = 121
+
+MAX_ROAD_ATTEMPTS = 50
+
+GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
+                     'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
+                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
+                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut', \
+                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
+                     'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', 'txroad',
+                     'subelji', 'minimal', 'grid_span_nocut']
 
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
@@ -165,6 +180,19 @@ def simple_network_nocut():
         G.graph['init_path'].append(((j, 3), (j + 1, 3)))
                                             
     #init_graph(G)
+        
+    return G
+
+def minimal_network():
+    G = simple_network()
+    G.graph['name'] = 'minimal'
+    
+    for i in xrange(3):
+        G.remove_edge((1, i), (1, i + 1))
+        G.remove_edge((6, i), (6, i + 1))
+        
+    for j in xrange(1, 6):
+        G.remove_edge((j, 0), (j + 1, 0))
         
     return G
 
@@ -478,6 +506,15 @@ def grid_span():
             grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
     return grid
     
+def grid_span_nocut():
+    G = grid_span()
+    G.add_edge((4, 5), (5, 5))
+    G.graph['name'] = 'grid_span_nocut'
+    G.graph['init_path'] = []
+    for i in range(10):
+        G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+    return G
+    
 def grid_span2():
     grid = grid_span()
     grid.graph['name'] = 'grid_span2'
@@ -585,6 +622,130 @@ def vertical_grid_2():
 def vertical_grid_3():
     return vertical_grid_n(3)
 
+def check_road_path(road_graph, u, v):
+    sp = nx.shortest_path(road_graph, u, v)
+    if len(sp) >= 20:
+        print "path too long"
+        return None
+    print "shortest path length", len(sp)
+    print "shortest path", sp
+    for i in xrange(1, len(sp) - 1):
+        v1, v2 = sp[i], sp[i + 1]
+        print v1, v2
+        road_graph.remove_edge(v1, v2)
+        if nx.has_path(road_graph, v1, v2):
+            fp = nx.shortest_path(road_graph, v1, v2)
+            if 3 < len(fp) < 8:
+                print "fix path length", len(fp)
+                print "fix path", fp
+        else:
+            pass
+        if nx.has_path(road_graph, u, v):
+            sp2 = nx.shortest_path(road_graph, u, v)
+            if len(sp2) <= 20 and u in sp2 and v in sp2:
+               print "new shortest path length", len(sp2)
+               print "new shortest path", sp2
+        else:
+            pass
+        road_graph.add_edge(v1, v2)
+
+def set_init_road_path(road_graph, nest1, nest2, v1, v2):
+    road_graph.graph['nests'] = [nest1, nest2]
+    sp = nx.shortest_path(road_graph, nest1, nest2)
+    road_graph.remove_edge(v1, v2)
+    road_graph.graph['init_path'] = []
+    for i in xrange(len(sp) - 1):
+        u, v = sp[i], sp[i + 1]
+        if not (u == v1 and v == v2):
+           road_graph.graph['init_path'].append((u, v))
+
+
+def road(road_file_path, comments='#'):
+    G = nx.read_edgelist(road_file_path, comments=comments, nodetype=int)
+    nodes = []
+    start_node = choice(G.nodes())
+    queue = [start_node]
+    added_nodes = 1
+    seen = set()
+    while added_nodes < MAX_ROAD_NODES and len(queue) > 0:
+        curr = queue.pop()
+        if curr in seen:
+            continue
+        else:
+            nodes.append(curr)
+            queue += G.neighbors(curr)
+            seen.add(curr)
+            added_nodes += 1
+    
+    G = G.subgraph(nodes)
+ 
+    mapping = {}
+    for i, node in enumerate(G.nodes()):
+        x = i / 12
+        y = i % 12
+        mapping[node] = (x, y)
+    #nx.relabel_nodes(G, mapping, copy=False)
+    
+    mapping2 = {}
+    for i, node in enumerate(sorted(G.nodes())):
+        mapping2[node] = i
+    #nx.relabel_nodes(G, mapping2, copy=False)
+    
+    G.graph['name'] = 'road'
+    
+    done = False
+    for i in xrange(MAX_ROAD_ATTEMPTS):
+        n1, n2 = sample(G.nodes(), 2)
+        if not nx.has_path(G, n1, n2):
+            continue
+        sp = nx.shortest_path(G, n1, n2)
+        if len(sp) < 8 or len(sp) > 30:
+            continue
+        index = choice(range(len(sp) / 4, 3 * len(sp) / 4))
+        u, v = sp[index], sp[index + 1]
+        G.remove_edge(u, v)
+        if not nx.has_path(G, u, v):
+            G.add_edge(u, v)
+            continue
+        fp = nx.shortest_path(G, u, v)
+        if len(fp) > 8:
+            G.add_edge(u, v)
+            continue
+        #print n1, n2, u, v, sp, fp
+        G.add_edge(u, v)
+        set_init_road_path(G, n1, n2, u, v)
+        return G
+
+    #set_init_road_path(G, (10, 4), (0, 0), (4, 6), (4, 9))
+    #set_init_road_path(G, 490, 316, 360, 361)
+    #print G.graph['init_path']
+
+    #return G
+
+def caroad():
+    G = road('roadNet-CA.txt')
+    if G != None:
+        G.graph['name'] = 'caroad'
+    return G
+
+def paroad():
+    G = road('roadNet-PA.txt')
+    if G != None:
+        G.graph['name'] = 'paroad'
+    return G
+
+def txroad():
+    G = road('roadNet-TX.txt')
+    if G != None:
+        G.graph['name'] = 'txroad'
+    return G
+
+def subelji_road():
+    G = road('out.subelj_euroroad_euroroad', comments='%')
+    if G != None:
+        G.graph['name'] = 'subelji'
+    return G
+
 def get_graph(graph_name):
     G = None
     if graph_name == 'fig1':
@@ -611,6 +772,8 @@ def get_graph(graph_name):
         G = medium_network_nocut()
     elif graph_name == 'grid_span':
         G = grid_span()
+    elif graph_name == 'grid_span_nocut':
+        G = grid_span_nocut()
     elif graph_name == 'grid_span2':
         G = grid_span2()
     elif graph_name == 'grid_span3':
@@ -637,19 +800,23 @@ def get_graph(graph_name):
         G = vertical_grid_2()
     elif graph_name == 'vert_grid3':
         G = vertical_grid_3()
+    elif graph_name == 'caroad':
+        G = caroad()
+    elif graph_name == 'paroad':
+        G = paroad()
+    elif graph_name == 'txroad':
+        G = txroad()
+    elif graph_name == 'subelji':
+        G = subelji_road()
+    elif graph_name == 'minimal':
+        G = minimal_network()
     else:
         raise ValueError("invalid graph name")
     return G
     
 def main():
-    graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
-                     'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
-                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut', \
-                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
-                     'vert_grid1', 'vert_grid2', 'vert_grid3']
     parser = argparse.ArgumentParser()
-    parser.add_argument("graphs", nargs='+', choices=graph_choices)
+    parser.add_argument("graphs", nargs='+', choices=GRAPH_CHOICES)
     
     args = parser.parse_args()
     graphs = args.graphs
@@ -672,10 +839,10 @@ def main():
             pos[node] = (node[0], node[1])
             if node in nests:
                 node_sizes.append(100)
-                node_colors.append('m')
+                node_colors.append('r')
             else:
                 node_sizes.append(10)
-                node_colors.append('r')
+                node_colors.append('k')
         edge_widths = []
         edge_colors = []
         for u, v in sorted(G.edges()):
@@ -692,6 +859,7 @@ def main():
         #print "show"
         #PP.show()
         pylab.savefig("%s.png" % G.graph['name'], format='png')
+        os.system('convert %s.png %s.pdf' % (G.graph['name'], G.graph['name']))
         pylab.close()
     
     

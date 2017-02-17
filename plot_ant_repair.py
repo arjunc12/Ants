@@ -6,6 +6,10 @@ DEBUG = False
 NARROW = False
 COMPLETE = True
 import numpy.ma as ma
+import os
+
+MLE_EXPLORE = 0.3
+MLE_DECAY = 0.01
 
 def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     x = df['explore'].unique()
@@ -15,6 +19,8 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     pos = 0
     for name, group in grouped:
         val = group_func(group)
+        if name == (MLE_EXPLORE, MLE_DECAY):
+            print title, val
         i, j = pos % len(y), pos / len(y)
         z[i, j] = val
         pos += 1
@@ -27,113 +33,28 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     vmin = 0
     if vmax == None:
         vmax = pylab.nanmax(pylab.absolute(z))
+    if vmax == vmin:
+        vmax = vmin + 0.01
     if not sequential:
         map = 'coolwarm'
         vmin = -max_abs
     #print title, vmin, vmax, map
     hm = pylab.pcolormesh(z, cmap=map, vmin=vmin, vmax=vmax, clim=(vmin, vmax))
+    curr_ax = pylab.gca()
+    curr_ax.axis('tight')
     cb = pylab.colorbar(hm)
     cb.set_clim(vmin, vmax)
-    cb.ax.set_ylabel(cb_label)
+    cb.ax.set_ylabel(cb_label, fontsize=20)
     cb.ax.set_ylim(bottom=0)
     pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
     labeltop='off', labelbottom='off', labelleft='off', labelright='off')
-    pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)))
-    pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)))
+    pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)), fontsize=20)
+    pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)), fontsize=20)
     pylab.savefig("%s_%s.png" % (title, strategy), format="png", transparent=True, bbox_inches='tight')
+    os.system('convert %s_%s.png %s_%s.pdf' % (title, strategy, title, strategy))
 
 def describe_group(group):
     print pylab.mean(group['explore']), pylab.mean(group['decay'])
-
-def walk_heat(df, strategy):
-    def mean_len(group):
-        return pylab.nanmean(group['length'])
-    
-    heat(df, mean_len, "ant_mean_walks", strategy, "nanmean walk length")
-
-def walk_med_heat(df, strategy):
-    def med_len(group):
-        return pylab.median(group['length'])
-        
-    heat(df, med_len, "ant_med_walks", strategy, "median walk length")
-    
-def walk_var_heat(df, strategy):
-    def var_len(group):
-        return pylab.var(group['length'], ddof=1)
-        
-    heat(df, var_len, "ant_var_walks", strategy, "variance of walk length")
-    
-def revisits_heat(df, strategy):
-    def mean_revisits(group):
-        return pylab.nanmean(group['revisits'])
-        
-    heat(df, mean_revisits, "ant_revisits", strategy, "nanmean revisits")
-    
-def first_walks_heat(df, strategy):
-    def first_mean(group):
-        g = group[group['first'] == 1]
-        return pylab.nanmean(g['length'])
-        
-    heat(df, first_mean, "first_walks", strategy, "average walk length (first 10%)")
-
-def last_walks_heat(df, strategy):
-    def last_mean(group):
-        g = group[group['last'] == 1]
-        return pylab.nanmean(g['length'])
-        
-    heat(df, last_mean, "last_walks", strategy, "average walk length (last 10%)")
-    
-def right_prop_heat(df, strategy):
-    def right_prop(group):
-        hits = group['hits']
-        return float(pylab.count_nonzero(hits)) / len(hits)
-    
-    heat(df, right_prop, "right_nest_percent", strategy, "percentage of ants to find right nest")
-    
-def wrong_prop_heat(df, strategy):
-    def wrong_prop(group):
-        misses = group['misses']
-        return float(pylab.count_nonzero(misses)) / len(misses)
-    
-    heat(df, wrong_prop, "wrong_nest_percent", strategy, "percentage of ants to find wrong nest")
-    
-def hit_count_heat(df, strategy):
-    def hit_count(group):
-        return pylab.nanmean(group['hits'])
-        
-    heat(df, hit_count, "hit_count", strategy, "average times ants found destination nest")
-    
-def miss_count_heat(df, strategy):
-    def miss_count(group):
-        return pylab.nanmean(group['misses'])
-        
-    heat(df, miss_count, "miss_count", strategy, "average times ants returned to origin nest")
-    
-def success_rate_heat(df, strategy):
-    def success_rate(group):
-        rate =  sum(group['hits']) / float(sum(group['attempts']))
-        return rate
-        
-    heat(df, success_rate, "success_rate", strategy, "percent of successful attempts")
-    
-def failure_rate_heat(df, strategy):
-    def failure_rate(group):
-        rate =  sum(group['misses']) / float(sum(group['attempts']))
-        return rate
-        
-    heat(df, failure_rate, "failure_rate", strategy, "percent of unsuccessful attempts")
-    
-def success_average_heat(df, strategy):
-    def success_average(group):
-        return pylab.nanmean(group['hits'] * group['mean_len'])
-        
-    heat(df, success_average, "success_average", strategy, "average length of successful paths")
-    
-def success_ratio_heat(df, strategy):
-    def success_ratio(group):
-        return pylab.nanmean(group['hits']) / pylab.nanmean(group['misses'])
-        
-    heat(df, success_ratio, "success_ratio", strategy, "ratio of average average successes to average failures")
     
 def connect_time_heat(df, strategy):
     def connect_time(group):
@@ -203,7 +124,7 @@ def path_entropy_heat(df, strategy):
             #describe_group(group)
         return pylab.nanmean(group['path_entropy'])
         
-    heat(df, path_entropy, 'path_entropy', strategy, 'entropy over all possible paths')
+    heat(df, path_entropy, 'path_entropy', strategy, 'path entropy')
     
 def min_entropy_dist_heat(df, strategy):
     def min_entropy_dist(group):
@@ -247,7 +168,7 @@ def path_success_rate_heat(df, strategy):
             #describe_group(group)
         return success_rate
     heat(df, path_success_rate, 'path_success_rate', strategy, \
-         'proportion of times ants successfully created a path', sequential=True, vmax=1)
+         'success rate', sequential=True, vmax=1)
     
 def walk_success_rate_heat(df, strategy):
     def walk_success_rate(group):
@@ -311,17 +232,28 @@ def wasted_edge_weight_heat(df, strategy):
     make_heat(df, strategy, 'wasted_edge_weight', 'weight of edges not contributing to any path')
 
 def mean_path_len_heat(df, strategy):
-    make_heat(df, strategy, 'mean_path_len', 'average pheromone path length')
+    make_heat(df, strategy, 'mean_path_len', 'average path length')
     
-def make_heat(df, strategy, metric, description):
+def var_path_len_heat(df, strategy):
+    make_heat(df, strategy, 'mean_path_len', 'path length variance',\
+             'var_path_len', lambda x : pylab.nanvar(x, ddof=1))
+             
+def std_path_len_heat(df, strategy):
+    make_heat(df, strategy, 'mean_path_len', 'path length standard deviation',\
+             'std_path_len', lambda x : pylab.nanstd(x, ddof=1))
+    
+def make_heat(df, strategy, metric, description, metric_name=None, groupfunc=pylab.nanmean):
+    if metric_name == None:
+        metric_name = metric 
     def metric_heat(group):
         if all(pylab.isnan(group[metric])):
-            print metric
-            describe_group(group)
-            
-        return pylab.nanmean(group[metric])
+            #print metric
+            #describe_group(group)
+            pass
+           
+        return groupfunc(group[metric])
         
-    heat(df, metric_heat, metric, strategy, description)
+    heat(df, metric_heat, metric_name, strategy, description)
     
 def main():
     filename = argv[1]
@@ -368,6 +300,8 @@ def main():
     #chosen_walk_entropy_heat(df, strategy)
     
     mean_path_len_heat(df, strategy)
+    var_path_len_heat(df, strategy)
+    std_path_len_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 

@@ -8,10 +8,13 @@ import pylab
 import argparse
 import numpy.ma as ma
 from choice_functions import *
+import os
 
 MIN_PHEROMONE = 0
 MIN_DETECTABLE_PHEROMONE = 0
 INIT_WEIGHT = 0
+
+IND_PLOT = False
 #THRESHOLD = 1
 #EXPLORE_PROB = 0.1
 
@@ -29,6 +32,7 @@ def make_graph(sources, dests):
         G.add_edge(source, dest)
         G[source][dest]['weight'] = INIT_WEIGHT #MIN_PHEROMONE
         G[source][dest]['units'] = []
+        
     return G
 
 def check_graph(G, check_units=False):
@@ -104,7 +108,7 @@ def get_decay_func(decay_type):
 
 def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None):
     assert 0 < decay < 1
-    df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'])
+    df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'], skipinitialspace=True)
     df['dt'] = pd.to_datetime(df['dt'])
     df.sort('dt', inplace=True)
     sources = list(df['source'])
@@ -208,23 +212,29 @@ def make_title_str(max_likelihood, max_values):
 def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, decays, outname):
     likelihoods = ma.masked_invalid(likelihoods)
     title_str = make_title_str(max_likelihood, max_values)
+    print title_str
     pylab.figure()
     hm = pylab.pcolormesh(likelihoods, cmap='nipy_spectral')
+    curr_ax = pylab.gca()
+    curr_ax.axis('tight')
     cb = pylab.colorbar(hm)
-    cb.ax.set_ylabel('log-likelihood')
+    cb.ax.set_ylabel('log-likelihood', fontsize=20)
     pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
     labeltop='off', labelbottom='off', labelleft='off', labelright='off')
     
-    pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(explores), max(explores)))
-    pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)))
-    pylab.title(title_str)
-    pylab.savefig(outname, format="png", transparent=True,bbox_inches='tight')
+    pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(explores), max(explores)), fontsize=20)
+    pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)), fontsize=20)
+    #pylab.title(title_str)
+    pylab.savefig(outname + '.png', format="png", transparent=True, bbox_inches='tight')
     pylab.close()
+    print 'convert %s.png %s.pdf' % (outname, outname)
+    os.system('convert %s.png %s.pdf' % (outname, outname))
 
 def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
-            emax=0.95, delta=0.05, cumulative=False):
-    decays = np.arange(dmin, dmax + delta, delta)
-    explores = np.arange(emin, emax + delta, delta)
+            emax=0.95, dstep=0.05, estep=0.05, cumulative=False, out=False):
+    decays = np.arange(dmin, dmax + dstep, dstep)
+    explores = np.arange(emin, emax + estep, estep)
+    hist_file = open('repair_ml_hist.csv', 'a')
     for strategy in strategies:
         print strategy
         likelihood_func = get_likelihood_func(strategy)
@@ -232,29 +242,39 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
             print decay_type
             out_str = 'repair_ml_%s_%s' % (strategy, decay_type)
             cumulative_likelihoods = None
+            total_lines = 0
             for sheet in sheets:
                 print sheet
+                num_lines = sum(1 for line in open('reformated_counts%s.csv' % sheet))
+                total_lines += num_lines
                 likelihoods = likelihood_matrix(sheet, explores, decays, likelihood_func,\
                                                 decay_type)
                 max_likelihood, max_values = max_likelihood_estimates(likelihoods, decays, explores)
-                outname = '%s_%s.png' % (out_str, sheet)
+                outname = '%s_%s' % (out_str, sheet)
                 
                 if cumulative:
                     if not isinstance(cumulative_likelihoods, np.ndarray):
                         cumulative_likelihoods = np.copy(likelihoods)
                     else:
                         cumulative_likelihoods += likelihoods
-                else:
+                        
+                if IND_PLOT:
                     plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, \
-                                     decays, outname)
+                                          decays, outname)
+                if out:
+                    for explore, decay in max_values:
+                        hist_file.write('%0.2f, %0.2f, %s, %s, %s, %d\n' % \
+                                        (explore, decay, strategy, decay_type, label, num_lines))
             
             if cumulative:
-                outname = 'cumulative_%s_%s.png' % (out_str, label)
+                cumulative_likelihoods
+                outname = 'cumulative_%s_%s' % (out_str, label)
                 max_likelihood, max_values = max_likelihood_estimates(cumulative_likelihoods,\
                                                               decays, explores)
                 plot_likelihood_heat(cumulative_likelihoods, max_likelihood, max_values, \
                                 explores, decays, outname)
                 print "plotted"
+    hist_file.close()
                 
     
 if __name__ == '__main__':
@@ -267,12 +287,14 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--strategies', action='store', nargs='+', \
                         choices=strategy_choices, required=True)
     parser.add_argument('-d', '--decay_types', nargs='+', choices=decay_choices, required=True)
-    parser.add_argument('-dt', '--delta', type=float, default=0.05)
     parser.add_argument('-c', '--cumulative', action='store_true')
     parser.add_argument('-dmin', type=float, default=0.05)
     parser.add_argument('-dmax', type=float, default=0.95)
     parser.add_argument('-emin', type=float, default=0.05)
     parser.add_argument('-emax', type=float, default=0.95)
+    parser.add_argument('-dstep', type=float, default=0.05)
+    parser.add_argument('-estep', type=float, default=0.05)
+    parser.add_argument('-o', '--out', action='store_true')
     
     args = parser.parse_args()
     label = args.label
@@ -280,7 +302,8 @@ if __name__ == '__main__':
     strategies = args.strategies
     decay_types = args.decay_types
     dmin, dmax, emin, emax = args.dmin, args.dmax, args.emin, args.emax
-    delta = args.delta
+    dstep, estep = args.dstep, args.estep
     cumulative = args.cumulative
+    out = args.out
     
-    ml_heat(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, delta, cumulative)
+    ml_heat(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, cumulative, out)

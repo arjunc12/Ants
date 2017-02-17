@@ -41,3 +41,9 @@ datasets/*
 ant_repair_old.py
 
 ant_repair_sandbox.py
+
+*.gz
+
+*.bz2
+
+*.tex

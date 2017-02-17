@@ -3,35 +3,48 @@ import argparse
 from sys import argv
 
 steps_label = '1k'
-doritos_dir = 'achandrasekhar@doritos.snl.salk.edu:/home/achandrasekhar/Documents'
 plot_script = 'plot_ant_repair.py'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-s', nargs='+', dest='strategies', required=True)
 parser.add_argument('-g', nargs='+', dest='graphs', required=True)
-parser.add_argument('-d', nargs='+', dest='decays', required=True)
-parser.add_argument('-n', dest='nsteps', type=int, required=True)
+parser.add_argument('-dt', nargs='+', dest='decay_types', required=True)
+parser.add_argument('-m', dest='max_steps', type=int, required=True)
 parser.add_argument('-l', dest='steps_label', required=True)
 parser.add_argument('--sandbox', action='store_true')
+parser.add_argument('-c', '--supercomputer', default='doritos', dest='supercomputer')
+parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack')
+parser.add_argument('-o', '--one_way', action='store_true', dest='one_way')
 
 args = parser.parse_args()
 strategies = args.strategies
 graphs = args.graphs
-decays = args.decays
-nsteps = args.nsteps
+decay_types = args.decay_types
+max_steps = args.max_steps
 steps_label = args.steps_label
 sandbox = args.sandbox
+supercomputer = args.supercomputer
+backtrack = args.backtrack
+one_way = args.one_way
+
+supercomp_dir = 'achandrasekhar@%s.snl.salk.edu:/home/achandrasekhar/Documents' % supercomputer
 
 for strategy in strategies:
     for graph in graphs:
-        for decay in decays:
+        for decay in decay_types:
             prog_name = 'repair'
             if sandbox:
                 prog_name += '_sandbox'
-            descriptor = '%s_%s_%s_%s' % (prog_name, strategy, graph, decay)
+            descriptor_items = [prog_name, strategy, graph, decay]
+            if backtrack:
+                descriptor_items.append('backtrack')
+            if one_way:
+                descriptor_items.append('one_way')
+            descriptor = '_'.join(descriptor_items)
+            #descriptor = '%s_%s_%s_%s' % (prog_name, strategy, graph, decay)
             fname1 = 'ant_%s.csv' % descriptor
-            fname2 = 'ant_%s%d.csv' % (descriptor, nsteps)
-            scp_command = 'scp %s/%s %s' % (doritos_dir, fname2, fname1)
+            fname2 = 'ant_%s%d.csv' % (descriptor, max_steps)
+            scp_command = 'scp %s/%s %s' % (supercomp_dir, fname2, fname1)
             print scp_command
             os.system(scp_command)
             plot_label = '%s%s' % (descriptor, steps_label)
