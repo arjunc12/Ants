@@ -47,3 +47,7 @@ ant_repair_sandbox.py
 *.bz2
 
 *.tex
+
+data.plist
+
+draft_paper/*
