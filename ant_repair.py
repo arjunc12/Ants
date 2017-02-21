@@ -1163,7 +1163,8 @@ def main():
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', 'txroad',
                      'subelji', 'minimal']
     '''
-    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank']
+    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
+                        'hybridr', 'ranku']
     decay_choices = ['linear', 'const', 'exp']
     
 
