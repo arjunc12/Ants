@@ -23,7 +23,7 @@ def reset_graph(G):
         G[u][v]['weight'] = MIN_PHEROMONE
         G[u][v]['units'] = []
 
-def make_graph(sources, dests):
+def make_graph(sources, dests, ghost=False):
     assert len(sources) == len(dests)
     G = nx.Graph()
     for i in xrange(len(sources)):
@@ -32,6 +32,13 @@ def make_graph(sources, dests):
         G.add_edge(source, dest)
         G[source][dest]['weight'] = INIT_WEIGHT #MIN_PHEROMONE
         G[source][dest]['units'] = []
+    
+    if ghost:    
+        for i, u in enumerate(G.nodes()):
+            v = 'canopy%d' % i
+            G.add_edge(u, v)
+            G[u][v]['weight'] = INIT_WEIGHT
+            G[u][v]['units'] = [INIT_WEIGHT]
         
     return G
 
@@ -106,7 +113,7 @@ def get_decay_func(decay_type):
     else:
         raise ValueError("Invalid Decay Type")
 
-def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None):
+def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None, ghost=False):
     assert 0 < decay < 1
     df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'], skipinitialspace=True)
     df['dt'] = pd.to_datetime(df['dt'])
@@ -118,7 +125,7 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
     assert len(sources) == len(dests)
     
     if G == None:
-        G = make_graph(sources, dests)
+        G = make_graph(sources, dests, ghost)
     else:
         reset_graph(G)
         
@@ -175,7 +182,7 @@ def max_likelihood_estimates(likelihoods, decays, explores):
                 max_values.append((explore, decay))
     return max_likelihood, max_values
     
-def likelihood_matrix(sheet, explores, decays, likelihood_func, decay_type):
+def likelihood_matrix(sheet, explores, decays, likelihood_func, decay_type, ghost):
     likelihoods = pylab.zeros((len(decays), len(explores)))
     G = None
     choices = 'reformated_counts%s.csv' % sheet
@@ -184,7 +191,7 @@ def likelihood_matrix(sheet, explores, decays, likelihood_func, decay_type):
     for decay in decays:
         for explore in explores:
             i, j = pos / len(explores), pos % len(explores)
-            likelihood, G = param_likelihood(choices, decay, explore, likelihood_func, decay_type, G)
+            likelihood, G = param_likelihood(choices, decay, explore, likelihood_func, decay_type, G, ghost)
             #likelihood = pos
             likelihoods[i, j] = likelihood
             pos += 1        
@@ -217,6 +224,7 @@ def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, deca
     hm = pylab.pcolormesh(likelihoods, cmap='nipy_spectral')
     curr_ax = pylab.gca()
     curr_ax.axis('tight')
+    curr_ax.set_aspect('equal')
     cb = pylab.colorbar(hm)
     cb.ax.set_ylabel('log-likelihood', fontsize=20)
     pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
@@ -231,7 +239,7 @@ def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, deca
     os.system('convert %s.png %s.pdf' % (outname, outname))
 
 def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
-            emax=0.95, dstep=0.05, estep=0.05, cumulative=False, out=False):
+            emax=0.95, dstep=0.05, estep=0.05, cumulative=False, out=False, ghost=False):
     decays = np.arange(dmin, dmax + dstep, dstep)
     explores = np.arange(emin, emax + estep, estep)
     hist_file = open('repair_ml_hist.csv', 'a')
@@ -248,7 +256,7 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
                 num_lines = sum(1 for line in open('reformated_counts%s.csv' % sheet))
                 total_lines += num_lines
                 likelihoods = likelihood_matrix(sheet, explores, decays, likelihood_func,\
-                                                decay_type)
+                                                decay_type, ghost)
                 max_likelihood, max_values = max_likelihood_estimates(likelihoods, decays, explores)
                 outname = '%s_%s' % (out_str, sheet)
                 
@@ -295,6 +303,7 @@ if __name__ == '__main__':
     parser.add_argument('-dstep', type=float, default=0.05)
     parser.add_argument('-estep', type=float, default=0.05)
     parser.add_argument('-o', '--out', action='store_true')
+    parser.add_argument('-g', '--ghost', action='store_true')
     
     args = parser.parse_args()
     label = args.label
@@ -305,5 +314,7 @@ if __name__ == '__main__':
     dstep, estep = args.dstep, args.estep
     cumulative = args.cumulative
     out = args.out
+    ghost = args.ghost
     
-    ml_heat(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, cumulative, out)
+    ml_heat(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, \
+            cumulative, out, ghost)
