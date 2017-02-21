@@ -27,7 +27,8 @@ def get_dists(counts_file, cut_node):
             continue
         dist1 = nx.shortest_path_length(G, source, cut_node)
         dist2 = nx.shortest_path_length(G, dest, cut_node)
-        dists.append(min(dist1, dist2))
+        #dists.append(min(dist1, dist2))
+        dists.append(dist1)
         
     return dists
 
