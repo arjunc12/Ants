@@ -2,7 +2,7 @@ import networkx as nx
 import pylab
 import argparse
 from kruskal import kruskal
-from random import random, choice, sample
+from random import random, choice, sample, shuffle
 import os
 
 ER_PROB = 0.3 / 3
@@ -21,7 +21,7 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut', \
                      'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', 'txroad',
-                     'subelji', 'minimal', 'grid_span_nocut']
+                     'subelji', 'minimal', 'grid_span_nocut', 'grid_span_rand', 'grid_span4']
 
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
@@ -506,6 +506,22 @@ def grid_span():
             grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
     return grid
     
+def grid_span_rand():
+    grid = full_grid()
+    edges = grid.edges()
+    shuffle(edges)
+    spanning_tree1 = kruskal(grid.nodes(), edges)
+    shuffle(edges)
+    spanning_tree2 = kruskal(grid.nodes(), edges)
+    grid.remove_edges_from(grid.edges())
+    grid.add_edges_from(spanning_tree1 + spanning_tree2)
+    grid.graph['name'] = 'grid_span_rand'
+    for i in range(10):
+        if i != 4:
+            grid.add_edge((i, 5), (i + 1, 5))
+            grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
+    return grid
+    
 def grid_span_nocut():
     G = grid_span()
     G.add_edge((4, 5), (5, 5))
@@ -529,6 +545,19 @@ def grid_span3():
     for i in range(10):
         if grid.has_edge((10, i), (10, i + 1)):
             grid.remove_edge((10, i), (10, i + 1))
+    return grid
+    
+def grid_span4():
+    grid = full_grid()
+    spanning_tree1 = kruskal(grid.nodes(), sorted(grid.edges()))
+    #spanning_tree2 = kruskal(grid.nodes(), reversed(sorted(grid.edges())))
+    grid.remove_edges_from(grid.edges())
+    grid.add_edges_from(spanning_tree1)
+    grid.graph['name'] = 'grid_span4'
+    for i in range(10):
+        if i != 4:
+            grid.add_edge((i, 5), (i + 1, 5))
+            grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
     return grid
 
 def barabasi_albert():
@@ -778,6 +807,10 @@ def get_graph(graph_name):
         G = grid_span2()
     elif graph_name == 'grid_span3':
         G = grid_span3()
+    elif graph_name == 'grid_span4':
+        G = grid_span4()
+    elif graph_name == 'grid_span_rand':
+        G = grid_span_rand()
     elif graph_name == 'er':
         G = er_network(ER_PROB)
     elif graph_name == 'mod_grid':
