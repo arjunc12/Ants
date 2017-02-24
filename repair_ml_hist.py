@@ -19,7 +19,7 @@ def hist_values(parameter, group, strategy, decay_type, label, y_limit=None):
     weights = group['num_lines'] / sum(group['num_lines'])
     weights = np.array(weights)
     
-    #mu = pylab.average(values, weights=weights)
+    mu = pylab.average(values, weights=weights)
     sigma2 = pylab.var(values)
     
     pylab.figure()
