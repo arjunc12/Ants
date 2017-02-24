@@ -37,6 +37,7 @@ N = {}       # edge id -> edge
 
 MIN_PHEROMONE = 0
 PHEROMONE_THRESHOLD = 0
+AFTER_GRAPH_THRESHOLD = 0.1
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
@@ -165,7 +166,9 @@ def color_graph(G, c, w, figname, cost=None):
             index = Ninv[(v, u)]
         colors[index] = c
         wt = G[u][v]['weight']
-        width = 1 + (wt * w * EDGE_THICKNESS)
+        width = 0
+        if wt > AFTER_GRAPH_THRESHOLD:
+            width = 1 + (wt * w * EDGE_THICKNESS)
         widths[index] = width
         #if width > 0:
             #print u, v, width
