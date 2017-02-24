@@ -34,11 +34,15 @@ def make_graph(sources, dests, ghost=False):
         G[source][dest]['units'] = []
     
     if ghost:    
-        for i, u in enumerate(G.nodes()):
-            v = 'canopy%d' % i
-            G.add_edge(u, v)
-            G[u][v]['weight'] = INIT_WEIGHT
-            G[u][v]['units'] = [INIT_WEIGHT]
+        for u in G.nodes():
+            if len(G.neighbors(u)) == 1:
+                v = 'canopy_%s' % u
+                G.add_edge(u, v)
+                G[u][v]['weight'] = INIT_WEIGHT
+                G[u][v]['units'] = [INIT_WEIGHT]
+    
+    #print G.nodes()
+    #print G.edges()
         
     return G
 
@@ -140,11 +144,15 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         G[sources[1]][dests[1]]['units'].append(1)
     G2 = G.copy()
     for i in xrange(1, len(sources)):
-        check_graph(G, check_units)
-        check_graph(G2, check_units)
+        #check_graph(G, check_units)
+        #check_graph(G2, check_units)
         
         source = sources[i]
         dest = dests[i]
+        
+        if len(G.neighbors(source)) == 1:
+            G[source]['canopy_%s' % source]['weight'] += 1
+            G[source]['canopy_%s' % source]['units'].append(1)
         
         log_likelihood += np.log(likelihood_func(G, source, dest, explore))
         if log_likelihood == float("-inf"):
