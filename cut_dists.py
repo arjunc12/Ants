@@ -3,6 +3,7 @@ import networkx as nx
 from sys import argv
 import pylab
 import pandas as pd
+import os
 
 def get_dists(counts_file, cut_node):
     dists = []
@@ -28,7 +29,9 @@ def get_dists(counts_file, cut_node):
         dist1 = nx.shortest_path_length(G, source, cut_node)
         dist2 = nx.shortest_path_length(G, dest, cut_node)
         #dists.append(min(dist1, dist2))
-        dists.append(dist1)
+        #dists.append(dist1)
+        #dists.append(dist2)
+        dists.append(max(dist1, dist2))
         
     return dists
 
@@ -36,9 +39,13 @@ def dists_hist(cuts):
     dists = []
     for counts_file, cut_node in cuts:
         dists += get_dists(counts_file, cut_node)
-    pylab.hist(dists)
-    print "show"
-    pylab.show()
+    weights = [1.0 / len(dists)] * len(dists)
+    pylab.hist(dists, weights=weights)
+    pylab.xlabel('distance (nodes)')
+    pylab.ylabel('proportion')
+    pylab.title('distances from cut')
+    pylab.savefig('cut_dists.png', format='png')
+    os.system('convert %s.png %s.pdf' % ('cut_dists', 'cut_dists'))
     
 def main():
     args = argv[1:]
