@@ -26,20 +26,32 @@ for i in xrange(len(edgeids)):
     #print edge
     source, dest = edge.split(' to ')
     edge_dic[edgeid] = (source.strip(), dest.strip())
-    
+print edge_dic
+   
 timestamps = df[0]
 choices = df[1]
+observed_choices = set()
 for i in xrange(len(timestamps)):
     timestamp = timestamps[i]
     choice = choices[i]
     try:
         choice = int(choice)
+        observed_choices.add(choice)
         source, dest = edge_dic[choice]
         source = source.replace(' ', '')
         dest = dest.replace(' ', '')
     except:
         continue
     outfile.write('%s, %s, %s\n' % (source, dest, str(timestamp)))
+
+final_time = str(timestamps[len(timestamps) - 1])
+init_time = str(timestamps[0])
+for choice in edge_dic:
+    if choice not in observed_choices:
+        source, dest = edge_dic[choice]
+        source = source.replace(' ', '')
+        dest = dest.replace(' ', '')
+        outfile.write('%s, %s, %s\n' % (source, dest, final_time))
     
 infile.close()
 outfile.close()
