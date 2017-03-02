@@ -12,7 +12,7 @@ import os
 
 MIN_PHEROMONE = 0
 MIN_DETECTABLE_PHEROMONE = 0
-INIT_WEIGHT = 0
+INIT_WEIGHT = 1
 
 IND_PLOT = False
 #THRESHOLD = 1
@@ -139,22 +139,34 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         check_units = True
     
     log_likelihood = 0
+    '''
     G[sources[1]][dests[1]]['weight'] += 1
     if decay_type == 'linear':
         G[sources[1]][dests[1]]['units'].append(1)
+    '''
+    
     G2 = G.copy()
-    for i in xrange(1, len(sources)):
+    
+    max_degree = 0
+    for u in G.nodes():
+        max_degree = max(max_degree, len(G.neighbors(u)))
+    
+    for i in xrange(len(sources)):
         #check_graph(G, check_units)
         #check_graph(G2, check_units)
         
         source = sources[i]
         dest = dests[i]
         
-        if len(G.neighbors(source)) == 1:
-            G[source]['canopy_%s' % source]['weight'] += 1
-            G[source]['canopy_%s' % source]['units'].append(1)
-        
-        log_likelihood += np.log(likelihood_func(G, source, dest, explore))
+        '''
+        canopy_neighbor = 'canopy_%s' % source
+        if canopy_neighbor in G.neighbors(source):
+            G[source][canopy_neighbor]['weight'] += 1
+            if decay_type == 'linear':
+                G[source][canopy_neighbor % source]['units'].append(1)
+        '''
+        if len(G.neighbors(source)) == max_degree:
+            log_likelihood += np.log(likelihood_func(G, source, dest, explore))
         if log_likelihood == float("-inf"):
             break
         
@@ -204,18 +216,6 @@ def likelihood_matrix(sheet, explores, decays, likelihood_func, decay_type, ghos
             likelihoods[i, j] = likelihood
             pos += 1        
     return likelihoods
-
-def get_likelihood_func(strategy):
-    if strategy == 'uniform':
-        return uniform_likelihood
-    elif strategy == 'max':
-        return max_edge_likelihood
-    elif strategy == 'maxz':
-        return maxz_edge_likelihood
-    elif strategy == 'rank':
-        return rank_likelihood
-    else:
-        raise ValueError('invalid strategy')
 
 def make_title_str(max_likelihood, max_values):
     title_str = ['max likelihood %f at:' % max_likelihood]
@@ -294,14 +294,14 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
                 
     
 if __name__ == '__main__':
-    strategy_choices = ['uniform', 'max', 'maxz', 'rank']
+    #strategy_choices = ['uniform', 'max', 'maxz', 'rank']
     decay_choices = ['linear', 'const', 'exp']
     
     parser = argparse.ArgumentParser()
     parser.add_argument('label')
     parser.add_argument('sheets', nargs='+')
     parser.add_argument('-s', '--strategies', action='store', nargs='+', \
-                        choices=strategy_choices, required=True)
+                        choices=STRATEGY_CHOICES, required=True)
     parser.add_argument('-d', '--decay_types', nargs='+', choices=decay_choices, required=True)
     parser.add_argument('-c', '--cumulative', action='store_true')
     parser.add_argument('-dmin', type=float, default=0.05)
