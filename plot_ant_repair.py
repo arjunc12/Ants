@@ -8,8 +8,8 @@ COMPLETE = True
 import numpy.ma as ma
 import os
 
-MLE_EXPLORE = 0.3
-MLE_DECAY = 0.01
+MLE_EXPLORE = 0.2
+MLE_DECAY = 0.02
 
 def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     x = df['explore'].unique()
