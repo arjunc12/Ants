@@ -1,40 +1,42 @@
 import os
-import numpy as np
-from sys import argv
 import argparse
 
-def run_simulations(script, n, x, a_min, a_max, d_min, d_max, step):
-    for add in np.arange(a_min, a_max + step, step):
-        for decay in np.arange(d_min, d_max + step, step):
-            command = "python %s -n %d -x %d -a %f -d %f" % (script, n, x, add, decay)
-            os.system(command)
-            
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-x", "--repeats", type=int, dest="iterations", default=10,help="number of iterations")
-    parser.add_argument("-a", "--add", type=float, dest="pheromone_add", nargs=2,help="amt of phermone added")
-    parser.add_argument("-d", "--decay", type=float, dest="pheromone_decay", nargs=2,help="amt of pheromone decay")
-    parser.add_argument("-n", "--number", type=int, dest="num_ants", default=10,help="number of ants")
-    parser.add_argument("-s", "--step", type=float, dest="step_size", default=1, help="pheromone step size")
-    parser.add_argument("-w", "--walk", dest="walk_type", choices=['r', 'b'], default='b', help="random walk or bfs")
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', '--strategies', nargs='+', required=True, dest='strategies')
+parser.add_argument('-g', '--graphs', nargs='+', required=True, dest='graphs')
+parser.add_argument('-dt', '--decay_types', nargs='+', required=True, dest='decay_types')
+parser.add_argument('-l', '--labels', nargs='+', required=True, dest='labels')
+parser.add_argument('--sandbox', action='store_true')
+parser.add_argument('-x', '--num_iters', type=int, default=1, dest='num_iters')
+parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack')
+parser.add_argument('-o', '--one_way', action='store_true', dest='one_way')
 
-    options = parser.parse_args()
-    # ===============================================================
+args = parser.parse_args()
+strategies = args.strategies
+graphs = args.graphs
+decay_types = args.decay_types
+labels = args.labels
+sandbox = args.sandbox
+num_iters = args.num_iters
+backtrack = args.backtrack
+one_way = args.one_way
 
-    # ===============================================================
-    x = options.iterations
-    a_min, a_max = options.pheromone_add
-    d_min, d_max = options.pheromone_decay
-    n = options.num_ants
-    step = options.step_size
-    walk = options.walk_type
-    script = None
-    if walk == 'b':
-        script = "ant_bfs.py"
-    else:
-        script = "ant_rand_walk.py"
-    
-    run_simulations(script, n, x, a_min, a_max, d_min, d_max, step)
-    
-if __name__ == '__main__':
-    main()
+for i in xrange(num_iters):
+    for strategy in strategies:
+        for graph in graphs:
+            for decay_type in decay_types:
+                for label in labels:
+                    prog_name = 'ant_repair'
+                    if sandbox:
+                        prog_name += '_sandbox'
+                    descriptor_items = [prog_name, strategy, graph, decay_type]
+                    if backtrack:
+                        descriptor_items.append('backtrack')
+                    if one_way:
+                        descriptor_items.append('one_way')
+                    #descriptor_items.append(label)
+                    descriptor = '_'.join(descriptor_items)
+                    #command_str = 'bash %s_%s_%s_%s%s.sh' % (prog_name, strategy, graph, decay_type, label)
+                    command_str = 'bash %s%s.sh' % (descriptor, label)
+                    print command_str
+                    os.system(command_str)
