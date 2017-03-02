@@ -37,7 +37,7 @@ N = {}       # edge id -> edge
 
 MIN_PHEROMONE = 0
 PHEROMONE_THRESHOLD = 0
-AFTER_GRAPH_THRESHOLD = 0.1
+AFTER_GRAPH_THRESHOLD = 0.01
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
