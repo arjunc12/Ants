@@ -98,7 +98,7 @@ def init_graph(G):
         M[i] = u
         Minv[u] = i    
         
-        if 'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
+        if True:#'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
             pos[u] = [u[0],u[1]] # position is the same as the label.
         
         G.node[u]['queue'] = []
@@ -164,17 +164,26 @@ def color_graph(G, c, w, figname, cost=None):
             index = Ninv[(u, v)]
         except KeyError:
             index = Ninv[(v, u)]
-        colors[index] = c
         wt = G[u][v]['weight']
         width = 0
         if wt > AFTER_GRAPH_THRESHOLD:
             width = 1 + (wt * w * EDGE_THICKNESS)
+            colors[index] = c
+        else:
+            width = 1
+            colors[index] = 'k'
+        
         widths[index] = width
         #if width > 0:
             #print u, v, width
         #unique_weights.add(wt)
     #print len(unique_weights)
-    nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors,\
+    if 'road' in G.graph['name'] or G.graph['name'] == 'subelji':
+        nx.draw(G, with_labels=False, node_size=node_size, edge_color=colors,\
+            node_color=node_color, width=widths, nodelist = sorted(G.nodes()), \
+            edgelist = sorted(G.edges()))
+    else:
+        nx.draw(G, pos=pos, with_labels=False, node_size=node_size, edge_color=colors,\
             node_color=node_color, width=widths, nodelist = sorted(G.nodes()), \
             edgelist = sorted(G.edges()))
     PP.draw()
@@ -1063,7 +1072,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         has_path = has_pheromone_path(G, nest, target)
         after_paths = []
         if has_path:
-            if strategy == 'uniform':
+            if 'uniform' in strategy:
                 after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
             else:
                 after_paths = maximal_paths(pheromone_subgraph(G), nest, target)
@@ -1166,8 +1175,6 @@ def main():
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', 'txroad',
                      'subelji', 'minimal']
     '''
-    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
-                        'hybridr', 'ranku']
     decay_choices = ['linear', 'const', 'exp']
     
 
@@ -1175,7 +1182,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-g", "--graph", dest='graph', choices=GRAPH_CHOICES, default='full',\
                         help="graph to run algorithm on")
-    parser.add_argument('-s', '--strategy', dest='strategy', choices=strategy_choices,\
+    parser.add_argument('-s', '--strategy', dest='strategy', choices=STRATEGY_CHOICES,\
                         default='rank', help="strategy to run")
     parser.add_argument("-x", "--repeats", type=int, dest="iterations", default=1,\
                         help="number of iterations") 
