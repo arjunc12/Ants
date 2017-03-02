@@ -51,3 +51,14 @@ ant_repair_sandbox.py
 data.plist
 
 draft_paper/*
+<<<<<<< HEAD
+
+*.pbs
+
+out.subelj_euroroad_euroroad
+
+parameter_estimation/*
+
+subelj_euroroad/*
+=======
+>>>>>>> 05593c48a3e8f13710365d61b932cf9699366a44
