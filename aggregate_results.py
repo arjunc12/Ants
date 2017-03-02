@@ -7,6 +7,9 @@ import pylab
 import os
 from graphs import GRAPH_CHOICES
 
+EXPLORE_MLE = 0.2
+DECAY_MLE = 0.02
+
 def plot_aggregate_dfs(df, metrics, descriptor):
     x = df['explore'].unique()
     y = df['decay'].unique()
@@ -15,9 +18,12 @@ def plot_aggregate_dfs(df, metrics, descriptor):
         matrices.append(np.zeros((len(y), len(x))))
     pos = 0
     for name, group in df.groupby(['explore', 'decay']):
+        explore, decay = name
         i, j = pos % len(y), pos / len(y)
         for k, metric in enumerate(metrics):
             val = gmean(group[metric])
+            if explore == EXPLORE_MLE and decay == DECAY_MLE:
+                print metric, val
             z = matrices[k]
             z[i, j] = val
         pos += 1
