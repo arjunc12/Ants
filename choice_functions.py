@@ -1,10 +1,13 @@
 import numpy as np
 import networkx as nx
 from numpy.random import random, choice
-MIN_DETECTABLE_PHEROMONE = 0
+MIN_DETECTABLE_PHEROMONE = 0.001
 MIN_PHEROMONE = 0
 PHEROMONE_THRESHOLD = 0
 from collections import defaultdict
+
+STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
+                        'hybridr', 'ranku', 'uniform2']
 
 def next_edge_uniform(G, start, explore_prob, candidates=None):
     if candidates == None:
@@ -29,6 +32,37 @@ def next_edge_uniform(G, start, explore_prob, candidates=None):
         return next, True 
     else:
         explored_weights = np.array(explored_weights)
+        explored_weights /= total_wt
+        next = explored[choice(len(explored), 1, p=explored_weights)[0]]
+        return next, False
+
+def next_edge_uniform2(G, start, explore_prob, candidates=None):
+    return next_edge_uniformn(G, start, explore_prob, 2, candidates)
+
+def next_edge_uniformn(G, start, explore_prob, n, candidates=None):
+    if candidates == None:
+        candidates = G.neighbors(start)
+    
+    total_wt = 0.0
+    explored = []
+    unexplored = []
+    explored_weights = []
+    for candidate in candidates:
+        wt = G[start][candidate]['weight']
+        if wt <= PHEROMONE_THRESHOLD:
+            unexplored.append(candidate)
+        else:
+            explored.append(candidate)
+            explored_weights.append(wt)
+            total_wt += wt ** n
+    flip = random()
+    if (flip < explore_prob and len(unexplored) > 0) or (len(explored) == 0):
+        next = choice(len(unexplored))
+        next = unexplored[next]
+        return next, True 
+    else:
+        explored_weights = np.array(explored_weights)
+        explored_weights **= n
         explored_weights /= total_wt
         next = explored[choice(len(explored), 1, p=explored_weights)[0]]
         return next, False
@@ -174,6 +208,8 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         choice_func = next_edge_rank
     elif (strategy == 'ranku'):
         choice_func = next_edge_ranku
+    elif (strategy) == 'uniform2':
+        choice_func = next_edge_uniform2
     return choice_func(G, start, explore_prob, candidates)
     
 def uniform_likelihood(G, source, dest, explore, prev=None):
@@ -204,6 +240,38 @@ def uniform_likelihood(G, source, dest, explore, prev=None):
         if unexplored > 0:
             prob *= (1 - explore)
         return prob
+        
+def uniformn_likelihood(G, source, dest, explore, n, prev=None):
+    chosen_wt = G[source][dest]['weight']
+    total = 0.0
+    explored = 0
+    unexplored = 0
+    neighbors = G.neighbors(source)
+    if prev != None:
+        assert prev in neighbors
+        neighbors.remove(prev)
+    for n in neighbors:
+        wt = G[source][n]['weight']
+        assert wt >= MIN_PHEROMONE
+        if wt <= MIN_DETECTABLE_PHEROMONE:
+            unexplored += 1
+        else:
+            explored += 1
+            total += wt ** n
+    assert explored + unexplored == len(neighbors)
+    if explored == 0:
+        assert unexplored == len(neighbors)
+        return 1.0 / unexplored
+    elif chosen_wt <= MIN_DETECTABLE_PHEROMONE:
+        return explore * (1.0 / unexplored)
+    else:
+        prob = (chosen_wt ** n) / total
+        if unexplored > 0:
+            prob *= (1 - explore)
+        return prob
+        
+def uniform2_likelihood(G, source, dest, explore, prev=None):
+    return uniformn_likelihood(G, source, dest, explore, prev)
              
 def max_edge_likelihood(G, source, dest, explore, prev=None):
     max_wt = MIN_PHEROMONE
@@ -302,8 +370,59 @@ def rank_likelihood(G, source, dest, explore, prev=None):
             return prob
         else:
             prob *= explore
+            
+def ranku_likelihood(G, source, dest, explore, prev=None):
+    chosen_wt = G[source][dest]['weight']
+    max_wt = float('-inf')
+    total_wt = 0.0
+    candidates = G.neighbors(source)
+    if prev != None:
+        assert prev in candidates
+        candidates.remove(prev)
+        
+    for candidate in candidates:
+        wt = G[source][candidate]['weight']
+        max_wt = max(max_wt, wt)
     
-def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
+    upper_neighbors = 0
+    mid_neighbors = 0
+    zero_neighbors = 0
+    for candidate in candidates:
+        wt = G[source][candidate]['weight']
+        if wt <= MIN_DETECTABLE_PHEROMONE:
+            zero_neighbors += 1
+        elif wt == max_wt:
+            upper_neighbors += 1
+        else:
+            total_wt += wt
+            mid_neighbors += 1
+    
+    lower_neighbors = zero_neighbors + mid_neighbors
+    if chosen_wt == max_wt and max_wt > MIN_DETECTABLE_PHEROMONE:
+        assert upper_neighbors > 0
+        prob = 1.0 / upper_neighbors
+        if lower_neighbors > 0:
+            prob *= (1 - explore)
+        return prob
+    elif chosen_wt > MIN_DETECTABLE_PHEROMONE:
+        assert chosen_wt < max_wt
+        assert total_wt > 0
+        prob = chosen_wt / total_wt
+        prob *= explore
+        if zero_neighbors > 0:
+            prob *= (1 - explore)
+        return prob
+    else:
+        assert chosen_wt <= MIN_DETECTABLE_PHEROMONE
+        assert lower_neighbors > 0
+        prob = 1.0 / lower_neighbors
+        if upper_neighbors > 0:
+            prob *= explore
+        if mid_neighbors > 0:
+            prob *= explore
+        return prob
+
+def get_likelihood_func(strategy):
     likelihood_func = None
     if strategy == 'uniform':
         likelihood_func = uniform_likelihood
@@ -311,8 +430,14 @@ def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
         likelihood_func = max_edge_likelihood
     elif strategy in ['maxz', 'hybridz']:
         likelihood_func = maxz_edge_likelihood
-    elif strategy == 'rank':
+    elif strategy in ['rank', 'hybridr']:
         likelihood_func = rank_likelihood
+    elif strategy == 'ranku':
+        likelihood_func = ranku_likelihood
     else:
         raise ValueError('invalid strategy')
+    return likelihood_func
+        
+def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
+    likelihood_func = get_likelihood_func(strategy)
     return likelihood_func(G, source, dest, explore_prob, prev)
