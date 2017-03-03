@@ -16,6 +16,7 @@ from scipy.stats import entropy
 
 from graphs import *
 from choice_functions import *
+from decay_functions import *
 
 import sys
 from random import randint
@@ -132,6 +133,11 @@ def init_graph(G):
         else:
             edge_color.append('k')
             edge_width.append(1)
+            
+    G.graph['node_map'] = M
+    G.graph['node_map_inv'] = Minv
+    G.graph['edge_map'] = N
+    G.graph['edge_map_inv'] = Ninv
     
 def color_graph(G, c, w, figname, cost=None):
     '''
@@ -174,125 +180,7 @@ def color_graph(G, c, w, figname, cost=None):
     #PP.show()
     PP.savefig(figname + '.png', format='png')
     PP.close()
-
-def edge_weight(G, u, v):
-    '''
-    computes the weight of an edge by summing up the weight of the units
-    '''
-    return sum(G[u][v]['units'])
-
-def check_graph(G):
-    for u, v in G.edges_iter():
-        weight = G[u][v]['weight']
-        assert weight >= MIN_PHEROMONE
-        wt = 0
-        for unit in G[u][v]['units']:
-            assert unit > MIN_PHEROMONE
-            wt += unit
-        assert wt == weight
-
-def decay_units(G, u, v, decay, time=1):
-    '''
-    decreases weight of each pheromone unit on edge (u,v) according to decay rate and time
-    '''
-    G[u][v]['units'] = subtract(G[u][v]['units'], decay * time)
-    G[u][v]['units'] = G[u][v]['units'][where(G[u][v]['units'] > MIN_PHEROMONE)]
-    G[u][v]['units'] = list(G[u][v]['units'])
-
-def decay_edges_linear(G, nonzero_edges, decay, time=1):
-    '''
-    decays weight on all nonzero edges according to linear decay.  Every unit loses
-    decay*time in weight until it reaches the minimum pheromone level.
     
-    Returns all edges that are at the minimum pheromone level after decaying
-    '''
-    zero_edges = []
-    for i in nonzero_edges:
-        u, v = N[i]
-        decay_units(G, u, v, decay, time)
-        wt = edge_weight(G, u, v)
-        assert wt >= MIN_PHEROMONE
-        G[u][v]['weight'] = wt
-        if wt == MIN_PHEROMONE:
-            zero_edges.append(i)
-    return zero_edges
-    
-def decay_graph_linear(G, decay, time=1):
-    '''
-    decays all edges in the graph using linear decay
-    '''
-    assert decay > 0
-    assert decay < 1
-    for u, v in G.edges_iter():
-        decay_units(G, u, v, decay, time)
-        wt = edge_weight(G, u, v)
-        assert wt >= MIN_PHEROMONE
-        G[u][v]['weight'] = wt
-
-def decay_graph_exp(G, decay, time=1):
-    '''
-    Decays the graph according to exponential decay.  Every edge reduces in weight by a
-    specified proportion
-    '''
-    assert decay > 0
-    assert decay < 1
-    for u, v in G.edges_iter():
-        before_weight = G[u][v]['weight']
-        after_weight = before_weight * ((1 - decay) ** time)
-        if before_weight == after_weight:
-            G[u][v]['weight'] = MIN_PHEROMONE
-        else:
-            G[u][v]['weight'] = after_weight
-        G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
-        assert G[u][v]['weight'] >= MIN_PHEROMONE
-        
-def decay_edges_exp(G, nonzero_edges, decay, time=1):
-    '''
-    decays graph according to exponential decay
-    '''
-    assert decay > 0
-    assert decay < 1
-    zero_edges = []
-    for i in nonzero_edges:
-        u, v = N[i]
-        before_weight = G[u][v]['weight']
-        after_weight = before_weight * ((1 - decay) ** time)
-        if before_weight == after_weight:
-            G[u][v]['weight'] = MIN_PHEROMONE
-        else:
-            G[u][v]['weight'] = after_weight
-        G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
-        wt = G[u][v]['weight']
-        assert wt >= MIN_PHEROMONE
-        if wt == MIN_PHEROMONE:
-            zero_edges.append(i)
-    return zero_edges
-        
-def decay_graph_const(G, decay, time=1):
-    '''
-    decays graph according to constant decay.  Every edge loses a constant amount of weight
-    '''
-    assert decay > 0
-    assert decay < 1
-    for u, v in G.edges_iter():
-        G[u][v]['weight'] -= decay * time
-        G[u][v]['weight'] = max(G[u][v]['weight'], MIN_PHEROMONE)
-        assert G[u][v]['weight'] >= MIN_PHEROMONE
-
-def print_weights(G):
-    '''
-    prints out weights of all edges in the graph
-    '''
-    for u, v in G.edges_iter():
-        print u, v, G[u][v]['weight'], G[u][v]['units']
-
-def get_weights(G, start, candidates):
-    '''
-    Returns an array containing all the edge weights in the graph
-    '''
-    weights = map(lambda x : G[start][x]['weight'], candidates)
-    return array(weights)
-
 def pheromone_subgraph(G, origin=None, destination=None):
     '''
     Generates the subgraph induced by the edges with pheromone
@@ -1127,23 +1015,13 @@ def main():
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(levelname)s: %(asctime)s -- %(message)s'
-    )
-    
-    graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
-                     'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
-                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut'\
-                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'vert_grid', 'barabasi', \
-                     'vert_grid1', 'vert_grid2', 'vert_grid3']
-    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank']
-    decay_choices = ['linear', 'const', 'exp']
-    
+    )    
 
     usage="usage: %prog [options]"
     parser = argparse.ArgumentParser()
-    parser.add_argument("-g", "--graph", dest='graph', choices=graph_choices, default='full',\
+    parser.add_argument("-g", "--graph", dest='graph', choices=GRAPH_CHOICES, default='full',\
                         help="graph to run algorithm on")
-    parser.add_argument('-s', '--strategy', dest='strategy', choices=strategy_choices,\
+    parser.add_argument('-s', '--strategy', dest='strategy', choices=STRATEGY_CHOICES,\
                         default='uniform', help="strategy to run")
     parser.add_argument("-x", "--repeats", type=int, dest="iterations", default=1,\
                         help="number of iterations") 
@@ -1167,7 +1045,7 @@ def main():
     parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
     parser.add_argument("-dt", "--decay_type", dest="decay_type", default="linear", \
-                        choices=decay_choices)
+                        choices=DECAY_CHOICES)
     parser.add_argument("-t", "--threshold", dest="threshold", type=float, default=0, \
                         help="minimum detectable pheromone threshold")
     parser.add_argument('-nql', '--node_queue_limit', type=int, dest='node_queue_lim', default=1)
