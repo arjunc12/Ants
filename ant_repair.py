@@ -28,7 +28,7 @@ import os
 SEED_MAX = 4294967295
 SEED_VAL = randint(0, SEED_MAX)
 #seed(SEED_VAL)
-#seed(3294967295)
+#seed(279235015)
 
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
@@ -37,7 +37,7 @@ Ninv = {}    # edge -> edge id
 N = {}       # edge id -> edge
 
 MIN_PHEROMONE = 0
-PHEROMONE_THRESHOLD = 0
+PHEROMONE_THRESHOLD = 0.001
 AFTER_GRAPH_THRESHOLD = 0
 pos = {}
 node_color,node_size = [],[]
