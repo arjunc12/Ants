@@ -36,7 +36,7 @@ M = {}    # node id -> node tuple
 Ninv = {}    # edge -> edge id
 N = {}       # edge id -> edge
 
-MIN_PHEROMONE = 0.0001
+MIN_PHEROMONE = 0
 PHEROMONE_THRESHOLD = 0
 AFTER_GRAPH_THRESHOLD = 0
 pos = {}
@@ -79,6 +79,9 @@ DEBUG_PATHS = False
 # TODO: is [0-1] the right range? 
 
 def clear_queues(G):
+    '''
+    empties all node and edge queues
+    '''
     for u in G.nodes_iter():
         G.node[u]['queue'] = []
     
@@ -163,7 +166,7 @@ def color_graph(G, c, w, figname, cost=None):
     figname - the name to which to save the figure
     '''
     colors, widths = edge_color[:], edge_width[:]
-    #unique_weights = set()
+    unique_weights = set()
     for u, v in G.edges():
         index = None
         try:
@@ -172,6 +175,7 @@ def color_graph(G, c, w, figname, cost=None):
             index = Ninv[(v, u)]
         wt = G[u][v]['weight']
         width = 0
+        # don't draw edges with miniscule weight
         if wt > AFTER_GRAPH_THRESHOLD:
             width = 1 + (wt * w * EDGE_THICKNESS)
             colors[index] = c
@@ -180,10 +184,8 @@ def color_graph(G, c, w, figname, cost=None):
             colors[index] = 'k'
         
         widths[index] = width
-        #if width > 0:
-            #print u, v, width
-        #unique_weights.add(wt)
-    #print len(unique_weights)
+        unique_weights.add(wt)
+
     if 'road' in G.graph['name'] or G.graph['name'] == 'subelji':
         nx.draw(G, with_labels=False, node_size=node_size, edge_color=colors,\
             node_color=node_color, width=widths, nodelist = sorted(G.nodes()), \
@@ -215,6 +217,8 @@ def pheromone_subgraph(G, origin=None, destination=None):
         if wt > PHEROMONE_THRESHOLD:
             G2.add_edge(u, v)
             G2[u][v]['weight'] = wt
+            
+    # add the nests to the graph even if not connected anywhere
     if origin not in G2:
         G2.add_node(origin)
     if destination not in G2:
@@ -412,7 +416,10 @@ def path_to_edges(path):
 
 def wasted_edges(G, useful_edges):
     '''
+    count the number of edges that have pheromone but are not part of the network that the
+    ants use.
     
+    Assumes useful edges is a list of edge ids, rather than actual edges
     '''
     wasted_edges = 0
     wasted_edge_weight = 0
@@ -426,7 +433,12 @@ def wasted_edges(G, useful_edges):
     return wasted_edges, wasted_edge_weight
 
 def max_neighbors(G, source, prev=None):
+    '''
+    Gets all neighbors that are tied for the highest weight among all neighbors.  Ignores
+    ants most previously visited vertex
+    '''
     candidates = G.neighbors(source)
+    # ignore previous vertex, ant won't consider it
     if prev != None:
         assert prev in candidates
         candidates.remove(prev)
