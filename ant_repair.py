@@ -36,8 +36,6 @@ M = {}    # node id -> node tuple
 Ninv = {}    # edge -> edge id
 N = {}       # edge id -> edge
 
-MIN_PHEROMONE = 0
-PHEROMONE_THRESHOLD = 0.001
 AFTER_GRAPH_THRESHOLD = 0
 pos = {}
 node_color,node_size = [],[]
@@ -837,7 +835,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             if DEBUG_QUEUES:
                 check_queues(G2, queued_nodes, queued_edges, num_ants)
             
-            decay_func = get_decay_func(decay_type)
+            decay_func = get_decay_func_edges(decay_type)
             zero_edges = decay_func(G2, nonzero_edges, pheromone_decay, time=1, min_pheromone=MIN_PHEROMONE)
             nonzero_edges.difference_update(zero_edges)
         
