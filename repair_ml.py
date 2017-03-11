@@ -12,34 +12,34 @@ import os
 
 MIN_PHEROMONE = 0
 MIN_DETECTABLE_PHEROMONE = 0
-INIT_WEIGHT = 1
+INIT_WEIGHT = 0
 
 IND_PLOT = False
 #THRESHOLD = 1
 #EXPLORE_PROB = 0.1
 
-def reset_graph(G):
+def reset_graph(G, init_weight=INIT_WEIGHT):
     for u, v in G.edges_iter():
-        G[u][v]['weight'] = MIN_PHEROMONE
-        G[u][v]['units'] = []
+        G[u][v]['weight'] = init_weight
+        G[u][v]['units'] = [init_weight]
 
-def make_graph(sources, dests, ghost=False):
+def make_graph(sources, dests, ghost=False, init_weight=INIT_WEIGHT):
     assert len(sources) == len(dests)
     G = nx.Graph()
     for i in xrange(len(sources)):
         source = sources[i]
         dest = dests[i]
         G.add_edge(source, dest)
-        G[source][dest]['weight'] = INIT_WEIGHT #MIN_PHEROMONE
-        G[source][dest]['units'] = []
+        G[source][dest]['weight'] = init_weight
+        G[source][dest]['units'] = [init_weight]
     
     if ghost:    
         for u in G.nodes():
             if len(G.neighbors(u)) == 1:
                 v = 'canopy_%s' % u
                 G.add_edge(u, v)
-                G[u][v]['weight'] = INIT_WEIGHT
-                G[u][v]['units'] = [INIT_WEIGHT]
+                G[u][v]['weight'] = init_weight
+                G[u][v]['units'] = [init_weight]
     
     #print G.nodes()
     #print G.edges()
@@ -171,7 +171,9 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
             break
         
         curr = dts[i]
-        prev = dts[i - 1]
+        prev = curr
+        if i > 0:
+            prev = dts[i - 1]
         if curr != prev:
             diff = curr - prev
             seconds = diff.total_seconds()
