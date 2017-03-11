@@ -121,7 +121,7 @@ def get_weights(G, start, candidates):
     weights = map(lambda x : G[start][x]['weight'], candidates)
     return array(weights)
     
-def get_decay_func(decay_type):
+def get_decay_func_edges(decay_type):
     decay_func = None
     if decay_type == 'linear':
         decay_func = decay_edges_linear
@@ -132,3 +132,23 @@ def get_decay_func(decay_type):
     else:
         raise ValueError('Invalid Decay Type')
     return decay_func
+    
+def get_decay_func_graph(decay_type):
+    decay_func = None
+    if decay_type == 'linear':
+        decay_func = decay_graph_linear
+    elif decay_type == 'const':
+        decay_func = decay_graph_const
+    elif decay_type == 'exp':
+        decay_func = decay_graph_exp
+    else:
+        raise ValueError('Invalid Decay Type')
+    return decay_func
+    
+def decay_edges(G, nonzero_edges, decay_type, decay, time=1, min_pheromone=MIN_PHEROMONE):
+    decay_func = get_decay_func_edges(decay_type)
+    return decay_func(G, nonzero_edges, decay, time, min_pheromone)
+    
+def decay_graph(G, decay_type, decay, time=1, min_pheromone=MIN_PHEROMONE):
+    decay_func = get_decay_func_graph(decay_type)
+    decay_func(G, decay, time, min_pheromone)
