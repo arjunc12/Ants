@@ -441,3 +441,51 @@ def get_likelihood_func(strategy):
 def choice_prob(G, source, dest, explore_prob, prev=None, strategy='uniform'):
     likelihood_func = get_likelihood_func(strategy)
     return likelihood_func(G, source, dest, explore_prob, prev)
+
+
+# functions for determining if a choice counts as an explore step
+    
+def is_explore_uniform(G, source, dest, prev=None):
+    has_unexplored = False
+    candidates = G.neighbors(source)
+    if prev != None:
+        assert prev in candidates
+        candidates.remove(prev)
+    for candidate in candidates:
+        wt = G[source][dest]['weight']
+        if wt > MIN_DETECTABLE_PHEROMONE:
+            has_unexplored = True
+            break
+            
+    if has_unexplored:
+        chosen_wt = G[source][dest]['weight']
+        return chosen_wt <= MIN_DETECTABLE_PHEROMONE
+    return False
+    
+def is_explore_max(G, source, dest, prev=None):
+    max_wt = None
+    candidates = G.neighbors(source)
+    if prev != None:
+        assert prev in candidates
+        candidates.remove(prev)
+    for candidate in candidates:
+        wt = G[source][candidate]['weight']
+        if wt > MIN_DETECTABLE_PHERMONE:
+            if max_wt == None:
+                max_wt = wt
+            else:
+                max_wt = max(wt, max_wt)
+                
+    if max_wt == None:
+        return False
+        
+    chosen_wt = G[source][dest]['weight']
+    return chosen_wt < max_wt
+    
+def is_explore(G, source, strategy='rank', dest, prev=None):
+    explore_func = None
+    if strategy == 'uniform':
+        explore_func = is_explore_uniform
+    else:
+        explore_func = is_explore_max
+    return explore_func(G, source, dest, prev)
