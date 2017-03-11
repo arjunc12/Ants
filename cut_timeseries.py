@@ -2,39 +2,12 @@ import pandas as pd
 from datetime import timedelta
 from sys import argv
 import networkx as nx
+import argparse
+from choice_functions import *
+from decay_functions import *
+from repair_ml import reset_graph, make_graph
 
-MIN_PHEROMONE = 0
-INIT_WEIGHT = 0
-
-def reset_graph(G):
-    for u, v in G.edges_iter():
-        G[u][v]['weight'] = INIT_WEIGHT
-
-def make_graph(sources, dests):
-    assert len(sources) == len(dests)
-    G = nx.Graph()
-    for i in xrange(len(sources)):
-        source = sources[i]
-        dest = dests[i]
-        G.add_edge(source, dest)
-        G[source][dest]['weight'] = INIT_WEIGHT #MIN_PHEROMONE
-    return G
-
-def decay_graph(G, decay, seconds=1):
-    for u, v in G.edges_iter():
-        wt = G[u][v]['weight']
-        assert wt >= MIN_PHEROMONE
-        x = max(MIN_PHEROMONE, wt - (decay * seconds))
-        assert wt >= MIN_PHEROMONE
-        G[u][v]['weight'] = x
-
-def get_weights(G):
-    weights = []
-    for u, v in G.edges():
-        weights.append(G[u][v]['weight'])
-    return weights
-
-def estimate_explore(df, decay, G=None):
+def estimate_explore(df, start=0, G=None, strategy='rank', decay_type='exp', decay=0.01, ghost=False):
     #choices.sort('dt', inplace=True) 
     sources = list(df['source'])
     dests = list(df['dest'])
@@ -43,32 +16,34 @@ def estimate_explore(df, decay, G=None):
     assert len(sources) == len(dests)
     
     if G == None:
-        G = make_graph(sources, dests)
+        G = make_graph(sources, dests, ghost)
     else:
         reset_graph(G)
         
     steps = 0
     explore_steps = 0
     
-    G[sources[1]][dests[1]]['weight'] += 1
     G2 = G.copy()
-    for i in xrange(1, len(sources)):
+    for i in xrange(len(sources)):
         
         curr = dts[i]
-        prev = dts[i - 1]
+        prev = curr
+        if i > 0:
+            prev = dts[i - 1]
         
         source = sources[i]
         dest = dests[i]
         
-        steps += 1
-        if G[source][dest]['weight'] == MIN_PHEROMONE:
-            explore_steps += 1
+        if i >= steps:
+            steps += 1
+            if is_explore(G, source, dest, strategy)
+                explore_steps += 1
         
         if curr != prev:
             diff = curr - prev
             seconds = diff.total_seconds()
             G = G2
-            decay_graph(G, decay, seconds)
+            decay_graph(G, decay_type, decay, seconds)
             G2 = G.copy()
         G2[source][dest]['weight'] += 1
             
@@ -76,24 +51,50 @@ def estimate_explore(df, decay, G=None):
             
     return float(explore_steps) / steps
 
-def time_series_explore(choices, decay, window):
-    choices.sort('dt', inplace=True)
-    delta = timedelta(minutes=window)
-    timestamps = choices['dt']
-    G = make_graph(choices['source'], choices['dest'])
-    for i, timestamp in enumerate(timestamps):
-        if i > 0 and timestamp == timestamps[i - 1]:
-            continue
-        upper_lim = timestamp + delta
-        df = choices[(choices['dt'] >= timestamp) & (choices['dt'] <= upper_lim)]
-        if len(df.index) == 0:
-            continue
-        explore_prob = estimate_explore(df, decay, G)
-        print explore_prob
+def time_series_explore(strategies, decay_types, sheets, decay=0.01, window=-1, ghost=False):
+    for strategy in strategies:
+        print strategy
+        for decay_type in decay_types:
+            print decay_type
+            choices = 'reformated_counts%s.csv' % sheets
+            choices = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'], skipinitialspace=True)
+            choices.sort('dt', inplace=True)
+            delta = None
+            if delta != -1:
+                assert delta > 0
+                delta = timedelta(minutes=window)
+            timestamps = choices['dt']
+            G = make_graph(choices['source'], choices['dest'])
+            for i, timestamp in enumerate(timestamps):
+                if i > 0 and timestamp == timestamps[i - 1]:
+                    continue
+                upper_lim = timestamps[-1]
+                if delta != None:
+                    upper_lim = timestamp + delta
+                df = choices[(choices['dt'] >= timestamp) & (choices['dt'] <= upper_lim)]
+                if len(df.index) == 0:
+                    continue
+                explore_prob = estimate_explore(df, G, strategy, decay_type, decay, ghost)
+                print explore_prob
+    
+def main():
+    parser = argparse.Argument_Parser()
+    parser.add_argument('sheets', nargs='+')
+    parser.add_argument('-s', '--strategies', choices=STRATEGY_CHOICES, nargs='+', required=True)
+    parser.add_argument('-dt', '--decay_types', choices=DECAY_CHOICES, nargs='+', required=True)
+    parser.add_argument('-d', '--decay', type=float, default=0.01)
+    parser.add_argument('-w', '--window', type=int, default=-1)
+    parser.add_argument('-g', '--ghost', action='store_true')
+    
+    args = parser.parse_args()
+    sheets = args.sheets
+    strategies = args.strategies
+    decay_types = args.decay_types
+    decay = args.decay
+    window = args.window
+    ghost = args.ghost
+    
+    
     
 if __name__ == '__main__':
-    cutdata = argv[1]
-    df = pd.read_csv(cutdata, header=None, names=['source', 'dest', 'dt'])
-    df['dt'] = pd.to_datetime(df['dt'])
-    
-    time_series_explore(df, 0.1, 3)
+    main()
