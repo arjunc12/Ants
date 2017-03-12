@@ -460,7 +460,8 @@ def is_explore_uniform(G, source, dest, prev=None):
     if has_unexplored:
         chosen_wt = G[source][dest]['weight']
         return chosen_wt <= MIN_DETECTABLE_PHEROMONE
-    return False
+    else:
+        None
     
 def is_explore_max(G, source, dest, prev=None):
     max_wt = None
@@ -470,19 +471,19 @@ def is_explore_max(G, source, dest, prev=None):
         candidates.remove(prev)
     for candidate in candidates:
         wt = G[source][candidate]['weight']
-        if wt > MIN_DETECTABLE_PHERMONE:
+        if wt > MIN_DETECTABLE_PHEROMONE:
             if max_wt == None:
                 max_wt = wt
             else:
                 max_wt = max(wt, max_wt)
                 
     if max_wt == None:
-        return False
-        
-    chosen_wt = G[source][dest]['weight']
-    return chosen_wt < max_wt
+        return None
+    else:
+        chosen_wt = G[source][dest]['weight']
+        return chosen_wt < max_wt
     
-def is_explore(G, source, strategy='rank', dest, prev=None):
+def is_explore(G, source, dest, strategy='rank', prev=None):
     explore_func = None
     if strategy == 'uniform':
         explore_func = is_explore_uniform
