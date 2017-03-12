@@ -6,14 +6,16 @@ import argparse
 from choice_functions import *
 from decay_functions import *
 from repair_ml import reset_graph, make_graph
+import pylab
 
 def estimate_explore(df, start=0, G=None, strategy='rank', decay_type='exp', decay=0.01, ghost=False):
-    #choices.sort('dt', inplace=True) 
+    df.sort('dt', inplace=True) 
     sources = list(df['source'])
     dests = list(df['dest'])
     dts = list(df['dt'])
     
     assert len(sources) == len(dests)
+    assert start <= len(sources)
     
     if G == None:
         G = make_graph(sources, dests, ghost)
@@ -24,7 +26,12 @@ def estimate_explore(df, start=0, G=None, strategy='rank', decay_type='exp', dec
     explore_steps = 0
     
     G2 = G.copy()
-    for i in xrange(len(sources)):
+    
+    G[sources[0]][dests[0]]['weight'] += 1
+    if decay_type == 'linear':
+        G[sources[0]][dests[0]]['units'].append(1)
+        
+    for i in xrange(1, len(sources)):
         
         curr = dts[i]
         prev = curr
@@ -34,10 +41,12 @@ def estimate_explore(df, start=0, G=None, strategy='rank', decay_type='exp', dec
         source = sources[i]
         dest = dests[i]
         
-        if i >= steps:
-            steps += 1
-            if is_explore(G, source, dest, strategy)
-                explore_steps += 1
+        if i <= start:
+            explore_step = is_explore(G, source, dest, strategy)
+            if explore_step != None:
+                steps += 1
+                if explore_step == True:
+                    explore_steps += 1
         
         if curr != prev:
             diff = curr - prev
@@ -49,36 +58,46 @@ def estimate_explore(df, start=0, G=None, strategy='rank', decay_type='exp', dec
             
         #print curr, get_weights(G)
             
-    return float(explore_steps) / steps
+    return explore_steps, steps
 
 def time_series_explore(strategies, decay_types, sheets, decay=0.01, window=-1, ghost=False):
     for strategy in strategies:
         print strategy
         for decay_type in decay_types:
             print decay_type
-            choices = 'reformated_counts%s.csv' % sheets
-            choices = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'], skipinitialspace=True)
-            choices.sort('dt', inplace=True)
-            delta = None
-            if delta != -1:
-                assert delta > 0
-                delta = timedelta(minutes=window)
-            timestamps = choices['dt']
-            G = make_graph(choices['source'], choices['dest'])
-            for i, timestamp in enumerate(timestamps):
-                if i > 0 and timestamp == timestamps[i - 1]:
-                    continue
-                upper_lim = timestamps[-1]
-                if delta != None:
-                    upper_lim = timestamp + delta
-                df = choices[(choices['dt'] >= timestamp) & (choices['dt'] <= upper_lim)]
-                if len(df.index) == 0:
-                    continue
-                explore_prob = estimate_explore(df, G, strategy, decay_type, decay, ghost)
-                print explore_prob
+            for sheet in sheets:
+                print sheet
+                choices = 'reformated_counts%s.csv' % sheet
+                choices = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'], skipinitialspace=True)
+                choices['dt'] = pd.to_datetime(choices['dt'])
+                choices.sort('dt', inplace=True)
+                delta = None
+                if window != -1:
+                    assert window > 0
+                    delta = timedelta(minutes=window)
+                timestamps = list(choices['dt'])
+                explore_probs = []
+                for i in xrange(len(timestamps)):
+                    if i > 0 and timestamps[i] == timestamps[i - 1]:
+                        continue
+                    '''
+                    upper_lim = timestamps[len(timestamps) - 1]
+                    if delta != None:
+                        upper_lim = timestamp + delta
+                    df = choices[(choices['dt'] >= timestamp) & (choices['dt'] <= upper_lim)]
+                    '''
+                    #if len(df.index) == 0:
+                    #    continue
+                    explore_steps, steps = estimate_explore(choices, i, None, strategy, decay_type, decay, ghost)
+                    if steps > 0:
+                        explore_prob = float(explore_steps) / steps
+                        explore_probs.append(explore_prob)
+                pylab.plot(range(len(explore_probs)), explore_probs)
+            print "show"
+            pylab.show()
     
 def main():
-    parser = argparse.Argument_Parser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('sheets', nargs='+')
     parser.add_argument('-s', '--strategies', choices=STRATEGY_CHOICES, nargs='+', required=True)
     parser.add_argument('-dt', '--decay_types', choices=DECAY_CHOICES, nargs='+', required=True)
@@ -94,6 +113,7 @@ def main():
     window = args.window
     ghost = args.ghost
     
+    time_series_explore(strategies, decay_types, sheets, decay, window, ghost)
     
     
 if __name__ == '__main__':
