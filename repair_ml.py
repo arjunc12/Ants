@@ -118,7 +118,8 @@ def get_decay_func(decay_type):
         raise ValueError("Invalid Decay Type")
 
 def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None, ghost=False):
-    assert 0 < decay < 1
+    assert 0 <= decay <= 1
+    assert 0 <= explore <= 1
     df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'], skipinitialspace=True)
     df['dt'] = pd.to_datetime(df['dt'])
     df.sort('dt', inplace=True)
@@ -139,11 +140,10 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         check_units = True
     
     log_likelihood = 0
-    '''
-    G[sources[1]][dests[1]]['weight'] += 1
+    
+    G[sources[0]][dests[0]]['weight'] += 1
     if decay_type == 'linear':
-        G[sources[1]][dests[1]]['units'].append(1)
-    '''
+        G[sources[0]][dests[0]]['units'].append(1)
     
     G2 = G.copy()
     
@@ -151,7 +151,7 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
     for u in G.nodes():
         max_degree = max(max_degree, len(G.neighbors(u)))
     
-    for i in xrange(len(sources)):
+    for i in xrange(1, len(sources)):
         #check_graph(G, check_units)
         #check_graph(G2, check_units)
         
@@ -165,8 +165,7 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
             if decay_type == 'linear':
                 G[source][canopy_neighbor % source]['units'].append(1)
         '''
-        if len(G.neighbors(source)) == max_degree:
-            log_likelihood += np.log(likelihood_func(G, source, dest, explore))
+        log_likelihood += np.log(likelihood_func(G, source, dest, explore))
         if log_likelihood == float("-inf"):
             break
         
