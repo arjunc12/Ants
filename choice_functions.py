@@ -10,6 +10,12 @@ STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybr
                         'hybridr', 'ranku', 'uniform2']
 
 def next_edge_uniform(G, start, explore_prob, candidates=None):
+    '''
+    Chooses next edge randomly according to the uniform model.  With some probability
+    it picks equally among the edges with 0 weight (or weight less than the detectable
+    threshold).  Otherwise it picks among the edges of non-zero weight with probability
+    proportional to the edge weights.
+    '''
     if candidates == None:
         candidates = G.neighbors(start)
     
@@ -17,6 +23,8 @@ def next_edge_uniform(G, start, explore_prob, candidates=None):
     explored = []
     unexplored = []
     explored_weights = []
+    
+    # separate zero and non-zero neighbors, count the total weight
     for candidate in candidates:
         wt = G[start][candidate]['weight']
         if wt <= PHEROMONE_THRESHOLD:
@@ -25,7 +33,9 @@ def next_edge_uniform(G, start, explore_prob, candidates=None):
             explored.append(candidate)
             explored_weights.append(wt)
             total_wt += wt
+            
     flip = random()
+    # pick zero neighbor with probability explore_prob, or if all edges are zero edges
     if (flip < explore_prob and len(unexplored) > 0) or (len(explored) == 0):
         next = choice(len(unexplored))
         next = unexplored[next]
@@ -37,9 +47,15 @@ def next_edge_uniform(G, start, explore_prob, candidates=None):
         return next, False
 
 def next_edge_uniform2(G, start, explore_prob, candidates=None):
+    '''
+    Picks edges with probability proportional to the square of the edge weights
+    '''
     return next_edge_uniformn(G, start, explore_prob, 2, candidates)
 
 def next_edge_uniformn(G, start, explore_prob, n, candidates=None):
+    '''
+    Picks edges with probability proportional to the edge weights raised to the n-th power
+    '''
     if candidates == None:
         candidates = G.neighbors(start)
     
@@ -49,7 +65,7 @@ def next_edge_uniformn(G, start, explore_prob, n, candidates=None):
     explored_weights = []
     for candidate in candidates:
         wt = G[start][candidate]['weight']
-        if wt <= PHEROMONE_THRESHOLD:
+        if wt <= MIN_DETECTABLE_PHEROMONE:
             unexplored.append(candidate)
         else:
             explored.append(candidate)
@@ -68,23 +84,32 @@ def next_edge_uniformn(G, start, explore_prob, n, candidates=None):
         return next, False
     
 def next_edge_max(G, start, explore_prob, candidates=None):
+    '''
+    With some probability, picks equally among the edges whose weight is lower than the
+    highest weighted adjacent edge.  Otherwise, picks equally among all edges tied for the
+    highest edge weight.
+    '''
     if candidates == None:
         candidates = G.neighbors(start)
-        
+    
+    # compute highest adjacent edge weight    
     max_wt = float("-inf")
     for candidate in candidates:
         max_wt = max(max_wt, G[start][candidate]['weight'])
     
+    # split neighbors into maximally weighted and non-maximally weighted edges
     max_neighbors = []
     nonmax_neighbors = []
     for candidate in candidates:
         wt = G[start][candidate]['weight']
-        if wt == max_wt and wt > PHEROMONE_THRESHOLD:
+        # Edges with too small weight not considered maximal
+        if wt == max_wt and wt > MIN_DETECTABLE_PHEROMONE:
             max_neighbors.append(candidate)
         else:
             nonmax_neighbors.append(candidate)
             
     flip = random()
+    # Explores non-maximal edge with probability explore_prob
     if (flip < explore_prob and len(nonmax_neighbors) > 0) or (len(max_neighbors) == 0):
         next = choice(len(nonmax_neighbors))
         next = nonmax_neighbors[next]
@@ -95,6 +120,9 @@ def next_edge_max(G, start, explore_prob, candidates=None):
         return next, False
         
 def next_edge_maxz(G, start, explore_prob, candidates=None):
+    '''
+    With some probability, picks equally among edg
+    '''
     if candidates == None:
         candidates = G.neighbors(start)
         
@@ -106,7 +134,7 @@ def next_edge_maxz(G, start, explore_prob, candidates=None):
     nonmax_neighbors = []
     for candidate in candidates:
         wt = G[start][candidate]['weight']
-        if wt == max_wt and wt > PHEROMONE_THRESHOLD:
+        if wt == max_wt and wt > MIN_DETECTABLE_PHEROMONE:
             max_neighbors.append(candidate)
         elif wt <= PHEROMONE_THRESHOLD:
             nonmax_neighbors.append(candidate)
