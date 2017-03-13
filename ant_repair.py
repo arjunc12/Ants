@@ -212,7 +212,7 @@ def pheromone_subgraph(G, origin=None, destination=None):
     for u, v in G.edges_iter():
         # need enough pheromone for the ant to be able to detect it on that edge
         wt = G[u][v]['weight']
-        if wt > PHEROMONE_THRESHOLD:
+        if wt > MIN_DETECTABLE_PHEROMONE:
             G2.add_edge(u, v)
             G2[u][v]['weight'] = wt
             
@@ -254,7 +254,7 @@ def count_nonzero(G, curr):
     '''
     count = 0
     for neighbor in G.neighbors(curr):
-        if G[curr][neighbor]['weight'] > PHEROMONE_THRESHOLD:
+        if G[curr][neighbor]['weight'] > MIN_DETECTABLE_PHEROMONE:
             count += 1
     return count
     
@@ -264,7 +264,7 @@ def pheromone_cost(G):
     '''
     G2 = nx.Graph()
     for u, v in G.edges_iter():
-        if G[u][v]['weight'] > PHEROMONE_THRESHOLD:
+        if G[u][v]['weight'] > MIN_DETECTABLE_PHEROMONE:
             G2.add_edge(u, v)
     return G2.number_of_edges()
     
@@ -321,7 +321,7 @@ def at_dead_end(G, curr, prev):
     is at a dead end, i.e. following pheromone did not allow the ant to reach the nest
     '''
     for n in G.neighbors(curr):
-        if n != prev and G[curr][n]['weight'] > PHEROMONE_THRESHOLD:
+        if n != prev and G[curr][n]['weight'] > MIN_DETECTABLE_PHEROMONE:
             return False
     return True
 
@@ -423,7 +423,7 @@ def wasted_edges(G, useful_edges):
     wasted_edge_weight = 0
     for u, v in G.edges_iter():
         wt = G[u][v]['weight']
-        if wt > PHEROMONE_THRESHOLD:
+        if wt > MIN_DETECTABLE_PHEROMONE:
             edge_id = Ninv[(u, v)]
             if edge_id not in useful_edges:
                 wasted_edges += 1
@@ -444,7 +444,7 @@ def max_neighbors(G, source, prev=None):
     max_neighbors = []
     for candidate in candidates:
         wt = G[source][candidate]['weight']
-        if wt <= PHEROMONE_THRESHOLD:
+        if wt <= MIN_DETECTABLE_PHEROMONE:
             continue
         elif wt > max_wt:
             max_wt = wt
@@ -606,7 +606,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             wt = G[u][v]['weight']
             unique_weights.add(wt)
             max_weight = max(max_weight, wt)
-            if wt <= PHEROMONE_THRESHOLD:
+            if wt <= MIN_DETECTABLE_PHEROMONE:
                 edge_weights[index].append(None)
             else:
                 edge_weights[index].append(wt)
@@ -846,7 +846,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 wt = G[u][v]['weight']
                 unique_weights.add(wt)
                 max_weight = max(max_weight, wt)
-                if wt <= PHEROMONE_THRESHOLD:
+                if wt <= MIN_DETECTABLE_PHEROMONE:
                     edge_weights[index].append(None)
                 else:
                     edge_weights[index].append(wt)
