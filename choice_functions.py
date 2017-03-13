@@ -1,9 +1,13 @@
 import numpy as np
 import networkx as nx
 from numpy.random import random, choice
-MIN_DETECTABLE_PHEROMONE = 0.001
+
+# minimum amount of pheromone that needs to be on an edge for an ant to detect it
+# zero-edges are defined to be edges with less pheromone than the minimum detectable
+MIN_DETECTABLE_PHEROMONE = 0.01
+# minimum amount of pheromone that can be on an edge
 MIN_PHEROMONE = 0
-PHEROMONE_THRESHOLD = 0
+
 from collections import defaultdict
 
 STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
@@ -121,7 +125,9 @@ def next_edge_max(G, start, explore_prob, candidates=None):
         
 def next_edge_maxz(G, start, explore_prob, candidates=None):
     '''
-    With some probability, picks equally among edg
+    With some probability, picks equally among zero edges, otherwise picks equally among
+    maximal edges. This choice function ignores all edges in the 'middle', i.e. edges that
+    are neither maximal nor minimal
     '''
     if candidates == None:
         candidates = G.neighbors(start)
