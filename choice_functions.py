@@ -142,7 +142,7 @@ def next_edge_maxz(G, start, explore_prob, candidates=None):
         wt = G[start][candidate]['weight']
         if wt == max_wt and wt > MIN_DETECTABLE_PHEROMONE:
             max_neighbors.append(candidate)
-        elif wt <= PHEROMONE_THRESHOLD:
+        elif wt <= MIN_DETECTABLE_PHEROMONE:
             nonmax_neighbors.append(candidate)
             
     flip = random()
