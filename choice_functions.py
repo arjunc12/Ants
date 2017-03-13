@@ -31,7 +31,7 @@ def next_edge_uniform(G, start, explore_prob, candidates=None):
     # separate zero and non-zero neighbors, count the total weight
     for candidate in candidates:
         wt = G[start][candidate]['weight']
-        if wt <= PHEROMONE_THRESHOLD:
+        if wt <= MIN_DETECTABLE_PHEROMONE:
             unexplored.append(candidate)
         else:
             explored.append(candidate)
