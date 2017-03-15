@@ -36,7 +36,7 @@ for strategy in strategies:
     for graph in graphs:
         for decay_type in decay_types:
             for steps in max_steps:
-                out_items = ['repair', strategy, graph_name, decay_type]
+                out_items = ['repair', strategy, graph, decay_type]
                 if backtrack:
                     out_items.append('backtrack')
                 if one_way:
