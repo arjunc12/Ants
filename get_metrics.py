@@ -42,7 +42,7 @@ for strategy in strategies:
                 if one_way:
                     out_items.append('one_way')
                 out_str = '_'.join(out_items)
-                fname = 'ant_%s%d.csv' % (out_str, max_steps)
+                fname = 'ant_%s%d.csv' % (out_str, steps)
                 print fname
                 df = pd.read_csv(fname, header=None, names = columns, skipinitialspace=True)
                 df = df[['explore', 'decay'] + metrics]
