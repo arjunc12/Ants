@@ -4,7 +4,7 @@ from numpy.random import random, choice
 
 # minimum amount of pheromone that needs to be on an edge for an ant to detect it
 # zero-edges are defined to be edges with less pheromone than the minimum detectable
-MIN_DETECTABLE_PHEROMONE = 0.001
+MIN_DETECTABLE_PHEROMONE = 0
 # minimum amount of pheromone that can be on an edge
 MIN_PHEROMONE = 0
 
