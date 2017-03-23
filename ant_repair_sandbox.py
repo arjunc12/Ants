@@ -669,8 +669,8 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
                     explore_prob = explore1
                     if search_mode[next_ant]:
                         explore_prob = explore2
-                    elif curr == origins[next_ant]:
-                        explore_prob = 0
+                    elif (curr == origins[next_ant] and not search_mode[next_ant]):
+                        exp_prob = 0
             
                     n = G.neighbors(curr)
                     if curr != prev and prev != None:
@@ -683,6 +683,8 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
                     
                     memory = n_most_recent(paths[next_ant], memory_lim, curr)
                     if (prev == curr) or (curr == origins[next_ant] and not search_mode[next_ant]):
+                        prev = None
+                    if (pheromone_dead_end(G, curr, prev)):
                         prev = None
                         
                     if (origins[next_ant] in memory) and (not search_mode[next_ant]):
