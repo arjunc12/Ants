@@ -294,7 +294,7 @@ def pruning_plot(costs, figname, max_cost=None):
     PP.ylabel('proportion of edges in use')
     PP.savefig(figname + '.png', format='png')
     
-def at_dead_end(G, curr, prev):
+def pheromone_dead_end(G, curr, prev):
     '''
     Checks if an ant is at a dead end.  We define a dead end as such: if the only edge
     with pheromone is the edge that the ant traversed on the previous step, then the ant
@@ -663,7 +663,7 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
                     
 
                     if curr != origins[next_ant] and (not search_mode[next_ant])\
-                                                 and at_dead_end(G, curr, prev):
+                                                 and pheromone_dead_end(G, curr, prev):
                         search_mode[next_ant] = True
                         
                     explore_prob = explore1
