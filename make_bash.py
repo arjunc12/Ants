@@ -8,6 +8,7 @@ parser.add_argument('-g', '--graphs', nargs='+', required=True, dest='graphs')
 parser.add_argument('-dt', '--decay_types', nargs='+', required=True, dest='decay_types')
 parser.add_argument('-m', '--steps', required=True, type=int, dest='steps')
 parser.add_argument('-l', '--steps_label', required=True, dest='steps_label')
+parser.add_argument('--sandbox', action='store_true')
 
 # optional arguments
 
@@ -58,10 +59,15 @@ eql = args.eql
 backtrack = args.backtrack
 one_way = args.one_way
 
+sandbox = args.sandbox
+
 for strategy in strategies:
     for graph in graphs:
         for decay_type in decay_types:
-            out_items = ['repair', strategy, graph, decay_type]
+            out_items = ['repair']
+            if sandbox:
+                out_items.append('sandbox')
+            out_items += [strategy, graph, decay_type]
             if backtrack:
                 out_items.append('backtrack')
             if one_way:
@@ -99,8 +105,12 @@ for strategy in strategies:
             f.write('nq=%d\n' % nql)
             f.write('eq=%d\n' % eql)
             
+            pyscript = 'ant_repair'
+            if sandbox:
+                pyscript += '_sandbox'
+            pyscript += '.py'
 
-            py_command = '            python ant_repair.py -a $add -d $d -e $e -x 1 -n $n -m $m -g $graph -s $strategy -dt $decay_type -nql $nq -eql $eq'
+            py_command = '            python %s -a $add -d $d -e $e -x 1 -n $n -m $m -g $graph -s $strategy -dt $decay_type -nql $nq -eql $eq' % pyscript
             if backtrack:
                 py_command += ' --backtrack'
             if one_way:
