@@ -28,7 +28,7 @@ parser.add_argument('-n', '--num_ants', type=int, default=100, dest='num_ants')
 
 parser.add_argument('-q', '--qlim', type=int, default=1, dest='qlim')
 
-parser.add_argument('-e', '--explore', type=float, default=0.01, dest='explore')
+parser.add_argument('-e', '--explore', type=float, default=None, dest='explore')
 
 args = parser.parse_args()
 strategies = args.strategies
