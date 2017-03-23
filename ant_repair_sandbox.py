@@ -954,7 +954,7 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
     
         path_etr = None
         if len(path_probs) > 0:
-            path_etr = entropy(path_probs)
+            path_etr = abs(entropy(path_probs))
         else:
             has_path = False
         
