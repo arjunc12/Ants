@@ -40,7 +40,7 @@ for strategy in strategies:
             for steps in max_steps:
                 out_items = ['repair']
                 if sandbox:
-                    out_items.append(sandbox)
+                    out_items.append('sandbox')
                 out_items += [strategy, graph, decay_type]
                 if backtrack:
                     out_items.append('backtrack')
