@@ -19,6 +19,7 @@ parser.add_argument('-m', '--max_steps', type=int, required=True, nargs='+')
 parser.add_argument('-v', '--var', action='store_true')
 parser.add_argument('-b', '--backtrack', action='store_true')
 parser.add_argument('-o', '--one_way', action='store_true')
+parser.add_argument('--sandbox', action='store_true')
 
 args = parser.parse_args()
 explores = args.explores
@@ -31,12 +32,16 @@ max_steps = args.max_steps
 var = args.var
 backtrack = args.backtrack
 one_way = args.one_way
+sandbox = args.sandbox
 
 for strategy in strategies:
     for graph in graphs:
         for decay_type in decay_types:
             for steps in max_steps:
-                out_items = ['repair', strategy, graph, decay_type]
+                out_items = ['repair']
+                if sandbox:
+                    out_items.append(sandbox)
+                out_items += [strategy, graph, decay_type]
                 if backtrack:
                     out_items.append('backtrack')
                 if one_way:
