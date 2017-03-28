@@ -20,7 +20,7 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     for name, group in grouped:
         val = group_func(group)
         if name == (MLE_EXPLORE, MLE_DECAY):
-            print title, val
+            pass #print title, val
         i, j = pos % len(y), pos / len(y)
         z[i, j] = val
         pos += 1
