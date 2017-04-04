@@ -1,3 +1,9 @@
+'''
+Module for making bash files to run scripts on supercomputer.
+Automates writing and naming of files, which especially helps with naming the
+files correctly 
+'''
+
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -8,6 +14,9 @@ parser.add_argument('-g', '--graphs', nargs='+', required=True, dest='graphs')
 parser.add_argument('-dt', '--decay_types', nargs='+', required=True, dest='decay_types')
 parser.add_argument('-m', '--steps', required=True, type=int, dest='steps')
 parser.add_argument('-l', '--steps_label', required=True, dest='steps_label')
+
+# run the sandbox script instead of the main repair script
+# sandbox script used for testing new ideas like modulating parameters, new choice functions, etc.
 parser.add_argument('--sandbox', action='store_true')
 
 # optional arguments
@@ -18,21 +27,27 @@ parser.add_argument('-emax', type=float, default=0.95, dest='emax')
 parser.add_argument('-dmin', type=float, default=0.05, dest='dmin')
 parser.add_argument('-dmax', type=float, default=0.95, dest='dmax')
 
-# explore, decay increments
+# explore, decay, add increments
 parser.add_argument('-estep', type=float, default=0.05, dest='estep')
 parser.add_argument('-dstep', type=float, default=0.05, dest='dstep')
-
 parser.add_argument('-a', '--add', type=float, default=1, dest='add')
 
+# number of different processes to use, so number of trials to run for each
+# parameter combination
 parser.add_argument('-x', '--num_iters', type=int, default=50, dest='num_iters')
+
+# number of ants in each simulation
 parser.add_argument('-n', '--num_ants', type=int, default=100, dest='num_ants')
 
+# node, edge queue limits
 parser.add_argument('-nql', '--node_queue_lim', type=int, default=1, dest='nql')
 parser.add_argument('-eql', '--edge_queue_lim', type=int, default=1, dest='eql')
 
+# options for backtracking or performing uni-directional search
 parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack')
 parser.add_argument('-o', '--one_way', action='store_true', dest='one_way')
 
+# parse arguments
 args = parser.parse_args()
 strategies = args.strategies
 graphs = args.graphs
@@ -77,6 +92,8 @@ for strategy in strategies:
             fname = 'ant_%s%s.sh' % (out_str, steps_label)
             print fname
             f = open(fname, 'w')
+
+            # create script variables for all the parameters
             f.write('strategy=\'%s\'\n' % strategy)
             f.write('graph=\'%s\'\n' % graph)
             f.write('decay_type=\'%s\'\n' % decay_type)
@@ -117,13 +134,14 @@ for strategy in strategies:
                 py_command += ' --one_way'
             py_command += ' &\n'
             
-
+            # logic for looping through parameter range and running the script
             f.write('for e in $(seq $emin $estep $emax); do\n')
             f.write('    for d in $(seq $dmin $dstep $dmax); do\n')
             f.write('        for iter in $(seq 1 1 $x); do\n')
             #f.write('            python ant_repair.py -a $add -d $d -e $e -x 1 -n $n -m $m -g $graph -s $strategy -dt $decay_type -nql $nq -eql $eq &\n')
             f.write(py_command)
             f.write('        done\n')
+            # wait for all runs to finish before moving to next pair of parameter values
             f.write('        wait\n')
             f.write('    done\n')
             f.write('done\n')

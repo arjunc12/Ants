@@ -34,12 +34,28 @@ def init_graph(G):
 
 
 def walk_to_string(walk):
+    '''
+    converts a sequences of nodes comprising a walk to a string. We can then output every different walk to a file
+    to estimate the probabilities of all the different walks and estimate the entropy
+    '''    
     walk_str = []
     for i in range(len(walk)):
         walk_str.append(str(Minv[walk[i]]))
     return '-'.join(walk_str)
 
 def pure_random_walk(G, nest, target, ants):
+    '''
+    carry out an unweighted random walk. Each ant starts at the nest vertex and walks on G until reaching the target
+    vertex.
+
+    G - the graph on which to walk
+
+    nest - the vertex from which each ant starts
+
+    target - the vertex that each ant walks until reaching
+
+    ants - the number of ants with which to perform an unweighted random walk
+    '''
     out_file = open('pure_rand_walk_%s.csv' % G.graph['name'], 'a')
     for ant in xrange(ants):
         curr = nest
@@ -48,6 +64,7 @@ def pure_random_walk(G, nest, target, ants):
         prev = None
         while curr != target:
             candidates = G.neighbors(curr)
+            # avoid taking the most recently visited vertex
             if prev in candidates and len(candidates) > 1:
                 candidates.remove(prev)
             next = choice(candidates)
@@ -55,6 +72,7 @@ def pure_random_walk(G, nest, target, ants):
             curr = next
             walk.append(next)
             steps += 1
+        # output walk to file to be able to compute probabilities of different walks
         walk_str = walk_to_string(walk)
         out_file.write('%s, %d, %s\n' % (G.graph['name'], steps, walk_str))
     out_file.close()
