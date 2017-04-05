@@ -4,7 +4,7 @@ from numpy.random import random, choice
 
 # minimum amount of pheromone that needs to be on an edge for an ant to detect it
 # zero-edges are defined to be edges with less pheromone than the minimum detectable
-MIN_DETECTABLE_PHEROMONE = 0.001
+MIN_DETECTABLE_PHEROMONE = 0
 # minimum amount of pheromone that can be on an edge
 MIN_PHEROMONE = 0
 
@@ -210,7 +210,7 @@ def next_edge_ranku(G, start, explore_prob, candidates=None):
         return next, False
     else:
         next, ex = next_edge_uniform(G, start, explore_prob, candidates=bottom)
-        return next, True
+        return next, ex
     
 def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, \
               search=True, backtrack=False):
