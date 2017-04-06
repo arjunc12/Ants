@@ -284,8 +284,8 @@ def uniformn_likelihood(G, source, dest, explore, n, prev=None):
     if prev != None:
         assert prev in neighbors
         neighbors.remove(prev)
-    for n in neighbors:
-        wt = G[source][n]['weight']
+    for neighbor in neighbors:
+        wt = G[source][neighbor]['weight']
         assert wt >= MIN_PHEROMONE
         if wt <= MIN_DETECTABLE_PHEROMONE:
             unexplored += 1
@@ -305,7 +305,7 @@ def uniformn_likelihood(G, source, dest, explore, n, prev=None):
         return prob
         
 def uniform2_likelihood(G, source, dest, explore, prev=None):
-    return uniformn_likelihood(G, source, dest, explore, prev)
+    return uniformn_likelihood(G, source, dest, explore, 2, prev)
              
 def max_edge_likelihood(G, source, dest, explore, prev=None):
     max_wt = MIN_PHEROMONE
@@ -468,6 +468,8 @@ def get_likelihood_func(strategy):
         likelihood_func = rank_likelihood
     elif strategy == 'ranku':
         likelihood_func = ranku_likelihood
+    elif strategy == 'uniform2':
+        likelihood_func = uniform2_likelihood
     else:
         raise ValueError('invalid strategy')
     return likelihood_func
