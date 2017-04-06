@@ -15,6 +15,7 @@ parser.add_argument('--sandbox', action='store_true')
 parser.add_argument('-c', '--supercomputer', default='doritos', dest='supercomputer')
 parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack')
 parser.add_argument('-o', '--one_way', action='store_true', dest='one_way')
+parser.add_argument('-r', '--remote', action='store_true', dest='remote')
 
 args = parser.parse_args()
 strategies = args.strategies
@@ -26,6 +27,7 @@ sandbox = args.sandbox
 supercomputer = args.supercomputer
 backtrack = args.backtrack
 one_way = args.one_way
+remote = args.remote
 
 supercomp_dir = 'achandrasekhar@%s.snl.salk.edu:/home/achandrasekhar/Documents' % supercomputer
 
@@ -44,13 +46,20 @@ for strategy in strategies:
             #descriptor = '%s_%s_%s_%s' % (prog_name, strategy, graph, decay)
             fname1 = 'ant_%s.csv' % descriptor
             fname2 = 'ant_%s%d.csv' % (descriptor, max_steps)
-            scp_command = 'scp %s/%s %s' % (supercomp_dir, fname2, fname1)
-            print scp_command
-            os.system(scp_command)
+            if not remote:
+                scp_command = 'scp %s/%s %s' % (supercomp_dir, fname2, fname1)
+                print scp_command
+                os.system(scp_command)
+            
+            plot_fname = fname1
+            if remote:
+                plot_fname = fname2
             plot_label = '%s%s' % (descriptor, steps_label)
-            plot_command = 'python %s %s %s' % (plot_script, fname1, plot_label)
+            plot_command = 'python %s %s %s' % (plot_script, plot_fname, plot_label)
             print plot_command
             os.system(plot_command)
-            move_command = 'mv %s %s' % (fname1, fname2)
-            print move_command
-            os.system(move_command)
+            
+            if not remote:
+                move_command = 'mv %s %s' % (fname1, fname2)
+                print move_command
+                os.system(move_command)
