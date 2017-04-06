@@ -1,4 +1,6 @@
 import pandas as pd
+import matplotlib as mpl
+mpl.use('agg')
 import pylab
 from sys import argv
 import argparse
