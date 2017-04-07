@@ -281,7 +281,7 @@ def uniform_likelihood(G, source, dest, explore, prev=None):
         return prob
         
 def uniformn_likelihood(G, source, dest, explore, n, prev=None):
-    chosen_wt = G[source][dest]['weight']
+    chosen_wt = G[source][dest]['weight'] ** n
     total = 0.0
     explored = 0
     unexplored = 0
@@ -290,13 +290,13 @@ def uniformn_likelihood(G, source, dest, explore, n, prev=None):
         assert prev in neighbors
         neighbors.remove(prev)
     for neighbor in neighbors:
-        wt = G[source][neighbor]['weight']
+        wt = G[source][neighbor]['weight'] ** n
         assert wt >= MIN_PHEROMONE
         if wt <= MIN_DETECTABLE_PHEROMONE:
             unexplored += 1
         else:
             explored += 1
-            total += wt ** n
+            total += wt
     assert explored + unexplored == len(neighbors)
     if explored == 0 or total <= 0:
         assert unexplored == len(neighbors)
@@ -305,7 +305,7 @@ def uniformn_likelihood(G, source, dest, explore, n, prev=None):
         return explore * (1.0 / unexplored)
     else:
         assert total > 0
-        prob = (chosen_wt ** n) / total
+        prob = chosen_wt / total
         if unexplored > 0:
             prob *= (1 - explore)
         return prob
