@@ -1,7 +1,7 @@
 import os
 import argparse
 
-parser = argparse.Argument_Parser()
+parser = argparse.ArgumentParser()
 parser.add_argument('-s', '--strategies', nargs='+', required=True)
 parser.add_argument('-g', '--graphs', nargs='+', required=True)
 parser.add_argument('-dt', '--decay_types', nargs='+', required=True)
@@ -23,6 +23,6 @@ for metric in metrics:
             for decay_type in decay_types:
                 for label in labels:
                     fname = '%s_repair_%s_%s_%s%s.pdf' % (metric, strategy, graph, decay_type, label)
-                    scp_command = 'scp %s/%s %s' % (remote_name, fname, fname)
-                    
-                    
+                    scp_command = 'scp %s/%s %s' % (remote_dir, fname, fname)
+                    print scp_command
+                    os.system(scp_command)                    
