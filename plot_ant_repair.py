@@ -282,8 +282,8 @@ def main():
     path_success_rate_heat(df, strategy)
     path_entropy_heat(df, strategy)
     
-    wasted_edge_count_heat(df, strategy)
-    wasted_edge_weight_heat(df, strategy)
+    #wasted_edge_count_heat(df, strategy)
+    #wasted_edge_weight_heat(df, strategy)
     
     #walk_success_rate_heat(df, strategy)
     
@@ -301,9 +301,9 @@ def main():
     #walk_pruning_heat(df, strategy)
     #chosen_walk_entropy_heat(df, strategy)
     
-    mean_path_len_heat(df, strategy)
-    var_path_len_heat(df, strategy)
-    std_path_len_heat(df, strategy)
+    #mean_path_len_heat(df, strategy)
+    #var_path_len_heat(df, strategy)
+    #std_path_len_heat(df, strategy)
    
 if __name__ == '__main__':
     main() 
