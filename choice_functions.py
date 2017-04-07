@@ -69,20 +69,25 @@ def next_edge_uniformn(G, start, explore_prob, n, candidates=None):
     explored_weights = []
     for candidate in candidates:
         wt = G[start][candidate]['weight']
-        if wt <= MIN_DETECTABLE_PHEROMONE:
+        if (wt ** n) <= MIN_DETECTABLE_PHEROMONE:
             unexplored.append(candidate)
         else:
             explored.append(candidate)
-            explored_weights.append(wt)
+            explored_weights.append(wt ** n)
             total_wt += wt ** n
     flip = random()
     if (flip < explore_prob and len(unexplored) > 0) or (len(explored) == 0):
         next = choice(len(unexplored))
         next = unexplored[next]
-        return next, True 
+        return next, True
+    elif total_wt == 0:
+        print explored_weights
+        next = choice(len(candidates))
+        next = candidates[next]
+        return next, True
     else:
         explored_weights = np.array(explored_weights)
-        explored_weights **= n
+        #explored_weights **= n
         explored_weights /= total_wt
         next = explored[choice(len(explored), 1, p=explored_weights)[0]]
         return next, False
@@ -293,12 +298,13 @@ def uniformn_likelihood(G, source, dest, explore, n, prev=None):
             explored += 1
             total += wt ** n
     assert explored + unexplored == len(neighbors)
-    if explored == 0:
+    if explored == 0 or total <= 0:
         assert unexplored == len(neighbors)
         return 1.0 / unexplored
     elif chosen_wt <= MIN_DETECTABLE_PHEROMONE:
         return explore * (1.0 / unexplored)
     else:
+        assert total > 0
         prob = (chosen_wt ** n) / total
         if unexplored > 0:
             prob *= (1 - explore)
