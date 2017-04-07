@@ -11,7 +11,7 @@ MIN_PHEROMONE = 0
 from collections import defaultdict
 
 STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
-                        'hybridr', 'ranku', 'uniform2']
+                        'hybridr', 'ranku', 'uniform2', 'max2', 'maxu']
 
 def next_edge_uniform(G, start, explore_prob, candidates=None):
     '''
@@ -127,6 +127,31 @@ def next_edge_max(G, start, explore_prob, candidates=None):
         next = choice(len(max_neighbors))
         next = max_neighbors[next]
         return next, False
+
+def mext_edge_max2(G, start, explore_prob, candidates=None):
+    if candidates == None:
+        candidates = G.neighbors(start)
+
+    max_wt = float("-inf")
+    for candidate in candidates:
+        max_wt = max(max_wt, G[start][candidate]['weight'])
+
+    max_neighbors = []
+    mid_neighbors = []
+    lower_neighbors = []
+
+    for candidate in candidates:
+        wt = G[start][candidate]['weight']
+        if wt > MIN_DETECTABLE_PHEROMONE:
+            if wt == max_wt:
+                max_neighbors.append(candidate)
+            else:
+                mid_neighbors.append(candidate)
+        else:
+            lower_neighbors.append(candidates)
+
+    flip1 = random()
+    flip2 = random()
         
 def next_edge_maxz(G, start, explore_prob, candidates=None):
     '''
