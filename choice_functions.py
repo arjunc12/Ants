@@ -152,7 +152,51 @@ def mext_edge_max2(G, start, explore_prob, candidates=None):
 
     flip1 = random()
     flip2 = random()
+
+    maxn = len(max_neighbors)
+    midn = len(mid_neighbors)
+    lowern = len(lower_neighbors)
+
+    if (flip1 > explore_prob and maxn > 0) or (midn + lowern == 0):
+        next = choice(maxn)
+        next = nonmax_neighbors[next]
+        return next, False
+    elif (flip2 > explore_prob) or lowern == 0:
+        next = choice(midn)
+        next = mid_neighbors[next]
+        return next, True
+    else:
+        next = choice(lowern)
+        next = lower_neighbors[next]
+        return next, True
+       
+def next_edge_maxu(G, start, explore_prob, candidates=None):
+    if candidates == None:
+        candidates = G.neighbors(start)
         
+    weights = []
+    for candidate in candidates:
+        weights.append(G[start][candidate]['weight'])
+        
+    max_wt = max(weights)
+    top = []
+    bottom = []
+    for candidate in candidates:
+        if G[start][candidate]['weight'] == max_wt:
+            top.append(candidate)
+        else:
+            bottom.append(candidate)
+            
+    flip = random()
+    if (flip <= 1 - explore_prob) or (len(bottom) == 0):
+        next = choice(len(top))
+        next = top[next]
+        return next, False
+    else:
+        next, ex = next_edge_uniform(G, start, explore_prob, candidates=bottom)
+        return next, True
+
+ 
 def next_edge_maxz(G, start, explore_prob, candidates=None):
     '''
     With some probability, picks equally among zero edges, otherwise picks equally among
@@ -272,8 +316,14 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         choice_func = next_edge_rank
     elif (strategy == 'ranku'):
         choice_func = next_edge_ranku
-    elif (strategy) == 'uniform2':
+    elif (strategy == 'uniform2'):
         choice_func = next_edge_uniform2
+    elif strategy == 'max2':
+        choice_func = next_edge_max2
+    elif strategy == 'maxu':
+        choice_func = next_edge_maxu
+    else:
+        raise ValueError('invalid strategy')
     return choice_func(G, start, explore_prob, candidates)
     
 def uniform_likelihood(G, source, dest, explore, prev=None):
@@ -411,7 +461,101 @@ def maxz_edge_likelihood(G, source, dest, explore, prev=None):
     else:
         assert MIN_DETECTABLE_PHEROMONE < chosen_wt < max_wt
         return 0
+
+def max2_likelihood(G, source, dest, explore, prev=None):
+    maxn = 0
+    midn = 0
+    lowern = 0
+
+    max_wt = float("-inf")
+    candidates = G.neighbors(source)
+    if prev != None:
+        assert prev in candidates
+        candidates.remove(prev)
+
+    for candidate in candidates:
+        wt = G[source][candidate]['weight']
+        max_wt = max(wt, max_wt)
+
+    for candidate in candidate:
+        wt = G[source][candidate]['weight']
+        if wt <= MIN_DETECTABLE_PHEROMONE:
+            lowern += 1
+        elif wt == max_wt:
+            maxn += 1
+        else:
+            midn += 1
+
+    chosen_wt = G[source][dest]['weight']
+    if chosen_wt == maxn:
+        prob = 1.0 / maxn
+        if lowern + midn > 0:
+            prob *= 1 - explore
+        return prob
+    elif chosen_wt <= MIN_DETECTABLE_PHEROMONE:
+        prob = 1.0 / lowern
+        if maxn + midn > 0:
+            prob *= explore ** 2
+        return prob
+    else:
+        prob = 1.0 / midn
+        prob *= explore
+        if lowern > 0:
+            prob *= (1 - explore)
+        return prob  
+
+def maxu_likelihood(G, source, dest, explore, prev=None):
+    chosen_wt = G[source][dest]['weight']
+    max_wt = float('-inf')
+    total_wt = 0.0
+    candidates = G.neighbors(source)
+    if prev != None:
+        assert prev in candidates
+        candidates.remove(prev)
         
+    for candidate in candidates:
+        wt = G[source][candidate]['weight']
+        max_wt = max(max_wt, wt)
+    
+    upper_neighbors = 0
+    mid_neighbors = 0
+    zero_neighbors = 0
+    for candidate in candidates:
+        wt = G[source][candidate]['weight']
+        if wt <= MIN_DETECTABLE_PHEROMONE:
+            zero_neighbors += 1
+        elif wt == max_wt:
+            upper_neighbors += 1
+        else:
+            total_wt += wt
+            mid_neighbors += 1
+    
+    lower_neighbors = zero_neighbors + mid_neighbors
+    if chosen_wt == max_wt and max_wt > MIN_DETECTABLE_PHEROMONE:
+        assert upper_neighbors > 0
+        prob = 1.0 / upper_neighbors
+        if lower_neighbors > 0:
+            prob *= (1 - explore)
+        return prob
+    elif chosen_wt > MIN_DETECTABLE_PHEROMONE:
+        assert chosen_wt < max_wt
+        assert total_wt > 0
+        prob = chosen_wt / total_wt
+        prob *= explore
+        if zero_neighbors > 0:
+            prob *= (1 - explore)
+        return prob
+    else:
+        assert chosen_wt <= MIN_DETECTABLE_PHEROMONE
+        assert lower_neighbors > 0
+        prob = 1.0 / lower_neighbors
+        if upper_neighbors > 0:
+            prob *= explore
+        if mid_neighbors > 0:
+            prob *= explore
+        return prob
+
+ 
 def rank_likelihood(G, source, dest, explore, prev=None):
     chosen_wt = G[source][dest]['weight']
     weights = defaultdict(list)
