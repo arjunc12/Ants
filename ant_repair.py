@@ -25,10 +25,13 @@ from random import randint
 
 import os
 
+SEED_DEBUG = False
+
 SEED_MAX = 4294967295
 SEED_VAL = randint(0, SEED_MAX)
-#seed(SEED_VAL)
-#seed(279235015)
+if SEED_DEBUG:
+    seed(SEED_VAL)
+#seed(3305480832)
 
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
