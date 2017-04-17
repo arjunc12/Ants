@@ -57,3 +57,11 @@ out.subelj_euroroad_euroroad
 parameter_estimation/*
 
 subelj_euroroad/*
+
+.DS_Store
+
+figs/*
+
+FIGS2/*
+
+*.graffle
