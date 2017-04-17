@@ -58,7 +58,7 @@ parameter_estimation/*
 
 subelj_euroroad/*
 
-.DS_Store
+*.DS_Store
 
 figs/*
 
