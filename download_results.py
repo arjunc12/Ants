@@ -22,7 +22,11 @@ for metric in metrics:
         for graph in graphs:
             for decay_type in decay_types:
                 for label in labels:
+                    local_dir = 'figs/%s/%s/%s/' % (metric, strategy, label)
+                    mkdir_command = 'mkdir -p %s' % local_dir
+                    print mkdir_command
+                    os.system(mkdir_command)
                     fname = '%s_repair_%s_%s_%s%s.pdf' % (metric, strategy, graph, decay_type, label)
-                    scp_command = 'scp %s/%s %s' % (remote_dir, fname, fname)
+                    scp_command = 'scp %s/%s %s/%s' % (remote_dir, fname, local_dir, fname)
                     print scp_command
                     os.system(scp_command)                    
