@@ -280,7 +280,7 @@ def main():
     
     
     path_success_rate_heat(df, strategy)
-    path_entropy_heat(df, strategy)
+    #path_entropy_heat(df, strategy)
     
     #wasted_edge_count_heat(df, strategy)
     #wasted_edge_weight_heat(df, strategy)
