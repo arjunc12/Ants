@@ -128,7 +128,7 @@ def next_edge_max(G, start, explore_prob, candidates=None):
         next = max_neighbors[next]
         return next, False
 
-def mext_edge_max2(G, start, explore_prob, candidates=None):
+def next_edge_max2(G, start, explore_prob, candidates=None):
     if candidates == None:
         candidates = G.neighbors(start)
 
@@ -148,7 +148,7 @@ def mext_edge_max2(G, start, explore_prob, candidates=None):
             else:
                 mid_neighbors.append(candidate)
         else:
-            lower_neighbors.append(candidates)
+            lower_neighbors.append(candidate)
 
     flip1 = random()
     flip2 = random()
@@ -157,11 +157,14 @@ def mext_edge_max2(G, start, explore_prob, candidates=None):
     midn = len(mid_neighbors)
     lowern = len(lower_neighbors)
 
+    if midn > 0:
+        assert maxn > 0
+
     if (flip1 > explore_prob and maxn > 0) or (midn + lowern == 0):
         next = choice(maxn)
-        next = nonmax_neighbors[next]
+        next = max_neighbors[next]
         return next, False
-    elif (flip2 > explore_prob) or lowern == 0:
+    elif (flip2 > explore_prob and midn > 0) or lowern == 0:
         next = choice(midn)
         next = mid_neighbors[next]
         return next, True
@@ -477,7 +480,7 @@ def max2_likelihood(G, source, dest, explore, prev=None):
         wt = G[source][candidate]['weight']
         max_wt = max(wt, max_wt)
 
-    for candidate in candidate:
+    for candidate in candidates:
         wt = G[source][candidate]['weight']
         if wt <= MIN_DETECTABLE_PHEROMONE:
             lowern += 1
@@ -487,7 +490,7 @@ def max2_likelihood(G, source, dest, explore, prev=None):
             midn += 1
 
     chosen_wt = G[source][dest]['weight']
-    if chosen_wt == maxn:
+    if chosen_wt == max_wt:
         prob = 1.0 / maxn
         if lowern + midn > 0:
             prob *= 1 - explore
@@ -645,6 +648,10 @@ def get_likelihood_func(strategy):
         likelihood_func = ranku_likelihood
     elif strategy == 'uniform2':
         likelihood_func = uniform2_likelihood
+    elif strategy == 'max2':
+        likelihood_func = max2_likelihood
+    elif strategy == 'maxu':
+        likelihood_func = maxu_likelihood
     else:
         raise ValueError('invalid strategy')
     return likelihood_func
