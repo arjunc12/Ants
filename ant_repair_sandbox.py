@@ -61,6 +61,9 @@ CHECK_EDGE_QUEUES = False
 
 MEMORY = 3
 
+EXPLORE_ONE_STEP = False
+EXPLORE_TWO_STEP = True
+
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
 # PARAMETERS:
@@ -554,6 +557,7 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
             deadend[ant] = False
             queue_ant(G, curr, ant)
             queued_nodes.add(curr)
+            explore[ant] = False
     
         steps = 1
         rounds = 1
@@ -690,12 +694,17 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
                     if (origins[next_ant] in memory) and (not search_mode[next_ant]):
                         memory = None
                     
-
-                    next, ex = next_edge(G, curr, explore_prob, strategy, prev, \
+                    next, ex = None, None
+                    if explore[next_ant] and EXPLORE_TWO_STEP:
+                        next, ex = prevs[next_ant], False
+                    else:
+                        next, ex = next_edge(G, curr, explore_prob, strategy, prev, \
                                          destinations[next_ant], search_mode[next_ant],\
                                          backtrack)
+                    
+                    explore[next_ant] = ex
                                                                    
-                    if ex:
+                    if ex and EXPLORE_ONE_STEP:
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
                             G2[curr][next]['weight'] += 2 * pheromone_add
