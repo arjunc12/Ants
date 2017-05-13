@@ -3,27 +3,49 @@ import numpy as np
 import argparse
 from scipy.stats import gmean, hmean
 import numpy.ma as ma
+import matplotlib as mpl
+mpl.use('agg')
 import pylab
 import os
 from graphs import GRAPH_CHOICES
+from choice_functions import STRATEGY_CHOICES
+from decay_functions import DECAY_CHOICES
 
 EXPLORE_MLE = 0.2
 DECAY_MLE = 0.02
 
 def plot_aggregate_dfs(df, metrics, descriptor):
+    '''
+    Plots an aggregate heatmap. Given a heatmap with the performance of several metrics across
+    several networks, this function aggregates the performance of each metric across the
+    networks. Uses geometric mean to aggregate results for two reasons. First, for certain metrics
+    the range of values for that metric can vary wildly across network topologies. The geometric mean
+    (as opposed to arithmetic mean) corrects for this and prevents networks where the
+    metric tends to take on higher values to have a disproportionate effect. Second, for
+    success rate metrics that are [0, 1]-valued, the geometric mean strongly penalizes an algorithm
+    if it performs extremely poorly on any one network
+    
+    '''
     x = df['explore'].unique()
     y = df['decay'].unique()
     matrices = []
     for i in xrange(len(metrics)):
         matrices.append(np.zeros((len(y), len(x))))
     pos = 0
+    best_aggs = [float("-inf")] * len(metrics)
+    best_explores = [None] * len(metrics)
+    best_decays = [None] * len(metrics)
     for name, group in df.groupby(['explore', 'decay']):
         explore, decay = name
         i, j = pos % len(y), pos / len(y)
         for k, metric in enumerate(metrics):
             val = gmean(group[metric])
+            if val > best_aggs[k]:
+                best_aggs[k] = val
+                best_explores[k] = explore
+                best_decays[k] = decay
             if explore == EXPLORE_MLE and decay == DECAY_MLE:
-                print metric, val
+                pass #print metric, val
             z = matrices[k]
             z[i, j] = val
         pos += 1
@@ -57,6 +79,8 @@ def plot_aggregate_dfs(df, metrics, descriptor):
         os.system('convert %s_%s.png %s_%s.pdf' % (title, descriptor, title, descriptor))
         pylab.close()
 
+        print metric, best_aggs[k], best_explores[k], best_decays[k]
+
 def main():
     columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
                'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
@@ -73,17 +97,17 @@ def main():
                      'txroad', 'subelji']
     '''
     
-    strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank']
-    decay_choices = ['linear', 'const', 'exp']
+    #strategy_choices = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank']
+    #decay_choices = ['linear', 'const', 'exp']
     
 
     usage="usage: %prog [options]"
     parser = argparse.ArgumentParser()
     parser.add_argument("-g", "--graphs", dest='graphs', choices=GRAPH_CHOICES,\
                         nargs='+', required=True)
-    parser.add_argument('-s', '--strategies', dest='strategies', choices=strategy_choices,\
+    parser.add_argument('-s', '--strategies', dest='strategies', choices=STRATEGY_CHOICES,\
                         required=True, nargs='+')
-    parser.add_argument("-dt", "--decay_types", dest="decay_types", choices=decay_choices,\
+    parser.add_argument("-dt", "--decay_types", dest="decay_types", choices=DECAY_CHOICES,\
                         required=True, nargs='+')
     parser.add_argument('-m', '--max_steps', dest='max_steps', type=int, required=True)
     parser.add_argument('-l', '--label', dest='label', required=True)
@@ -104,6 +128,7 @@ def main():
     frames = []
     
     for strategy in strategies:
+        print strategy
         for decay_type in decay_types:
             for graph in graphs:
                 descriptor = '%s_%s_%s' % (strategy, graph, decay_type)
