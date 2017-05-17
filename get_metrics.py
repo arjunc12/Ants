@@ -1,17 +1,14 @@
 import pandas as pd
 import argparse
 import numpy as np
+from plot_ant_repair import COLUMNS
 
 parser = argparse.ArgumentParser()
 
-columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
-               'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
-               'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
-               'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len']
 
 parser.add_argument('-e', '--explores', type=float, required=True, nargs='+')
 parser.add_argument('-d', '--decays', type=float, required=True, nargs='+')
-parser.add_argument('-me', '--metrics', required=True, nargs='+', choices=columns)
+parser.add_argument('-me', '--metrics', required=True, nargs='+', choices=COLUMNS)
 parser.add_argument('-s', '--strategies', required=True, nargs='+')
 parser.add_argument('-g', '--graphs', required=True, nargs='+')
 parser.add_argument('-dt', '--decay_types', required=True, nargs='+')
@@ -49,7 +46,7 @@ for strategy in strategies:
                 out_str = '_'.join(out_items)
                 fname = 'ant_%s%d.csv' % (out_str, steps)
                 print fname
-                df = pd.read_csv(fname, header=None, names = columns, skipinitialspace=True)
+                df = pd.read_csv(fname, header=None, names = COLUMNS, skipinitialspace=True)
                 df = df[['explore', 'decay'] + metrics]
                 agg_func = np.nanmean
                 if var:

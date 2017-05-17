@@ -10,6 +10,7 @@ import os
 from graphs import GRAPH_CHOICES
 from choice_functions import STRATEGY_CHOICES
 from decay_functions import DECAY_CHOICES
+from plot_ant_repair import COLUMNS
 
 EXPLORE_MLE = 0.2
 DECAY_MLE = 0.02
@@ -111,7 +112,7 @@ def main():
                         required=True, nargs='+')
     parser.add_argument('-m', '--max_steps', dest='max_steps', type=int, required=True)
     parser.add_argument('-l', '--label', dest='label', required=True)
-    parser.add_argument('-me', '--metrics', dest='metrics', choices=columns, nargs='+', \
+    parser.add_argument('-me', '--metrics', dest='metrics', choices=COLUMNS, nargs='+', \
                         required=True)
     
     args = parser.parse_args()
