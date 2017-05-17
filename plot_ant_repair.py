@@ -13,6 +13,12 @@ import os
 MLE_EXPLORE = 0.2
 MLE_DECAY = 0.02
 
+COLUMNS = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
+           'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
+           'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
+           'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len']
+
+
 def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     x = df['explore'].unique()
     y = df['decay'].unique()
@@ -261,12 +267,8 @@ def main():
     filename = argv[1]
     strategy = argv[2]
     
-    columns = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
-               'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
-               'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
-               'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len']
     
-    df = pd.read_csv(filename, header=None, names = columns, na_values='nan', skipinitialspace=True)
+    df = pd.read_csv(filename, header=None, names = COLUMNS, na_values='nan', skipinitialspace=True)
     
     if DEBUG:
         pos = 0
