@@ -103,7 +103,7 @@ def init_graph(G):
         M[i] = u
         Minv[u] = i    
         
-        if True:#'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
+        if 'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
             pos[u] = [u[0],u[1]] # position is the same as the label.
         
         G.node[u]['queue'] = []
