@@ -65,3 +65,7 @@ figs/*
 FIGS2/*
 
 *.graffle
+
+add_year.py
+
+remove_columns.py
