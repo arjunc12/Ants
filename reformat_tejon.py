@@ -68,7 +68,7 @@ def reformat_tejon(label, edge_col=7, delim=None):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('labels', nargs='+')
-    parser.add_argument('-ec', '--edge_col', default=7)
+    parser.add_argument('-ec', '--edge_col', default=7, type=int)
     parser.add_argument('-d', '--delim', default=None)
     
     args = parser.parse_args()
