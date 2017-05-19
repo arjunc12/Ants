@@ -1,3 +1,5 @@
+import matplotlib as mpl
+mpl.use('agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import networkx as nx
@@ -8,6 +10,7 @@ import pylab
 import argparse
 import numpy.ma as ma
 from choice_functions import *
+from decay_functions import *
 import os
 
 MIN_PHEROMONE = 0
@@ -15,8 +18,16 @@ MIN_DETECTABLE_PHEROMONE = 0
 INIT_WEIGHT = 0
 
 IND_PLOT = False
-#THRESHOLD = 1
-#EXPLORE_PROB = 0.1
+
+NOCUT = ['6', '7a', '7c', '8a', '8b', '9b', '14','15', '16', '17', '21a', '21b', '23a', '23d']
+CUT = ['7b', '9a', '9c', '9d', '10', '11', '12', '13', '18', '19', '20', '21c', '22', '23b', '23c', '23e', '23f']
+ALL = NOCUT + CUT
+
+NOCUT2 = ['6', '7a', '7c', '9b', '14','15', '16', '21a', '21b', '23a', '23d']
+ALL2 = NOCUT2 + CUT
+
+DATASETS_DIR = 'datasets/reformated_csv'
+OUT_DIR = 'ml_plots'
 
 def reset_graph(G, init_weight=INIT_WEIGHT):
     for u, v in G.edges_iter():
@@ -61,62 +72,6 @@ def check_graph(G, check_units=False):
                     wt += unit
                 assert wt == weight
 
-def edge_weight(G, u, v):
-    units = G[u][v]['units']
-    wt = MIN_PHEROMONE
-    if len(units) > 0:
-        wt = 0
-        for unit in units:
-            assert unit > MIN_PHEROMONE
-            wt += unit
-        assert wt > MIN_PHEROMONE
-    assert wt >= MIN_PHEROMONE
-    return wt
-
-def decay_units(G, u, v, decay, seconds = 1):
-    nonzero_units = []
-    for unit in G[u][v]['units']:
-        unit = max(unit - (decay * seconds), MIN_PHEROMONE)
-        assert unit >= MIN_PHEROMONE
-        if unit > MIN_PHEROMONE:
-            nonzero_units.append(unit)
-    G[u][v]['units'] = nonzero_units
-
-def decay_graph_const(G, decay, seconds=1):
-    wt = G[u][v]['weight']
-    assert wt >= MIN_PHEROMONE
-    x = max(MIN_PHEROMONE, wt - (decay * seconds))
-    G[u][v]['weight'] = x
-    
-def decay_graph_linear(G, decay, seconds=1):
-    for u, v in G.edges_iter():
-        decay_units(G, u, v, decay, seconds)
-        wt = edge_weight(G, u, v)
-        assert wt >= MIN_PHEROMONE
-        G[u][v]['weight'] = wt
-
-def decay_graph_exp(G, decay, seconds=1):
-    assert decay > 0
-    assert decay < 1
-    decay_prop = (1 - decay) ** seconds
-    for u, v in G.edges_iter():
-        wt = G[u][v]['weight']
-        new_wt = wt * ((1 - decay) ** seconds)
-        if new_wt == wt:
-            new_wt = MIN_PHEROMONE
-        x = max(MIN_PHEROMONE, new_wt)
-        G[u][v]['weight'] = x
-
-def get_decay_func(decay_type):
-    if decay_type == 'const':
-        return decay_graph_const
-    elif decay_type == 'linear':
-        return decay_graph_linear
-    elif decay_type == 'exp':
-        return decay_graph_exp
-    else:
-        raise ValueError("Invalid Decay Type")
-
 def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=None, ghost=False):
     assert 0 <= decay <= 1
     assert 0 <= explore <= 1
@@ -134,17 +89,15 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
     else:
         reset_graph(G)
         
-    decay_func = get_decay_func(decay_type)
+    decay_func = get_decay_func_graph(decay_type)
     check_units = False
     if decay_type == 'linear':
         check_units = True
     
-    log_likelihood = 0
-    
+    log_likelihood = 0    
     G[sources[0]][dests[0]]['weight'] += 1
     if decay_type == 'linear':
         G[sources[0]][dests[0]]['units'].append(1)
-    
     G2 = G.copy()
     
     max_degree = 0
@@ -206,7 +159,7 @@ def max_likelihood_estimates(likelihoods, decays, explores):
 def likelihood_matrix(sheet, explores, decays, likelihood_func, decay_type, ghost):
     likelihoods = pylab.zeros((len(decays), len(explores)))
     G = None
-    choices = 'reformated_counts%s.csv' % sheet
+    choices = '%s/reformated_counts%s.csv' % (DATASETS_DIR, sheet)
     pos = 0
 
     for decay in decays:
@@ -225,7 +178,8 @@ def make_title_str(max_likelihood, max_values):
     title_str = '\n'.join(title_str)
     return title_str
 
-def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, decays, outname):
+def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores,\
+                         decays, outname):
     likelihoods = ma.masked_invalid(likelihoods)
     title_str = make_title_str(max_likelihood, max_values)
     print title_str
@@ -242,16 +196,17 @@ def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, deca
     pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(explores), max(explores)), fontsize=20)
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)), fontsize=20)
     #pylab.title(title_str)
-    pylab.savefig(outname + '.png', format="png", transparent=True, bbox_inches='tight')
+    #pylab.savefig(outname + '.png', format="png", transparent=True, bbox_inches='tight')
+    pylab.savefig(outname + '.pdf', format='pdf', transparent=True, bbox_inches='tight')
     pylab.close()
-    print 'convert %s.png %s.pdf' % (outname, outname)
-    os.system('convert %s.png %s.pdf' % (outname, outname))
+    #print 'convert %s.png %s.pdf' % (outname, outname)
+    #os.system('convert %s.png %s.pdf' % (outname, outname))
 
 def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
             emax=0.95, dstep=0.05, estep=0.05, cumulative=False, out=False, ghost=False):
     decays = np.arange(dmin, dmax + dstep, dstep)
     explores = np.arange(emin, emax + estep, estep)
-    hist_file = open('repair_ml_hist.csv', 'a')
+    hist_file = open('%s/repair_ml_hist.csv' % OUT_DIR, 'a')
     for strategy in strategies:
         print strategy
         likelihood_func = get_likelihood_func(strategy)
@@ -262,7 +217,7 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
             total_lines = 0
             for sheet in sheets:
                 print sheet
-                num_lines = sum(1 for line in open('reformated_counts%s.csv' % sheet))
+                num_lines = sum(1 for line in open('%s/reformated_counts%s.csv' % (DATASETS_DIR, sheet)))
                 total_lines += num_lines
                 likelihoods = likelihood_matrix(sheet, explores, decays, likelihood_func,\
                                                 decay_type, ghost)
@@ -276,8 +231,9 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
                         cumulative_likelihoods += likelihoods
                         
                 if IND_PLOT:
+                    os.system('mkdir -p %s/individual/%s' % (OUT_DIR, stragegy))
                     plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, \
-                                          decays, outname)
+                                          decays, '%s/individual/%s/%s' % (OUT_DIR, strategy, outname))
                 if out:
                     for explore, decay in max_values:
                         hist_file.write('%0.2f, %0.2f, %s, %s, %s, %d\n' % \
@@ -288,22 +244,23 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
                 outname = 'cumulative_%s_%s' % (out_str, label)
                 max_likelihood, max_values = max_likelihood_estimates(cumulative_likelihoods,\
                                                               decays, explores)
+                os.system('mkdir -p %s/cumulative/%s' % (OUT_DIR, strategy))
                 plot_likelihood_heat(cumulative_likelihoods, max_likelihood, max_values, \
-                                explores, decays, outname)
+                                explores, decays, '%s/cumulative/%s/%s' % (OUT_DIR, strategy, outname))
                 print "plotted"
     hist_file.close()
                 
     
 if __name__ == '__main__':
     #strategy_choices = ['uniform', 'max', 'maxz', 'rank']
-    decay_choices = ['linear', 'const', 'exp']
+    #decay_choices = ['linear', 'const', 'exp']
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('label')
-    parser.add_argument('sheets', nargs='+')
+    parser.add_argument('-l', '--label', required=True)
+    parser.add_argument('-sh', '--sheets', nargs='+', required=True)
     parser.add_argument('-s', '--strategies', action='store', nargs='+', \
                         choices=STRATEGY_CHOICES, required=True)
-    parser.add_argument('-d', '--decay_types', nargs='+', choices=decay_choices, required=True)
+    parser.add_argument('-d', '--decay_types', nargs='+', choices=DECAY_CHOICES, required=True)
     parser.add_argument('-c', '--cumulative', action='store_true')
     parser.add_argument('-dmin', type=float, default=0.05)
     parser.add_argument('-dmax', type=float, default=0.95)
@@ -317,6 +274,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
     label = args.label
     sheets = args.sheets
+    if sheets == ['nocut']:
+        sheets = NOCUT
+    elif sheets == ['nocut2']:
+        sheets = NOCUT2
+    elif sheets == ['cut']:
+        sheets = CUT
+    elif sheets == ['all']:
+        sheets = ALL
+    elif sheets == ['all2']:
+        sheets = ALL2
     strategies = args.strategies
     decay_types = args.decay_types
     dmin, dmax, emin, emax = args.dmin, args.dmax, args.emin, args.emax
@@ -324,6 +291,8 @@ if __name__ == '__main__':
     cumulative = args.cumulative
     out = args.out
     ghost = args.ghost
+    if ghost:
+        label += '_ghost'
     
     ml_heat(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, \
             cumulative, out, ghost)
