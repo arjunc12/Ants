@@ -11,7 +11,16 @@ MIN_PHEROMONE = 0
 from collections import defaultdict
 
 STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
-                        'hybridr', 'ranku', 'uniform2', 'max2', 'maxu', 'maxa', 'ranka']
+                    'hybridr', 'ranku', 'uniform2', 'max2', 'maxu', 'maxa', 'ranka',\
+                    'unweighted']
+
+def next_edge_unweighted(G, start, explore_prob=None, candidates=None):
+    if candidates == None:
+        candidates = G.neighbors(start)
+
+    next = choice(len(candidates))
+    next = next[choice]
+    return next, False
 
 def next_edge_uniform(G, start, explore_prob, candidates=None):
     '''
@@ -401,10 +410,19 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         choice_func = next_edge_maxa
     elif strategy == 'ranka':
         choice_func = next_edge_ranka
+    elif strategy == 'unweighted':
+        choice_func = next_edge_unweighted
     else:
         raise ValueError('invalid strategy')
     return choice_func(G, start, explore_prob, candidates)
-    
+
+def unweighted_likelihood(G, source, dest, explore=None, prev=None):
+    candidates = G.neighbors(source)
+    if prev != None:
+        assert prev in candidates
+        candidates.remove(prev)
+    return 1.0 / len(candidates)
+
 def uniform_likelihood(G, source, dest, explore, prev=None):
     chosen_wt = G[source][dest]['weight']
     total = 0.0
@@ -802,6 +820,8 @@ def get_likelihood_func(strategy):
         likelihood_func = maxa_likelihood
     elif strategy == 'ranka':
         likelihood_func = ranka_likelihood
+    elif strategy == 'unweighted':
+        likelihood_func = unweighted_likelihood
     else:
         raise ValueError('invalid strategy')
     return likelihood_func
