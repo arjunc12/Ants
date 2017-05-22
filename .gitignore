@@ -69,3 +69,5 @@ FIGS2/*
 add_year.py
 
 remove_columns.py
+
+.nfs*
