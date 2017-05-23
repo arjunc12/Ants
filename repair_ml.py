@@ -43,10 +43,14 @@ def make_graph(sources, dests, ghost=False, init_weight=INIT_WEIGHT):
         G.add_edge(source, dest)
         G[source][dest]['weight'] = init_weight
         G[source][dest]['units'] = [init_weight]
-    
-    if ghost:    
+
+    if ghost:
+        max_degree = 0
+        for u in G.nodes_iter():
+            max_degree = max(max_degree, G.degree(u))
+
         for u in G.nodes():
-            if len(G.neighbors(u)) == 1:
+            if G.degree(u) == 1:
                 v = 'canopy_%s' % u
                 G.add_edge(u, v)
                 G[u][v]['weight'] = init_weight
@@ -77,7 +81,7 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
     assert 0 <= explore <= 1
     df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'], skipinitialspace=True)
     df['dt'] = pd.to_datetime(df['dt'])
-    df.sort('dt', inplace=True)
+    df.sort_values(by='dt', inplace=True)
     sources = list(df['source'])
     dests = list(df['dest'])
     dts = list(df['dt'])
@@ -88,7 +92,14 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         G = make_graph(sources, dests, ghost)
     else:
         reset_graph(G)
-        
+    '''    
+    for sheet in ['8a', '8b', '17']:
+        if choices == 'datasets/reformated_csv/reformated_counts%s.csv' % sheet:
+            for u in G.nodes():
+                G.add_edge(u, 'D')
+                G[u]['D']['weight'] = INIT_WEIGHT
+    '''
+
     decay_func = get_decay_func_graph(decay_type)
     check_units = False
     if decay_type == 'linear':
@@ -118,6 +129,7 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
             if decay_type == 'linear':
                 G[source][canopy_neighbor % source]['units'].append(1)
         '''
+
         log_likelihood += np.log(likelihood_func(G, source, dest, explore))
         if log_likelihood == float("-inf"):
             break
