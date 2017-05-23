@@ -71,3 +71,5 @@ add_year.py
 remove_columns.py
 
 .nfs*
+
+ant_datasets/*
