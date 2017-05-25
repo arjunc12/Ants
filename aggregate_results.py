@@ -134,7 +134,7 @@ def main():
             for graph in graphs:
                 descriptor = '%s_%s_%s' % (strategy, graph, decay_type)
                 filename = 'ant_repair_%s%d.csv' % (descriptor, max_steps)
-                df = pd.read_csv(filename, header=None, names = columns,\
+                df = pd.read_csv(filename, header=None, names = COLUMN,\
                                  na_values='nan', skipinitialspace=True)
                 df = df[['explore', 'decay'] + metrics]
                 df = df.groupby(['explore', 'decay'], as_index=False).agg(np.mean)
