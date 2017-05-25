@@ -3,12 +3,14 @@ Set of modules for analyzing turtle ant data to find parameters that best explai
 choices made by real turtle ants, as well as modules for implementing and testing
 various turtle ant-inspired algorithms.
 
-All of the code is written in Python. In addition to the standard python modules,
+All of the code is written in Python 2.7. In addition to the standard python modules,
 running the code will require the python packages Numpy, Matplotlib/Pylab, Pandas,
 Scipy, and Networkx. We suggest installing the lastest version of the Anaconda 
 distribution of Python in order to easily obtain and maintain all the required
-packages and dependencies.  Additionally, the code relies on the command line
-tools imagemagick and ffmpeg; we suggest installing these through Homebrew.
+packages and dependencies.  
+
+Additionally, to use the code to make videos of simulated ants carrying out the
+algorithms, you will need to install ffmpeg; we suggest doing this via Homebrew.
 
 To test some of the ant algorithms with a variety of networks and parameter values,
 one can run the following sequence of commands on a remote server:
