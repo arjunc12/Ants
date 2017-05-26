@@ -23,6 +23,8 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', 'txroad',
                      'subelji', 'minimal', 'grid_span_nocut', 'grid_span_rand', 'grid_span4']
 
+TRANSPARENT = False
+
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
     G = nx.grid_2d_graph(11,11)
