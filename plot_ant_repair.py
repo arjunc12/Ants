@@ -13,6 +13,8 @@ import os
 MLE_EXPLORE = 0.2
 MLE_DECAY = 0.02
 
+TRANSPARENT = False
+
 COLUMNS = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
            'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
            'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
@@ -58,7 +60,7 @@ def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     labeltop='off', labelbottom='off', labelleft='off', labelright='off')
     pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)), fontsize=20)
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)), fontsize=20)
-    pylab.savefig("%s_%s.png" % (title, strategy), format="png", transparent=True, bbox_inches='tight')
+    pylab.savefig("%s_%s.png" % (title, strategy), format="png", transparent=TRANSPARENT, bbox_inches='tight')
     os.system('convert %s_%s.png %s_%s.pdf' % (title, strategy, title, strategy))
 
 def describe_group(group):
