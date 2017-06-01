@@ -4,13 +4,13 @@ from scipy.stats import norm
 n = int(argv[1])
 #s = int(argv[2])
 #assert s <= n
-d = 0.98
-e = 0.2
+d = 0.7
+e = 0.01
 
 weighted_score = 0
 for i in xrange(n):
-    weighted_score -= d ** (2 * n - i)
-    #weighted_score += (e * 2 * (d ** (2 * n - 1))) + ((1 - e) * (-1) * (d ** (2 * n - 1)))
+    #weighted_score -= d ** (2 * n - i)
+    weighted_score += (e * 2 * (d ** (2 * n - 1))) + ((1 - e) * (-1) * (d ** (2 * n - 1)))
 print weighted_score
 s = (n + abs(weighted_score)) / 3.0
 print s
