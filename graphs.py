@@ -20,10 +20,26 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
                      'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut', \
                      'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
-                     'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', 'txroad',
-                     'subelji', 'minimal', 'grid_span_nocut', 'grid_span_rand', 'grid_span4']
+                     'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', \
+                     'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
+                     'grid_span_rand', 'grid_span4', 'shortcut']
 
 TRANSPARENT = False
+
+def shortcut():
+    G = full_grid()
+    G.remove_edge((4, 5), (4, 6))
+    G.remove_edge((5, 5), (5, 6))
+
+    G.remove_node((3, 4))
+    G.remove_node((4, 4))
+    G.remove_node((5, 4))
+    G.remove_node((6, 4))
+    G.add_edge((2, 4), (7, 4))
+
+    G.graph['name'] = 'shortcut'
+
+    return G
 
 def fig1_network():
     """ Manually builds the Figure 1 networks. """
@@ -845,6 +861,8 @@ def get_graph(graph_name):
         G = subelji_road()
     elif graph_name == 'minimal':
         G = minimal_network()
+    elif graph_name == 'shortcut':
+        G = shortcut()
     else:
         raise ValueError("invalid graph name")
     return G
@@ -893,8 +911,8 @@ def main():
         pylab.draw()
         #print "show"
         #PP.show()
-        pylab.savefig("%s.png" % G.graph['name'], format='png')
-        os.system('convert %s.png %s.pdf' % (G.graph['name'], G.graph['name']))
+        pylab.savefig("figs/graphs/%s.pdf" % G.graph['name'], format='pdf')
+        #os.system('convert %s.png %s.pdf' % (G.graph['name'], G.graph['name']))
         pylab.close()
     
     
