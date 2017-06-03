@@ -34,6 +34,7 @@ N = {}       # edge id -> edge
 
 MIN_PHEROMONE = 0
 PHEROMONE_THRESHOLD = 0.01
+MIN_DETECTABLE_PHEROMONE = 0
 pos = {}
 node_color,node_size = [],[]
 edge_color,edge_width = [],[]
@@ -61,8 +62,8 @@ CHECK_EDGE_QUEUES = False
 
 MEMORY = 3
 
-EXPLORE_ONE_STEP = False
-EXPLORE_TWO_STEP = True
+EXPLORE_ONE_STEP = True
+EXPLORE_TWO_STEP = False
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -704,7 +705,7 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
                     
                     explore[next_ant] = ex
                                                                    
-                    if ex and EXPLORE_ONE_STEP:
+                    if ex and EXPLORE_ONE_STEP and G[curr][next]['weight'] <= MIN_DETECTABLE_PHEROMONE:
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
                             G2[curr][next]['weight'] += 2 * pheromone_add
