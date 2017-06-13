@@ -50,7 +50,7 @@ def main():
     f = open('test_repellant2.csv', 'a')
     for i in xrange(int(argv[1])):
         print i
-        for pluck_rate in np.arange(0.99, 0.2, -0.01):
+        for pluck_rate in np.arange(0.99, 0.01, -0.01):
             steps = test_repellant(pluck_rate, lay_back=True, ants=NUM_ANTS)
             if steps == None:
                 continue
