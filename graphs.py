@@ -26,6 +26,14 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
 
 TRANSPARENT = False
 
+def food_grid(n=30):
+    G = nx.grid_2d_graph(n, n)
+    G.graph['name'] = 'food_grid'
+    G.graph['nests'] = [(0, n / 2), (n - 1, n / 2)]
+    G.graph['init_path'] = []
+    for i in xrange(n - 1):
+       G.graph['init_path'].append((i, n / 2), (i + 1, n / 2)) 
+
 def shortcut():
     G = full_grid()
     G.remove_edge((4, 5), (4, 6))
