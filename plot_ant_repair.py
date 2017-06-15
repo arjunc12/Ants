@@ -276,6 +276,11 @@ def main():
         pos = 0
         for name, group in df.groupby(['explore', 'decay']):
             print name
+            explore, decay = name
+            if not (0.01 <= explore <= 0.2):
+                print "----------BAD EXPLORE-----------"
+            if not (0.01 <= decay <= 0.2):
+                print "----------BAD DECAY-------------"
             pos += 1
         l1 = len(df['explore'].unique())
         l2 = len(df['decay'].unique())
