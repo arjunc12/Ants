@@ -1,3 +1,5 @@
+import matplotlib as mpl
+mpl.use('agg')
 import networkx as nx
 import pylab
 import argparse
@@ -22,7 +24,7 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
-                     'grid_span_rand', 'grid_span4', 'shortcut']
+                     'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid']
 
 TRANSPARENT = False
 
@@ -32,7 +34,9 @@ def food_grid(n=30):
     G.graph['nests'] = [(0, n / 2), (n - 1, n / 2)]
     G.graph['init_path'] = []
     for i in xrange(n - 1):
-       G.graph['init_path'].append((i, n / 2), (i + 1, n / 2)) 
+       G.graph['init_path'].append(((i, n / 2), (i + 1, n / 2)))
+
+    return G
 
 def shortcut():
     G = full_grid()
@@ -871,6 +875,8 @@ def get_graph(graph_name):
         G = minimal_network()
     elif graph_name == 'shortcut':
         G = shortcut()
+    elif graph_name == 'food_grid':
+        G = food_grid()
     else:
         raise ValueError("invalid graph name")
     return G
