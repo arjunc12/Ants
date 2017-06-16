@@ -12,6 +12,7 @@ import numpy.ma as ma
 from choice_functions import *
 from decay_functions import *
 import os
+from collections import defaultdict
 
 MIN_PHEROMONE = 0
 MIN_DETECTABLE_PHEROMONE = 0
@@ -190,7 +191,36 @@ def make_title_str(max_likelihood, max_values):
     title_str = '\n'.join(title_str)
     return title_str
 
-def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores,\
+def likelihood_plot(likelihoods, explores, decays, outname):
+    pos = 0
+    x = []
+    y = []
+    for decay in decays:
+        best_explores = []
+        best_likelihood = float("-inf")
+        for explore in explores:
+            i, j = pos / len(explores), pos % len(explores)
+            likelihood = likelihoods[i, j]
+            if np.isnan(likelihood):
+                continue
+            if likelihood > best_likelihood:
+                best_likelihood = likelihood
+                best_explores = [explore]
+            elif likelihood == best_likelihood:
+                best_explores.append(explore)
+            
+            for best_explore in best_explores:
+                x.append(decay)
+                y.append(best_explore)
+                
+    pylab.figure()
+    pylab.scatter(x, y)
+    pylab.xlabel('decay rate')
+    pylab.ylabel('best explore')
+    pylab.savefig(outname + '_plot.pdf', format='pdf', transparent=True, bbox_inches='tight')
+    pylab.close
+        
+def likelihood_heat(likelihoods, max_likelihood, max_values, explores,\
                          decays, outname):
     likelihoods = ma.masked_invalid(likelihoods)
     title_str = make_title_str(max_likelihood, max_values)
@@ -209,13 +239,14 @@ def plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores,\
     pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(decays), max(decays)), fontsize=20)
     #pylab.title(title_str)
     #pylab.savefig(outname + '.png', format="png", transparent=True, bbox_inches='tight')
-    pylab.savefig(outname + '.pdf', format='pdf', transparent=True, bbox_inches='tight')
+    pylab.savefig(outname + '_heat.pdf', format='pdf', transparent=True, bbox_inches='tight')
     pylab.close()
     #print 'convert %s.png %s.pdf' % (outname, outname)
     #os.system('convert %s.png %s.pdf' % (outname, outname))
 
-def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
-            emax=0.95, dstep=0.05, estep=0.05, cumulative=False, out=False, ghost=False):
+def ml_analysis(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
+            emax=0.95, dstep=0.05, estep=0.05, cumulative=False, out=False, ghost=False,\
+            heat=True, plot=False):
     decays = np.arange(dmin, dmax + dstep, dstep)
     explores = np.arange(emin, emax + estep, estep)
     hist_file = open('%s/repair_ml_hist.csv' % OUT_DIR, 'a')
@@ -244,8 +275,12 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
                         
                 if IND_PLOT:
                     os.system('mkdir -p %s/individual/%s' % (OUT_DIR, stragegy))
-                    plot_likelihood_heat(likelihoods, max_likelihood, max_values, explores, \
+                    if heat:
+                        likelihood_heat(likelihoods, max_likelihood, max_values, explores, \
                                           decays, '%s/individual/%s/%s' % (OUT_DIR, strategy, outname))
+                    if plot:
+                        likelihood_plot(likelihoods, explores, decays, \
+                                        '%s/individual/%s/%s' % (OUT_DIR, strategy, outname))
                 if out:
                     for explore, decay in max_values:
                         hist_file.write('%0.2f, %0.2f, %s, %s, %s, %d\n' % \
@@ -257,8 +292,12 @@ def ml_heat(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0
                 max_likelihood, max_values = max_likelihood_estimates(cumulative_likelihoods,\
                                                               decays, explores)
                 os.system('mkdir -p %s/cumulative/%s' % (OUT_DIR, strategy))
-                plot_likelihood_heat(cumulative_likelihoods, max_likelihood, max_values, \
+                if heat:
+                    likelihood_heat(cumulative_likelihoods, max_likelihood, max_values, \
                                 explores, decays, '%s/cumulative/%s/%s' % (OUT_DIR, strategy, outname))
+                if plot:
+                    likelihood_plot(cumulative_likelihoods, explores, decays, \
+                                    '%s/cumulative/%s/%s' % (OUT_DIR, strategy, outname))
                 print "plotted"
     hist_file.close()
                 
@@ -274,14 +313,20 @@ if __name__ == '__main__':
                         choices=STRATEGY_CHOICES, required=True)
     parser.add_argument('-d', '--decay_types', nargs='+', choices=DECAY_CHOICES, required=True)
     parser.add_argument('-c', '--cumulative', action='store_true')
+   
     parser.add_argument('-dmin', type=float, default=0.05)
     parser.add_argument('-dmax', type=float, default=0.95)
     parser.add_argument('-emin', type=float, default=0.05)
     parser.add_argument('-emax', type=float, default=0.95)
     parser.add_argument('-dstep', type=float, default=0.05)
     parser.add_argument('-estep', type=float, default=0.05)
+    
     parser.add_argument('-o', '--out', action='store_true')
+    
     parser.add_argument('-g', '--ghost', action='store_true')
+    
+    parser.add_argument('-p', '--plot', action='store_true')
+    parser.add_argument('-h', '--heat', action='store_false') 
     
     args = parser.parse_args()
     label = args.label
@@ -306,5 +351,5 @@ if __name__ == '__main__':
     if ghost:
         label += '_ghost'
     
-    ml_heat(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, \
-            cumulative, out, ghost)
+    ml_analysis(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, \
+            cumulative, out, ghost, heat, plot)
