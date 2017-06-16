@@ -4,7 +4,7 @@ import networkx as nx
 import pylab
 import argparse
 from kruskal import kruskal
-from random import random, choice, sample, shuffle
+from random import random, choice, sample, shuffle, randint
 import os
 
 ER_PROB = 0.3 / 3
@@ -28,13 +28,15 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
 
 TRANSPARENT = False
 
-def food_grid(n=30):
+def food_grid(n=11):
     G = nx.grid_2d_graph(n, n)
     G.graph['name'] = 'food_grid'
     G.graph['nests'] = [(0, n / 2), (n - 1, n / 2)]
     G.graph['init_path'] = []
     for i in xrange(n - 1):
        G.graph['init_path'].append(((i, n / 2), (i + 1, n / 2)))
+
+    G.graph['food_nodes'] = [(randint(0, n - 1), n / 2 + (choice([-1, 1]) *  randint(1, n / 2)))]
 
     return G
 
@@ -895,6 +897,7 @@ def main():
             continue
         path = G.graph['init_path']
         nests = G.graph['nests']
+        food = G.graph['food_nodes']
         for n1 in nests:
             for n2 in nests:
                 if G.has_edge(n1, n2):
@@ -907,6 +910,9 @@ def main():
             if node in nests:
                 node_sizes.append(100)
                 node_colors.append('r')
+            elif node in food:
+                node_sizes.append(100)
+                node_colors.append('b')
             else:
                 node_sizes.append(10)
                 node_colors.append('k')
