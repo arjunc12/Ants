@@ -34,13 +34,21 @@ def ml_heat(df, strategies, decay_types):
 def ml_plot(df, strategies, decay_types):
     df2 = df[(df['strategy'].isin(strategies)) & (df['decay_type'].isin(decay_types))]
     for name, group in df2.groupby(['strategy', 'decay_type']):
+        x = []
+        y = []
         for name2, group2 in group.groupby('decay'):
-
-            group = group.groupby(['explore', 'decay'], as_index=False).agg({'likelihood' : np.sum})
-            x = []
-            y = []
-            max_likelihood = group['likelihood'].max()
-        
+            decay = name2
+            group2 = group2.groupby('explore', as_index=False).agg({'likelihood' : np.sum})
+            max_likelihood = group2['likelihood'].max()
+            group2 = group2[group2['likelihood'] == max_likelihood]
+            best_explores = group2['explore']
+            for explore in best_explores:
+                x.append(decay)
+                y.append(explore)
+        pylab.figure()
+        pylab.scatter(x, y)
+        pylab.savefig('figs/sandbox.pdf')
+        pylab.close()
 
 def filter_df(df, emin, emax, dmin, dmax, ghost, sheets):
     df =  df[(emin <= df['explore']) & (df['explore'] <= emax) & \
@@ -106,7 +114,10 @@ def main():
     df = pd.read_csv(ML_OUTFILE, names = COLUMNS, skipinitialspace=True)
     df = filter_df(df, emin, emax, dmin, dmax, ghost, sheets)
 
-    ml_heat(df, strategies, decay_types)
+    if heat:
+        ml_heat(df, strategies, decay_types)
+    if plot:
+        ml_plot(df, strategies, decay_types)
 
 if __name__ == '__main__':
     main()
