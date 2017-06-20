@@ -29,6 +29,7 @@ ALL2 = NOCUT2 + CUT
 
 DATASETS_DIR = 'datasets/reformated_csv'
 OUT_DIR = 'ml_plots'
+ML_OUTFILE = '%s/repair_ml.csv' % OUT_DIR
 
 def reset_graph(G, init_weight=INIT_WEIGHT):
     for u, v in G.edges_iter():
@@ -201,6 +202,7 @@ def likelihood_plot(likelihoods, explores, decays, outname):
         for explore in explores:
             i, j = pos / len(explores), pos % len(explores)
             likelihood = likelihoods[i, j]
+            pos += 1
             if np.isnan(likelihood):
                 continue
             if likelihood > best_likelihood:
@@ -208,17 +210,16 @@ def likelihood_plot(likelihoods, explores, decays, outname):
                 best_explores = [explore]
             elif likelihood == best_likelihood:
                 best_explores.append(explore)
-            
-            for best_explore in best_explores:
-                x.append(decay)
-                y.append(best_explore)
+        for best_explore in best_explores:
+            x.append(decay)
+            y.append(best_explore)
                 
     pylab.figure()
     pylab.scatter(x, y)
     pylab.xlabel('decay rate')
     pylab.ylabel('best explore')
     pylab.savefig(outname + '_plot.pdf', format='pdf', transparent=True, bbox_inches='tight')
-    pylab.close
+    pylab.close()
         
 def likelihood_heat(likelihoods, max_likelihood, max_values, explores,\
                          decays, outname):
@@ -244,9 +245,23 @@ def likelihood_heat(likelihoods, max_likelihood, max_values, explores,\
     #print 'convert %s.png %s.pdf' % (outname, outname)
     #os.system('convert %s.png %s.pdf' % (outname, outname))
 
+def write_likelihoods(likelihoods, sheet, strategy, decay_type, ghost, \
+                      explores, decays, outfile=ML_OUTFILE):
+    f = open(outfile, 'a')
+    pos = 0
+    for decay in decays:
+        for explore in explores:
+            i, j = pos / len(explores), pos % len(explores)
+            likelihood = likelihoods[i, j]
+            pos += 1
+            f.write('%s, %s, %s, %d, %f, %f, %f\n' % (sheet, strategy, \
+                                                      decay_type, int(ghost), \
+                                                      explore, decay, likelihood))
+    f.close()
+
 def ml_analysis(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
             emax=0.95, dstep=0.05, estep=0.05, cumulative=False, out=False, ghost=False,\
-            heat=True, plot=False):
+            heat=True, plot=False, write_file=False):
     decays = np.arange(dmin, dmax + dstep, dstep)
     explores = np.arange(emin, emax + estep, estep)
     hist_file = open('%s/repair_ml_hist.csv' % OUT_DIR, 'a')
@@ -264,6 +279,10 @@ def ml_analysis(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, em
                 total_lines += num_lines
                 likelihoods = likelihood_matrix(sheet, explores, decays, likelihood_func,\
                                                 decay_type, ghost)
+                if write_file:
+                    write_likelihoods(likelihoods, sheet, strategy, decay_type, \
+                                      ghost, explores, decays)
+
                 max_likelihood, max_values = max_likelihood_estimates(likelihoods, decays, explores)
                 outname = '%s_%s' % (out_str, sheet)
                 
@@ -301,8 +320,8 @@ def ml_analysis(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, em
                 print "plotted"
     hist_file.close()
                 
-    
-if __name__ == '__main__':
+   
+def main():
     #strategy_choices = ['uniform', 'max', 'maxz', 'rank']
     #decay_choices = ['linear', 'const', 'exp']
     
@@ -310,7 +329,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--label', required=True)
     parser.add_argument('-sh', '--sheets', nargs='+', required=True)
     parser.add_argument('-s', '--strategies', action='store', nargs='+', \
-                        choices=STRATEGY_CHOICES, required=True)
+                        required=True)
     parser.add_argument('-d', '--decay_types', nargs='+', choices=DECAY_CHOICES, required=True)
     parser.add_argument('-c', '--cumulative', action='store_true')
    
@@ -325,8 +344,9 @@ if __name__ == '__main__':
     
     parser.add_argument('-g', '--ghost', action='store_true')
     
-    parser.add_argument('-p', '--plot', action='store_true')
-    parser.add_argument('-h', '--heat', action='store_false') 
+    parser.add_argument('--plot', action='store_true')
+    parser.add_argument('--heat', action='store_true')
+    parser.add_argument('--write_file', action='store_true')
     
     args = parser.parse_args()
     label = args.label
@@ -351,5 +371,16 @@ if __name__ == '__main__':
     if ghost:
         label += '_ghost'
     
+    heat = args.heat
+    plot = args.plot
+    write_file = args.write_file
+
+    if not (heat or plot):
+        print "error: must select a type of plot to make"
+        return None
+
     ml_analysis(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, \
-            cumulative, out, ghost, heat, plot)
+            cumulative, out, ghost, heat, plot, write_file)
+
+if __name__ == '__main__':
+    main()
