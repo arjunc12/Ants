@@ -21,6 +21,9 @@ COLUMNS = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk
            'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len']
 
 
+def ant_repair_plot(df, strategy, graph, decay_type, group_func=pylab.mean):
+    pass
+
 def heat(df, group_func, title, strategy, cb_label, sequential=True, vmax=None):
     x = df['explore'].unique()
     y = df['decay'].unique()
