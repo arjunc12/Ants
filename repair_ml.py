@@ -245,8 +245,8 @@ def likelihood_heat(likelihoods, max_likelihood, max_values, explores,\
     #print 'convert %s.png %s.pdf' % (outname, outname)
     #os.system('convert %s.png %s.pdf' % (outname, outname))
 
-def write_likelihoods(likelihoods, sheet, strategy, decay_type, ghost, \
-                      explores, decays, outfile=ML_OUTFILE):
+def write_likelihoods(likelihoods, sheet, num_lines, strategy, decay_type,\
+                      ghost, explores, decays, outfile=ML_OUTFILE):
     f = open(outfile, 'a')
     pos = 0
     for decay in decays:
@@ -254,9 +254,10 @@ def write_likelihoods(likelihoods, sheet, strategy, decay_type, ghost, \
             i, j = pos / len(explores), pos % len(explores)
             likelihood = likelihoods[i, j]
             pos += 1
-            f.write('%s, %s, %s, %d, %f, %f, %f\n' % (sheet, strategy, \
-                                                      decay_type, int(ghost), \
-                                                      explore, decay, likelihood))
+            f.write('%s, %d, %s, %s, %d, %f, %f, %f\n' % (sheet, num_lines,\
+                                                          strategy, decay_type,\
+                                                          int(ghost), explore,\
+                                                          decay, likelihood))
     f.close()
 
 def ml_analysis(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, emin=0.05, \
@@ -280,8 +281,8 @@ def ml_analysis(label, sheets, strategies, decay_types, dmin=0.05, dmax=0.95, em
                 likelihoods = likelihood_matrix(sheet, explores, decays, likelihood_func,\
                                                 decay_type, ghost)
                 if write_file:
-                    write_likelihoods(likelihoods, sheet, strategy, decay_type, \
-                                      ghost, explores, decays)
+                    write_likelihoods(likelihoods, sheet, num_lines, strategy,\
+                                      decay_type, ghost, explores, decays)
 
                 max_likelihood, max_values = max_likelihood_estimates(likelihoods, decays, explores)
                 outname = '%s_%s' % (out_str, sheet)
