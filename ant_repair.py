@@ -10,6 +10,7 @@ mpl.use('agg')
 from matplotlib import pylab as PP
 from numpy.random import seed,choice, random
 from numpy import mean,median, array, argmax, where, subtract
+import numpy as np
 from collections import defaultdict
 import os
 from matplotlib import animation
@@ -987,7 +988,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         path_etr = None
         if len(path_probs) > 0:
             path_etr = entropy(path_probs)
-            path_etr = abs(path_etr)
+            path_etr = np.abs(path_etr)
         else:
             has_path = False
             
@@ -1006,6 +1007,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         write_items = [int(has_path), cost]
     
         if (path_etr != None) and path_etr != float("-inf") and (not PP.isnan(path_etr)):
+            assert path_etr >= 0
             write_items.append(path_etr)
         else:
             write_items.append('')

@@ -77,3 +77,7 @@ ant_datasets/*
 manuscripts/*
 
 aggregate_csv.py
+
+*pbs*
+
+ant_repair.sh*
