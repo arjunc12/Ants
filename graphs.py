@@ -28,6 +28,29 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
 
 TRANSPARENT = False
 
+def partition_plants(G, seeds=4):
+    H = G.copy()
+
+    seeds = sample(G.nodes(), seeds)
+    for i, seed in enumerate(seeds):
+        H.node[seed]['plant'] = i
+
+    queue = seeds
+    while len(queue) > 0:
+        curr = queue.pop(0)
+        curr_plant = H.node['plant']
+        for neighbor in H.neighbors(curr):
+            if 'plant' not in H.node[neighbor]:
+                H.node[neighbor]['plant'] = curr_plant
+                queue.append(neighbor)
+    
+    return H
+
+def full_grid_plants():
+    G = full_grid()
+    G = partition_plants(G)
+    return G
+
 def food_grid(n=11):
     G = nx.grid_2d_graph(n, n)
     G.graph['name'] = 'food_grid'
