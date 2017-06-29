@@ -24,25 +24,48 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
-                     'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid']
+                     'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid', 'full_plants']
 
 TRANSPARENT = False
 
-def partition_plants(G, seeds=4):
-    H = G.copy()
+def partition_plants(G, seeds=11):
+    H = nx.Graph()
 
     seeds = sample(G.nodes(), seeds)
+    H.graph['num_plants'] = seeds
     for i, seed in enumerate(seeds):
+        H.add_node(seed)
         H.node[seed]['plant'] = i
 
     queue = seeds
+    i = 0
     while len(queue) > 0:
+        #print i
+        i += 1
         curr = queue.pop(0)
-        curr_plant = H.node['plant']
-        for neighbor in H.neighbors(curr):
-            if 'plant' not in H.node[neighbor]:
-                H.node[neighbor]['plant'] = curr_plant
-                queue.append(neighbor)
+        #print H.node[curr]
+        #assert 'plant' in H.node[curr]['plant']
+        curr_plant = H.node[curr]['plant']
+        for neighbor in G.neighbors(curr):
+            neighbor_plant = None
+            if H.has_node(neighbor) and 'plant' in H.node[neighbor]:
+                neighbor_plant = H.node[neighbor]['plant']
+            #assert curr_plant != None
+            if curr_plant != neighbor_plant:
+                H.add_edge(curr, neighbor)
+                if neighbor_plant == None:
+                    H.node[neighbor]['plant'] = curr_plant
+                    #assert 'plant' in H.neighbor['plant']
+                    queue.append(neighbor)
+    
+    H.graph['init_path'] = []
+    for u, v in G.graph['init_path']:
+        H.add_edge(u, v)
+        H.graph['init_path'].append((u, v))
+
+    H.graph['name'] = G.graph['name'] + '_plants'
+
+    H.graph['nests'] = G.graph['nests']
     
     return H
 
@@ -902,6 +925,8 @@ def get_graph(graph_name):
         G = shortcut()
     elif graph_name == 'food_grid':
         G = food_grid()
+    elif graph_name == 'full_plants':
+        G = full_grid_plants()
     else:
         raise ValueError("invalid graph name")
     return G
@@ -920,7 +945,10 @@ def main():
             continue
         path = G.graph['init_path']
         nests = G.graph['nests']
-        food = G.graph['food_nodes']
+
+        food = []
+        if 'food_nodes' in G.graph:
+            food = G.graph['food_nodes']
         for n1 in nests:
             for n2 in nests:
                 if G.has_edge(n1, n2):
@@ -941,10 +969,20 @@ def main():
                 node_colors.append('k')
         edge_widths = []
         edge_colors = []
+
         for u, v in sorted(G.edges()):
+            plant1 = None
+            plant2 = None
+            if 'plant' in G.node[u]:
+                plant1 = G.node[u]['plant']
+            if 'plant' in G.node[v]:
+                plant2 = G.node[v]['plant']
             if (u, v) in path or (v, u) in path:
                 edge_widths.append(10)
                 edge_colors.append('g')
+            elif plant1 == plant2:
+                edge_widths.append(1)
+                edge_colors.append('b')
             else:
                 edge_widths.append(1)
                 edge_colors.append('k')
