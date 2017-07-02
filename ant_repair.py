@@ -727,9 +727,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     if ex:
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
-                            G2[curr][next]['weight'] += 2 * pheromone_add
+                            add_amount = 2 * pheromone_add
+                            if 'plant' in G.node[curr] and 'plant' in G.node[next]:
+                                if G.node[curr]['plant'] != G.node[next]['plant']:
+                                    add_amount *= 0.5
+                            G2[curr][next]['weight'] += add_amount
                             if decay_type == 'linear':
-                                G2[curr][next]['units'].append(2 * pheromone_add)
+                                G2[curr][next]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
@@ -773,9 +777,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         prevs[next_ant] = curr
                         currs[next_ant] = next
                         if not deadend[next_ant]:
-                            G2[curr][next]['weight'] += pheromone_add
+                            add_amount = pheromone_add
+                            if 'plant' in G.node[curr] and 'plant' in G.node[next]:
+                                if G.node[curr]['plant'] != G.node[next]['plant']:
+                                    add_amount *= 0.5
+                            G2[curr][next]['weight'] += add_amount
                             if decay_type == 'linear':
-                                G2[curr][add_neighbor]['units'].append(pheromone_add)
+                                G2[curr][add_neighbor]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         
                         paths[next_ant].append(next)
