@@ -4,8 +4,10 @@ import networkx as nx
 import pylab
 import argparse
 from kruskal import kruskal
-from random import random, choice, sample, shuffle, randint
+from random import random, sample, shuffle, randint
 import os
+from repeatability import difficulty_distributions
+from numpy.random import choice
 
 ER_PROB = 0.3 / 3
 
@@ -28,7 +30,29 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
 
 TRANSPARENT = False
 
-def partition_plants(G, seeds=11):
+def assign_difficulties(G):
+    distributions = difficulty_distributions()
+    for u, v in G.edges():
+        assert 'plant' in G.node[u]
+        assert 'plant' in G.node[v]
+        
+        distribution = None
+        if G.node[u]['plant'] == G.node[v]['plant']:
+            distribution = 'same'
+        else:
+            distribution = 'different'
+        distribution = distributions[distribution]
+        
+        difficulties = []
+        probabilities = []
+        for difficulty, probability in distribution.iteritems():
+            difficulties.append(difficulty)
+            probabilities.append(probability)
+            
+        difficulty = choice(difficulties, p=probabilities)
+        G[u][v]['difficulty'] = difficulty
+
+def partition_plants(G, seeds=4):
     H = nx.Graph()
 
     seeds = sample(G.nodes(), seeds)
@@ -71,7 +95,8 @@ def partition_plants(G, seeds=11):
 
 def full_grid_plants():
     G = full_grid()
-    G = partition_plants(G)
+    G = partition_plants(G, seeds=1)
+    assign_difficulties(G)
     return G
 
 def food_grid(n=11):
@@ -971,21 +996,25 @@ def main():
         edge_colors = []
 
         for u, v in sorted(G.edges()):
-            plant1 = None
-            plant2 = None
-            if 'plant' in G.node[u]:
-                plant1 = G.node[u]['plant']
-            if 'plant' in G.node[v]:
-                plant2 = G.node[v]['plant']
-            if (u, v) in path or (v, u) in path:
-                edge_widths.append(10)
-                edge_colors.append('g')
-            elif plant1 == plant2:
+            if 'difficulty' in G[u][v]:
+                edge_colors.append(1.0 / G[u][v]['difficulty'])
                 edge_widths.append(1)
-                edge_colors.append('b')
             else:
-                edge_widths.append(1)
-                edge_colors.append('k')
+                plant1 = None
+                plant2 = None
+                if 'plant' in G.node[u]:
+                    plant1 = G.node[u]['plant']
+                if 'plant' in G.node[v]:
+                    plant2 = G.node[v]['plant']
+                if (u, v) in path or (v, u) in path:
+                    edge_widths.append(10)
+                    edge_colors.append('g')
+                elif plant1 == plant2:
+                    edge_widths.append(1)
+                    edge_colors.append('b')
+                else:
+                    edge_widths.append(1)
+                    edge_colors.append('k')
         nx.draw(G, pos=pos, with_labels=False, nodelist=sorted(G.nodes()), \
                 edgelist=sorted(G.edges()), width=edge_widths, edge_color=edge_colors, \
                 node_size=node_sizes, node_color=node_colors)
