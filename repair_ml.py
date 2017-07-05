@@ -146,9 +146,12 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
             G = G2
             decay_func(G, decay, seconds)
             G2 = G.copy()
-        G2[source][dest]['weight'] += 1
+        add_amount = 1
+        if G[source][dest]['weight'] <= MIN_DETECTALE_PHEROMONE:
+            add_amount *= 2
+        G2[source][dest]['weight'] += add_amount
         if decay_type == 'linear':
-            G2[source][dest]['units'].append(1)
+            G2[source][dest]['units'].append(add_amount)
                
     return log_likelihood, G
 
