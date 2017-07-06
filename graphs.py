@@ -5,9 +5,10 @@ import pylab
 import argparse
 from kruskal import kruskal
 from random import random, sample, shuffle, randint
+import random
 import os
 from repeatability import difficulty_distributions
-from numpy.random import choice
+import numpy.random as randn
 
 ER_PROB = 0.3 / 3
 
@@ -49,54 +50,51 @@ def assign_difficulties(G):
             difficulties.append(difficulty)
             probabilities.append(probability)
             
-        difficulty = choice(difficulties, p=probabilities)
+        difficulty = randn.choice(difficulties, p=probabilities)
         G[u][v]['difficulty'] = difficulty
 
-def partition_plants(G, seeds=4):
+def partition_plants(G):
     H = nx.Graph()
-
-    seeds = sample(G.nodes(), seeds)
-    H.graph['num_plants'] = seeds
-    for i, seed in enumerate(seeds):
-        H.add_node(seed)
-        H.node[seed]['plant'] = i
-
-    queue = seeds
-    i = 0
-    while len(queue) > 0:
-        #print i
-        i += 1
-        curr = queue.pop(0)
-        #print H.node[curr]
-        #assert 'plant' in H.node[curr]['plant']
-        curr_plant = H.node[curr]['plant']
-        for neighbor in G.neighbors(curr):
-            neighbor_plant = None
-            if H.has_node(neighbor) and 'plant' in H.node[neighbor]:
-                neighbor_plant = H.node[neighbor]['plant']
-            #assert curr_plant != None
-            if curr_plant != neighbor_plant:
-                H.add_edge(curr, neighbor)
-                if neighbor_plant == None:
-                    H.node[neighbor]['plant'] = curr_plant
-                    #assert 'plant' in H.neighbor['plant']
-                    queue.append(neighbor)
     
-    H.graph['init_path'] = []
-    for u, v in G.graph['init_path']:
-        H.add_edge(u, v)
-        H.graph['init_path'].append((u, v))
-
-    H.graph['name'] = G.graph['name'] + '_plants'
-
+    unassigned = G.nodes()
+    plant = 1
+    while len(unassigned) > 0:
+        curr = random.choice(unassigned)
+        curr_plant = []
+        while curr != None:
+            H.add_node(curr)
+            H.node[curr]['plant'] = plant
+            unassigned.remove(curr)
+            candidates = []
+            curr_plant.append(curr)
+            for n in G.neighbors(curr):
+                if not H.has_node(n):
+                    candidates.append(n)
+            if len(candidates) == 0:
+                curr = None
+            else:
+                curr = random.choice(candidates)
+        
+        for i in xrange(len(curr_plant) - 1):
+            H.add_edge(curr_plant[i], curr_plant[i + 1])
+        plant += 1
+    
+    for u, v in G.edges():
+        if H.node[u]['plant'] != H.node[v]['plant']:
+            #if not nx.has_path(H, u, v):
+            if True:
+                H.add_edge(u, v)
+    
     H.graph['nests'] = G.graph['nests']
+    H.graph['name'] = G.graph['name'] + '_plants'
     
     return H
-
+    
 def full_grid_plants():
     G = full_grid()
-    G = partition_plants(G, seeds=1)
-    assign_difficulties(G)
+    G.add_edge((4, 5), (5, 5))
+    G = partition_plants(G)
+    #assign_difficulties(G)
     return G
 
 def food_grid(n=11):
@@ -107,7 +105,7 @@ def food_grid(n=11):
     for i in xrange(n - 1):
        G.graph['init_path'].append(((i, n / 2), (i + 1, n / 2)))
 
-    G.graph['food_nodes'] = [(randint(0, n - 1), n / 2 + (choice([-1, 1]) *  randint(1, n / 2)))]
+    G.graph['food_nodes'] = [(randint(0, n - 1), n / 2 + (random.choice([-1, 1]) *  randint(1, n / 2)))]
 
     return G
 
@@ -795,7 +793,7 @@ def set_init_road_path(road_graph, nest1, nest2, v1, v2):
 def road(road_file_path, comments='#'):
     G = nx.read_edgelist(road_file_path, comments=comments, nodetype=int)
     nodes = []
-    start_node = choice(G.nodes())
+    start_node = random.choice(G.nodes())
     queue = [start_node]
     added_nodes = 1
     seen = set()
@@ -833,7 +831,7 @@ def road(road_file_path, comments='#'):
         sp = nx.shortest_path(G, n1, n2)
         if len(sp) < 8 or len(sp) > 30:
             continue
-        index = choice(range(len(sp) / 4, 3 * len(sp) / 4))
+        index = random.choice(range(len(sp) / 4, 3 * len(sp) / 4))
         u, v = sp[index], sp[index + 1]
         G.remove_edge(u, v)
         if not nx.has_path(G, u, v):
@@ -968,7 +966,10 @@ def main():
         if G == None:
             print "no graph"
             continue
-        path = G.graph['init_path']
+            
+        path = None
+        if 'init_path' in G.graph:
+            path = G.graph['init_path']
         nests = G.graph['nests']
 
         food = []
@@ -1006,15 +1007,15 @@ def main():
                     plant1 = G.node[u]['plant']
                 if 'plant' in G.node[v]:
                     plant2 = G.node[v]['plant']
-                if (u, v) in path or (v, u) in path:
+                if (path != None) and ((u, v) in path or (v, u) in path):
                     edge_widths.append(10)
                     edge_colors.append('g')
                 elif plant1 == plant2:
                     edge_widths.append(1)
-                    edge_colors.append('b')
+                    edge_colors.append('k')
                 else:
                     edge_widths.append(1)
-                    edge_colors.append('k')
+                    edge_colors.append('b')
         nx.draw(G, pos=pos, with_labels=False, nodelist=sorted(G.nodes()), \
                 edgelist=sorted(G.edges()), width=edge_widths, edge_color=edge_colors, \
                 node_size=node_sizes, node_color=node_colors)
