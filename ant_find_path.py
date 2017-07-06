@@ -67,6 +67,10 @@ DEBUG = False
 DEBUG_QUEUES = False
 DEBUG_PATHS = False
 
+REINFORCEMENT_RATE = {1 : 1, 2 : 0.8, 3 : 0.5, 4 : 0.2}
+
+DIFFICULTY_COLORS = {1 : 'k', 2 : 'b', 3 : 'r', 4 : 'm'}
+
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
 # PARAMETERS:
@@ -133,16 +137,8 @@ def init_graph(G):
         N[i] = (u, v)        
         Ninv[(v, u)] = i
         
-        init_path = G.graph['init_path']
-        if (u, v) in init_path:
-            edge_color.append('g')
-            edge_width.append(10)
-        elif (v, u) in init_path:
-            edge_color.append('g')
-            edge_width.append(10)
-        else:
-            edge_color.append('k')
-            edge_width.append(1)
+        edge_color.append('k')
+        edge_width.append(1)
             
     G.graph['node_map'] = M
     G.graph['node_map_inv'] = Minv
@@ -497,7 +493,7 @@ def check_path(G, path):
         if u != v:
             assert G.has_edge(u, v)
     
-def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
+def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
             nframes=200, video2=False, cost_plot=False, backtrack=False, \
             decay_type='linear', node_queue_lim=1, edge_queue_lim=1, one_way=False):
@@ -529,9 +525,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
 
     if video:
         fig = PP.figure()
-    
-    init_path = G.graph['init_path']
-    
+        
     for iter in xrange(num_iters):    
         nonzero_edges = set()
         
@@ -554,7 +548,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         origins = {}
         edge_weights = defaultdict(list)
         deadend = {}
-        search_mode = defaultdict(lambda: False)
+        search_mode = {}
         costs = []
     
         path_counts = defaultdict(int)
@@ -589,6 +583,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             deadend[ant] = False
             queue_ant(G, curr, ant)
             queued_nodes.add(curr)
+            search_mode[ant] = True
     
         steps = 1
         rounds = 1
@@ -704,7 +699,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     elif len(n) > 1:
                         deadend[next_ant] = False
                 
-                    if (prev == curr) or (curr == origins[next_ant] and not search_mode[next_ant]):
+                    if (prev == curr):
+                        pass #prev = None
+                    
+                    if (curr == origins[next_ant] and not search_mode[next_ant]):
                         prev = None
 
                     
@@ -724,14 +722,14 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         if not deadend[next_ant]:
                             add_amount = 2 * pheromone_add
                             if 'difficulty' in G[curr][next]:
-                                add_amount /= G[curr][next]['difficulty']
+                                add_amount *= REINFORCEMENT_RATE[G[curr][next]['difficulty']]
                             G2[curr][next]['weight'] += add_amount
                             if decay_type == 'linear':
                                 G2[curr][next]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
-                        prevs[next_ant] = curr
+                        prevs[next_ant] = next #curr
                         currs[next_ant] = curr
                         paths[next_ant].append(curr)
                         walks[next_ant].append(curr)
@@ -773,7 +771,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         if not deadend[next_ant]:
                             add_amount = pheromone_add
                             if 'difficulty' in G[curr][next]:
-                                add_amount /= G[curr][next]['difficulty']
+                                add_amount *= REINFORCEMENT_RATE[G[curr][next]['difficulty']]
                             G2[curr][next]['weight'] += add_amount
                             if decay_type == 'linear':
                                 G2[curr][add_neighbor]['units'].append(add_amount)
@@ -908,7 +906,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 index = Ninv[(u, v)]
                 edge_wt = edge_weights[index][frame]
                 if edge_wt == None:
-                    e_colors.append('k')
+                    if 'difficulty' in G[u][v]:
+                        e_colors.append(DIFFICULTY_COLORS[G[u][v]['difficulty']])
+                    elif G.node[u]['plant'] == G.node[v]['plant']:
+                        e_colors.append('k')
+                    else:
+                        e_colors.append('b')
                     e_widths.append(1)
                 else:
                     e_colors.append('g')
@@ -1151,7 +1154,7 @@ def main():
         return None
 
     # Run recovery algorithm.
-    repair(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps,\
+    find_path(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps,\
                num_iters, print_graph, video, frames, video2, cost_plot, backtrack, \
                decay_type, node_queue_lim, edge_queue_lim, one_way)
     
