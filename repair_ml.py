@@ -149,7 +149,7 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         add_amount = 1
         
         if G[source][dest]['weight'] <= MIN_DETECTABLE_PHEROMONE:
-            add_amount *= 2
+            pass #add_amount *= 2
         G2[source][dest]['weight'] += add_amount
         if decay_type == 'linear':
             G2[source][dest]['units'].append(add_amount)
