@@ -31,8 +31,9 @@ SEED_DEBUG = False
 SEED_MAX = 4294967295
 SEED_VAL = randint(0, SEED_MAX)
 if SEED_DEBUG:
+    print SEED_VAL
     seed(SEED_VAL)
-#seed(3305480832)
+#seed(3299748956)
 
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
@@ -69,7 +70,7 @@ DEBUG_PATHS = False
 
 REINFORCEMENT_RATE = {1 : 1, 2 : 0.8, 3 : 0.5, 4 : 0.2}
 
-DIFFICULTY_COLORS = {1 : 'k', 2 : 'b', 3 : 'r', 4 : 'm'}
+ANTI_PHEROMONE = True
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -700,7 +701,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                         deadend[next_ant] = False
                 
                     if (prev == curr):
-                        pass #prev = None
+                        prev = None
                     
                     if (curr == origins[next_ant] and not search_mode[next_ant]):
                         prev = None
@@ -719,22 +720,31 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                                                                    
                     if ex and (G[curr][next]['weight'] <= MIN_DETECTABLE_PHEROMONE):
                         queue_ant(G2, curr, next_ant)
-                        if not deadend[next_ant]:
-                            add_amount = 2 * pheromone_add
-                            if 'difficulty' in G[curr][next]:
-                                add_amount *= REINFORCEMENT_RATE[G[curr][next]['difficulty']]
-                            G2[curr][next]['weight'] += add_amount
-                            if decay_type == 'linear':
-                                G2[curr][next]['units'].append(add_amount)
-                            nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
-                        prevs[next_ant] = next #curr
+                        #prevs[next_ant] = curr
+                        #prevs[next_ant] = next
+                        #prevs[next_ant] = prevs[next_ant]
                         currs[next_ant] = curr
                         paths[next_ant].append(curr)
                         walks[next_ant].append(curr)
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
+                            
+                        add_amount = 2 * pheromone_add
+                        if 'difficulty' in G[curr][next]:
+                            add_amount *= REINFORCEMENT_RATE[G[curr][next]['difficulty']]
+                        if not deadend[next_ant]:
+                            G2[curr][next]['weight'] += add_amount
+                            if decay_type == 'linear':
+                                G2[curr][next]['units'].append(add_amount)
+                            nonzero_edges.add(Ninv[(curr, next)])
+                        elif ANTI_PHEROMONE:
+                            G2[curr][next]['weight'] -= add_amount
+                            G2[curr][next]['weight'] = max(G2[curr][next]['weight'], MIN_PHEROMONE)
+                            if G2[curr][next]['weight'] > MIN_PHEROMONE:
+                                nonzero_edges.add(Ninv[(curr, next)])
+                        
                     else:
                         if (curr, next) == G[curr][next]['forwards']:
                             G2[curr][next]['forwards_queue'].append(next_ant)
@@ -767,15 +777,20 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                         new_queue_nodes.add(next)
                         empty_nodes.discard(next)
                         prevs[next_ant] = curr
-                        currs[next_ant] = next
+                        currs[next_ant] = next #curr
+                        add_amount = pheromone_add
+                        if 'difficulty' in G[curr][next]:
+                            add_amount *= REINFORCEMENT_RATE[G[curr][next]['difficulty']]
                         if not deadend[next_ant]:
-                            add_amount = pheromone_add
-                            if 'difficulty' in G[curr][next]:
-                                add_amount *= REINFORCEMENT_RATE[G[curr][next]['difficulty']]
                             G2[curr][next]['weight'] += add_amount
                             if decay_type == 'linear':
-                                G2[curr][add_neighbor]['units'].append(add_amount)
+                                G2[curr][next]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
+                        elif ANTI_PHEROMONE:
+                            G2[curr][next]['weight'] -= add_amount
+                            G2[curr][next]['weight'] = max(G2[curr][next]['weight'], MIN_PHEROMONE)
+                            if G2[curr][next]['weight'] > MIN_PHEROMONE:
+                                nonzero_edges.add(Ninv[(curr, next)])
                         
                         paths[next_ant].append(next)
                         walks[next_ant].append(next)
