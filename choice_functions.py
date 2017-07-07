@@ -389,6 +389,10 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
             if node in candidates:
                 candidates.remove(node)
     assert len(candidates) > 0
+    
+    if len(candidates) == 1:
+        return candidates[0], False
+    
     choice_func = None
     if (strategy == 'uniform') or (strategy in ['hybrid', 'hybridz', 'hybridm', 'hybridr'] and search):
         choice_func = next_edge_uniform
