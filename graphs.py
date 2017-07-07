@@ -27,9 +27,12 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'mod_grid1', 'mod_grid2', 'mod_grid3', 'barabasi', 'vert_grid',\
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
-                     'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid', 'full_plants']
+                     'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid',\
+                     'full_plants', 'span_trees']
 
 TRANSPARENT = False
+
+DIFFICULTY_COLORS = {1 : 'k', 2 : 'b', 3 : 'r', 4 : 'm'}
 
 def assign_difficulties(G):
     distributions = difficulty_distributions()
@@ -94,8 +97,45 @@ def full_grid_plants():
     G = full_grid()
     G.add_edge((4, 5), (5, 5))
     G = partition_plants(G)
-    #assign_difficulties(G)
+    assign_difficulties(G)
     return G
+
+def spanning_trees():
+    G = full_grid_nocut()
+    H = nx.Graph()
+    nodes1 = []
+    nodes2 = []
+    
+    for u in G.nodes():
+        H.add_node(u)
+        plant = None
+        if u[0] < 5:
+            nodes1.append(u)
+            plant = 1
+        else:
+            nodes2.append(u)
+            plant = 2
+        H.node[u]['plant'] = plant
+            
+    G1 = G.subgraph(nodes1)
+    G2 = G.subgraph(nodes2)
+    
+    S1 = nx.minimum_spanning_tree(G1)
+    S2 = nx.minimum_spanning_tree(G2)
+    
+    for u, v in S1.edges() + S2.edges():
+        H.add_edge(u, v)
+        H[u][v]['difficulty'] = 1
+        
+    for i in xrange(10):
+        u, v = (4, i), (5, i)
+        H.add_edge(u, v)
+        H[u][v]['difficulty'] = 3
+    
+    H.graph['name'] = 'span_trees'
+    H.graph['nests'] = G.graph['nests']
+    
+    return H
 
 def food_grid(n=11):
     G = nx.grid_2d_graph(n, n)
@@ -950,6 +990,8 @@ def get_graph(graph_name):
         G = food_grid()
     elif graph_name == 'full_plants':
         G = full_grid_plants()
+    elif graph_name == 'span_trees':
+        G = spanning_trees()
     else:
         raise ValueError("invalid graph name")
     return G
@@ -998,7 +1040,7 @@ def main():
 
         for u, v in sorted(G.edges()):
             if 'difficulty' in G[u][v]:
-                edge_colors.append(1.0 / G[u][v]['difficulty'])
+                edge_colors.append(DIFFICULTY_COLORS[G[u][v]['difficulty']])
                 edge_widths.append(1)
             else:
                 plant1 = None
