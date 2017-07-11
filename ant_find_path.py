@@ -493,11 +493,19 @@ def check_path(G, path):
         u, v = path[i], path[i + 1]
         if u != v:
             assert G.has_edge(u, v)
+
+def to_list(nodes):
+    if type(nodes) == tuple:
+        return [nodes]
+    else:
+        assert type(nodes) == list
+        return nodes
     
-def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
-            num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
-            nframes=200, video2=False, cost_plot=False, backtrack=False, \
-            decay_type='linear', node_queue_lim=1, edge_queue_lim=1, one_way=False):
+def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
+              strategy='uniform', num_ants=100, max_steps=10000, num_iters=1,\
+              print_graph=False, video=False, nframes=200, video2=False, cost_plot=False,\
+              backtrack=False, decay_type='linear', node_queue_lim=1, edge_queue_lim=1,\
+              one_way=False):
     """ """
     
     graph_name = G.graph['name']
@@ -693,7 +701,11 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             
                     n = G.neighbors(curr)
                     if curr != prev and prev != None:
-                        n.remove(prev)
+                        for p in to_list(prev):
+                            if p not in n:
+                                print n
+                                print list(prev)
+                            n.remove(p)
                     if len(n) == 0:
                         deadend[next_ant] = (curr not in nests)
                         #print curr, deadend[j]
@@ -709,7 +721,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                     
                     exp_prob = explore_prob
                     if search_mode[next_ant]:
-                        exp_prob = explore_prob
+                        exp_prob = explore2
                     elif (curr == origins[next_ant] and not search_mode[next_ant]):
                         exp_prob = 0
                     
@@ -725,6 +737,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                         #prevs[next_ant] = curr
                         #prevs[next_ant] = next
                         #prevs[next_ant] = prevs[next_ant]
+                        #prevs[next_ant] = [to_list(prevs[next_ant])[0], next]
                         currs[next_ant] = curr
                         paths[next_ant].append(curr)
                         walks[next_ant].append(curr)
@@ -1116,6 +1129,8 @@ def main():
                         default=200)
     parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.05, \
                         help="explore probability")
+    parser.add_argument('-e2', '--explore2', type=float, dest='explore2', default=None,\
+                        help='search mode explore probability')
     parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=3000)
     parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
@@ -1142,6 +1157,9 @@ def main():
     video2 = args.video2
     frames = args.frames
     explore = args.explore
+    explore2 = args.explore2
+    if explore2 == None:
+        explore2 = explore
     max_steps = args.max_steps
     cost_plot = args.cost_plot
     backtrack = args.backtrack
@@ -1169,9 +1187,9 @@ def main():
         return None
 
     # Run recovery algorithm.
-    find_path(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps,\
-               num_iters, print_graph, video, frames, video2, cost_plot, backtrack, \
-               decay_type, node_queue_lim, edge_queue_lim, one_way)
+    find_path(G, pheromone_add, pheromone_decay, explore, explore2, strategy, num_ants,\
+              max_steps, num_iters, print_graph, video, frames, video2, cost_plot,\
+              backtrack, decay_type, node_queue_lim, edge_queue_lim, one_way)
     
     # =========================== Finish ============================
     logging.info("Time to run: %.3f (mins)" %((time.time()-start) / 60))
