@@ -4,7 +4,7 @@ import networkx as nx
 import pylab
 import argparse
 from kruskal import kruskal
-from random import random, sample, shuffle, randint
+from random import sample, shuffle, randint
 import random
 import os
 from repeatability import difficulty_distributions
@@ -590,7 +590,7 @@ def er_network(p=0.5):
             elif v == nest and u == target:
                 continue
             elif u != v:
-                if random() <= p:
+                if randn.random() <= p:
                     G.add_edge(u, v)
                 else:
                     if G.has_edge(u, v):
