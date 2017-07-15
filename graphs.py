@@ -130,10 +130,8 @@ def spanning_trees():
     H.graph['nests'] = G.graph['nests']
     H.graph['name'] = 'span_trees'
     
-    '''
-    H = partition_plants(H)
-    H.graph['name'] = 'span_trees'
-    '''
+    #H = partition_plants(H)
+    #H.graph['name'] = 'span_trees'
     
     '''
     for u, v in H.edges_iter():
@@ -142,10 +140,17 @@ def spanning_trees():
     '''
     #assign_difficulties(H)
     
-    for i in xrange(10):
+    for i in xrange(11):
         u, v = (4, i), (5, i)
         H.add_edge(u, v)
         H[u][v]['difficulty'] = 3
+        
+    '''
+    for i in xrange(10):
+        u, v = (i, 5), (i + 1, 5)
+        H.add_edge((i, 5), (i + 1, 5))
+        H[u][v]['difficulty'] = 1
+    '''
     
     return H
 
