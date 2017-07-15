@@ -68,9 +68,11 @@ DEBUG = False
 DEBUG_QUEUES = False
 DEBUG_PATHS = False
 
-REINFORCEMENT_RATE = {1 : 1, 2 : 0.8, 3 : 0.5, 4 : 0.2}
+REINFORCEMENT_RATE = {1 : 1, 2 : 0.5, 3 : 0.33, 4 : 0.25}
 
 ANTI_PHEROMONE = True
+
+FIRST_WAVE = 5
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -495,6 +497,8 @@ def check_path(G, path):
             assert G.has_edge(u, v)
 
 def to_list(nodes):
+    if nodes == None:
+        return [None]
     if type(nodes) == tuple:
         return [nodes]
     else:
@@ -530,7 +534,6 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
     
     pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     data_file = open('ant_%s%d.csv' % (out_str, max_steps), 'a')
-    pruning_file = open('ant_%s_pruning.csv' % out_str, 'a')
 
     if video:
         fig = PP.figure()
@@ -613,27 +616,19 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                 edge_weights[index].append(None)
             else:
                 edge_weights[index].append(wt)
-    
-        critical_edges_file = None
-        if graph_name == 'minimal':
-            critical_edges_file = open('critical_edges.csv', 'a')
-        while steps <= max_steps:               
+
+        nest_nqls = {}
+        def reset_nest_nqls(ql=0):
+            for nest in nests:
+                nest_nqls[nest] = ql
+                
+        reset_nest_nqls(FIRST_WAVE)
+        
+        while steps <= max_steps:
+                   
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
             costs.append(cost)
-            prun_write_items = [steps, cost]
-       
-            if curr_entropy != None:
-                prun_write_items.append(curr_entropy)
-            else:
-                prun_write_items.append('')
-            
-            if curr_walk_entropy != None:
-                prun_write_items.append(curr_walk_entropy)
-            else:
-                prun_write_items.append('')
-            
-            prun_str = ', '.join(map(str, prun_write_items))
                         
             if graph_name == 'minimal':
                 w1 = G[(1, 3)][(2, 3)]['weight']
@@ -662,6 +657,9 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                 qlim = node_queue_lim
                 if qlim == -1:
                     qlim = len(queue)
+                
+                if queued_node in nests:
+                    qlim = nest_nqls[queued_node]
             
                 next_ants = []
                 q = 0
@@ -702,6 +700,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                     n = G.neighbors(curr)
                     if curr != prev and prev != None:
                         for p in to_list(prev):
+                            if p == None:
+                                continue
                             if p not in n:
                                 print n
                                 print list(prev)
@@ -771,6 +771,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
             if DEBUG_QUEUES:
                 check_queues(G2, queued_nodes, queued_edges, num_ants)
             
+            reset_nest_nqls()
+            
             for edge_id in queued_edges:
                 u, v = N[edge_id]
                 resulting_size = 0
@@ -784,6 +786,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                         eqlim = len(edge_queue)
                     while len(edge_queue) > 0 and i < eqlim:
                         next_ant = edge_queue.pop(0)
+                        if next in nests:
+                            nest_nqls[next] += 1
                         i += 1                     
                         queue_ant(G2, next, next_ant)
                         
@@ -1120,7 +1124,7 @@ def main():
     parser.add_argument("-d", "--decay", action="store", type=float, dest="pheromone_decay", \
                         default=0.05, help="amt of pheromone decay")
     parser.add_argument("-n", "--number", action="store", type=int, dest="num_ants", \
-                        default=100, help="number of ants")
+                        default=-1, help="number of ants")
     parser.add_argument("-pg", "--print_graph", action="store_true", dest="print_graph", \
                         default=False)
     parser.add_argument("-v", "--video", action="store_true", dest="video", default=False)
@@ -1151,7 +1155,6 @@ def main():
     num_iters = args.iterations
     pheromone_add = args.pheromone_add
     pheromone_decay = args.pheromone_decay
-    num_ants = args.num_ants
     print_graph = args.print_graph
     video = args.video
     video2 = args.video2
@@ -1161,6 +1164,9 @@ def main():
     if explore2 == None:
         explore2 = explore
     max_steps = args.max_steps
+    num_ants = args.num_ants
+    if num_ants == -1:
+        num_ants = max_steps
     cost_plot = args.cost_plot
     backtrack = args.backtrack
     decay_type = args.decay_type
