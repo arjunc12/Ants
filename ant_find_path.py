@@ -33,7 +33,7 @@ SEED_VAL = randint(0, SEED_MAX)
 if SEED_DEBUG:
     print SEED_VAL
     seed(SEED_VAL)
-#seed(3299748956)
+#seed(174069528)
 
 Minv = {} # node tuple -> node id
 M = {}    # node id -> node tuple
@@ -73,6 +73,8 @@ REINFORCEMENT_RATE = {1 : 1, 2 : 0.5, 3 : 0.33, 4 : 0.25}
 ANTI_PHEROMONE = True
 
 FIRST_WAVE = 5
+
+PERIOD = 100
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -142,6 +144,8 @@ def init_graph(G):
         
         edge_color.append('k')
         edge_width.append(1)
+        
+        G[u][v]['anti_pheromone'] = 0
             
     G.graph['node_map'] = M
     G.graph['node_map_inv'] = Minv
@@ -660,6 +664,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                 
                 if queued_node in nests:
                     qlim = nest_nqls[queued_node]
+                    if steps % PERIOD == 0:
+                        qlim += FIRST_WAVE
             
                 next_ants = []
                 q = 0
@@ -706,10 +712,16 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                                 print n
                                 print list(prev)
                             n.remove(p)
-                    if len(n) == 0:
+                    
+                    candidates = []
+                    for neighbor in n:
+                        if G[curr][neighbor]['anti_pheromone'] <= MIN_DETECTABLE_PHEROMONE:
+                            candidates.append(neighbor)
+                        
+                    if len(candidates) == 0:
                         deadend[next_ant] = (curr not in nests)
                         #print curr, deadend[j]
-                    elif len(n) > 1:
+                    elif len(candidates) > 1:
                         deadend[next_ant] = False
                 
                     if (prev == curr):
@@ -753,10 +765,11 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                                 G2[curr][next]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         elif ANTI_PHEROMONE:
-                            G2[curr][next]['weight'] -= add_amount
-                            G2[curr][next]['weight'] = max(G2[curr][next]['weight'], MIN_PHEROMONE)
-                            if G2[curr][next]['weight'] > MIN_PHEROMONE:
-                                nonzero_edges.add(Ninv[(curr, next)])
+                            #G2[curr][next]['weight'] -= add_amount
+                            #G2[curr][next]['weight'] = max(G2[curr][next]['weight'], MIN_PHEROMONE)
+                            #if G2[curr][next]['weight'] > MIN_PHEROMONE:
+                                #nonzero_edges.add(Ninv[(curr, next)])
+                            G2[curr][next]['anti_pheromone'] += 1
                         
                     else:
                         if (curr, next) == G[curr][next]['forwards']:
@@ -804,10 +817,11 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                                 G2[curr][next]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         elif ANTI_PHEROMONE:
-                            G2[curr][next]['weight'] -= add_amount
-                            G2[curr][next]['weight'] = max(G2[curr][next]['weight'], MIN_PHEROMONE)
-                            if G2[curr][next]['weight'] > MIN_PHEROMONE:
-                                nonzero_edges.add(Ninv[(curr, next)])
+                            #G2[curr][next]['weight'] -= add_amount
+                            #G2[curr][next]['weight'] = max(G2[curr][next]['weight'], MIN_PHEROMONE)
+                            #if G2[curr][next]['weight'] > MIN_PHEROMONE:
+                                #nonzero_edges.add(Ninv[(curr, next)])
+                            G2[curr][next]['anti_pheromone'] += 1
                         
                         paths[next_ant].append(next)
                         walks[next_ant].append(next)
