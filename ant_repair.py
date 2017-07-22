@@ -144,6 +144,8 @@ def init_graph(G):
             edge_color.append('k')
             edge_width.append(1)
             
+        G[u][v]['anti_pheromone'] = 0
+            
     G.graph['node_map'] = M
     G.graph['node_map_inv'] = Minv
     G.graph['edge_map'] = N
@@ -680,11 +682,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 for queued_ant in queue:
                     if queued_ant not in moved_ants:
                         moved_ants.add(queued_ant)
-                        paths[queued_ant].append(queued_node)
+                        if video:
+                            paths[queued_ant].append(queued_node)
                         if DEBUG_PATHS:
                             check_path(G, paths[queued_ant])
                         walks[queued_ant].append(queued_node)
-                        path = paths[queued_ant]
+                        #path = paths[queued_ant]
             
                 if len(queue) == 0:
                     empty_nodes.add(queued_node)
@@ -739,7 +742,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         empty_nodes.discard(curr)
                         prevs[next_ant] = curr
                         currs[next_ant] = curr
-                        paths[next_ant].append(curr)
+                        if video:
+                            paths[next_ant].append(curr)
                         walks[next_ant].append(curr)
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
@@ -786,7 +790,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                                 G2[curr][add_neighbor]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         
-                        paths[next_ant].append(next)
+                        if video:
+                            paths[next_ant].append(next)
                         walks[next_ant].append(next)
 
                         if DEBUG_PATHS:
@@ -830,7 +835,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                             
                     for j in xrange(len(edge_queue)):
                         next_ant = edge_queue[j]
-                        paths[next_ant].append(curr)
+                        if video:
+                            paths[next_ant].append(curr)
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
                         walks[next_ant].append(curr)
