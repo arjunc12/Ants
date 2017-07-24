@@ -188,7 +188,7 @@ def color_graph(G, c, w, figname, cost=None):
             colors[index] = 'k'
         
         widths[index] = width
-        unique_weights.add(wt)
+        #unique_weights.add(wt)
 
     if 'road' in G.graph['name'] or G.graph['name'] == 'subelji':
         nx.draw(G, with_labels=False, node_size=node_size, edge_color=colors,\
@@ -610,12 +610,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         for u, v in sorted(G.edges()):
             index = Ninv[(u, v)]
             wt = G[u][v]['weight']
-            unique_weights.add(wt)
+            #unique_weights.add(wt)
             max_weight = max(max_weight, wt)
-            if wt <= MIN_DETECTABLE_PHEROMONE:
-                edge_weights[index].append(None)
-            else:
-                edge_weights[index].append(wt)
+            if video:
+                if wt <= MIN_DETECTABLE_PHEROMONE:
+                    edge_weights[index].append(None)
+                else:
+                    edge_weights[index].append(wt)
     
         critical_edges_file = None
         if graph_name == 'minimal':
@@ -862,7 +863,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             for u, v in sorted(G.edges()):
                 index = Ninv[(u, v)]
                 wt = G[u][v]['weight']
-                unique_weights.add(wt)
+                #unique_weights.add(wt)
                 max_weight = max(max_weight, wt)
                 if wt <= MIN_DETECTABLE_PHEROMONE:
                     edge_weights[index].append(None)
