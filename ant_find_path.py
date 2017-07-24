@@ -70,7 +70,7 @@ DEBUG_PATHS = False
 
 REINFORCEMENT_RATE = {1 : 1, 2 : 0.5, 3 : 0.33, 4 : 0.25}
 
-ANTI_PHEROMONE = True
+ANTI_PHEROMONE = False
 
 FIRST_WAVE = 5
 
@@ -746,13 +746,19 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                         queue_ant(G2, curr, next_ant)
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
+                        
+                        if curr in nests:
+                            nest_nqls[curr] += 1
+                        
                         #prevs[next_ant] = curr
                         #prevs[next_ant] = next
                         #prevs[next_ant] = prevs[next_ant]
                         #prevs[next_ant] = [to_list(prevs[next_ant])[0], next]
+                        
                         currs[next_ant] = curr
                         paths[next_ant].append(curr)
                         walks[next_ant].append(curr)
+                        
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
                             
@@ -770,6 +776,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                             #if G2[curr][next]['weight'] > MIN_PHEROMONE:
                                 #nonzero_edges.add(Ninv[(curr, next)])
                             G2[curr][next]['anti_pheromone'] += 1
+
+
                         
                     else:
                         if (curr, next) == G[curr][next]['forwards']:
