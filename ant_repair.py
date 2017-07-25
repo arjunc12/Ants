@@ -865,10 +865,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 wt = G[u][v]['weight']
                 #unique_weights.add(wt)
                 max_weight = max(max_weight, wt)
-                if wt <= MIN_DETECTABLE_PHEROMONE:
-                    edge_weights[index].append(None)
-                else:
-                    edge_weights[index].append(wt)
+                if video:
+                    if wt <= MIN_DETECTABLE_PHEROMONE:
+                        edge_weights[index].append(None)
+                    else:
+                        edge_weights[index].append(wt)
         
             if connect_time == -1 and has_pheromone_path(G, nests[0], nests[1]):
                 connect_time = steps
