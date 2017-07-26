@@ -624,7 +624,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         while steps <= max_steps:               
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
-            costs.append(cost)
+            
+            if cost_plot:
+                costs.append(cost)
+            
             prun_write_items = [steps, cost]
        
             if curr_entropy != None:
@@ -687,7 +690,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                             paths[queued_ant].append(queued_node)
                         if DEBUG_PATHS:
                             check_path(G, paths[queued_ant])
-                        walks[queued_ant].append(queued_node)
+                        #walks[queued_ant].append(queued_node)
                         #path = paths[queued_ant]
             
                 if len(queue) == 0:
@@ -745,7 +748,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         currs[next_ant] = curr
                         if video:
                             paths[next_ant].append(curr)
-                        walks[next_ant].append(curr)
+                        #walks[next_ant].append(curr)
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
                     else:
@@ -793,7 +796,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         
                         if video:
                             paths[next_ant].append(next)
-                        walks[next_ant].append(next)
+                        #walks[next_ant].append(next)
 
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
@@ -801,9 +804,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         
                         if next == destinations[next_ant]:
                             orig, dest = origins[next_ant], destinations[next_ant]
+                            dest = next_destination(orig)
                             origins[next_ant], destinations[next_ant] = dest, orig
                             search_mode[next_ant] = False
             
+                            '''
                             walk = walks[next_ant]
                             chosen_walk_counts[tuple(walk)] += 1
             
@@ -830,6 +835,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                                 max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
             
                             walks[next_ant] = [origins[next_ant]]
+                            '''
             
                         elif next == origins[next_ant]:
                             search_mode[next_ant] = True
