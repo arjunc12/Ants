@@ -380,8 +380,8 @@ def main():
     plot = args.plot
     write_file = args.write_file
 
-    if not (heat or plot):
-        print "error: must select a type of plot to make"
+    if not (heat or plot or write_file):
+        print "error: must select an action"
         return None
 
     ml_analysis(label, sheets, strategies, decay_types, dmin, dmax, emin, emax, dstep, estep, \
