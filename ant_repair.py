@@ -67,6 +67,8 @@ DEBUG = False
 DEBUG_QUEUES = False
 DEBUG_PATHS = False
 
+MAX_PRUNING_STEPS = 10000
+
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
 # PARAMETERS:
@@ -534,6 +536,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
     
     init_path = G.graph['init_path']
     
+    track_pruning = max_steps <= MAX_PRUNING_STEPS
+    
     for iter in xrange(num_iters):    
         nonzero_edges = set()
         for u, v in G.edges_iter():
@@ -690,7 +694,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                             paths[queued_ant].append(queued_node)
                         if DEBUG_PATHS:
                             check_path(G, paths[queued_ant])
-                        #walks[queued_ant].append(queued_node)
+                        if track_pruning:
+                            walks[queued_ant].append(queued_node)
                         #path = paths[queued_ant]
             
                 if len(queue) == 0:
@@ -748,7 +753,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         currs[next_ant] = curr
                         if video:
                             paths[next_ant].append(curr)
-                        #walks[next_ant].append(curr)
+                        if track_pruning:
+                            walks[next_ant].append(curr)
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
                     else:
@@ -796,7 +802,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                         
                         if video:
                             paths[next_ant].append(next)
-                        #walks[next_ant].append(next)
+                        if track_pruning:
+                            walks[next_ant].append(next)
 
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
@@ -808,34 +815,34 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                             origins[next_ant], destinations[next_ant] = dest, orig
                             search_mode[next_ant] = False
             
-                            '''
-                            walk = walks[next_ant]
-                            chosen_walk_counts[tuple(walk)] += 1
+                            if track_pruning:
+                                walk = walks[next_ant]
+                                chosen_walk_counts[tuple(walk)] += 1
             
-                            path = walk_to_path(walk)
-                            start = path[0]
-                            end = path[-1]
-                            idx1 = nests.index(orig)
-                            idx2 = nests.index(dest)
-                            if idx2 > idx1:
-                                path = path[::-1]
-                            path_counts[tuple(path)] += 1
+                                path = walk_to_path(walk)
+                                start = path[0]
+                                end = path[-1]
+                                idx1 = nests.index(orig)
+                                idx2 = nests.index(dest)
+                                if idx2 > idx1:
+                                    path = path[::-1]
+                                path_counts[tuple(path)] += 1
             
-                            curr_entropy = entropy(path_counts.values())
-                            curr_walk_entropy = entropy(chosen_walk_counts.values())
+                                curr_entropy = entropy(path_counts.values())
+                                curr_walk_entropy = entropy(chosen_walk_counts.values())
             
-                            if max_entropy == None:
-                                max_entropy = curr_entropy
-                            else:
-                                max_entropy = max(max_entropy, curr_entropy)
+                                if max_entropy == None:
+                                    max_entropy = curr_entropy
+                                else:
+                                    max_entropy = max(max_entropy, curr_entropy)
                 
-                            if max_walk_entropy == None:
-                                max_walk_entropy = curr_walk_entropy
-                            else:
-                                max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+                                if max_walk_entropy == None:
+                                    max_walk_entropy = curr_walk_entropy
+                                else:
+                                    max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
             
-                            walks[next_ant] = [origins[next_ant]]
-                            '''
+                                walks[next_ant] = [origins[next_ant]]
+                            
             
                         elif next == origins[next_ant]:
                             search_mode[next_ant] = True
