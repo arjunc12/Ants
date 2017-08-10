@@ -607,7 +607,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         unique_weights = set()
         max_cost = 0
         costs = []
-        curr_entropy = None
+        curr_path_entropy = None
         curr_walk_entropy = None
     
     
@@ -634,8 +634,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             
             prun_write_items = [steps, cost]
        
-            if curr_entropy != None:
-                prun_write_items.append(curr_entropy)
+            if curr_path_entropy != None:
+                prun_write_items.append(curr_path_entropy)
             else:
                 prun_write_items.append('')
             
@@ -827,14 +827,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                                 if idx2 > idx1:
                                     path = path[::-1]
                                 path_counts[tuple(path)] += 1
+                                print path_counts
             
-                                curr_entropy = entropy(path_counts.values())
+                                curr_path_entropy = entropy(path_counts.values())
                                 curr_walk_entropy = entropy(chosen_walk_counts.values())
             
                                 if max_entropy == None:
-                                    max_entropy = curr_entropy
+                                    max_entropy = curr_path_entropy
                                 else:
-                                    max_entropy = max(max_entropy, curr_entropy)
+                                    max_entropy = max(max_entropy, curr_path_entropy)
                 
                                 if max_walk_entropy == None:
                                     max_walk_entropy = curr_walk_entropy
@@ -969,7 +970,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         costs.append(cost)
         max_cost = max(max_cost, cost)
         costs = PP.array(costs)
-        pruning = (max_cost - cost) / float(max_cost)
+        cost_pruning = (max_cost - cost) / float(max_cost)
         if cost_plot:
             figname = "pruning/pruning_%s%d_e%0.2fd%0.2f" % (out_str, max_steps, \
                        explore_prob, pheromone_decay, cost)
@@ -977,9 +978,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 
         path_pruning = None  
         if len(path_counts) > 0:
-            curr_entropy = entropy(path_counts.values())
-            max_entropy = max(max_entropy, curr_entropy)
-            path_pruning = max_entropy - curr_entropy
+            curr_path_entropy = entropy(path_counts.values())
+            max_entropy = max(max_entropy, curr_path_entropy)
+            path_pruning = max_entropy - curr_path_entropy
         
         walk_pruning = None
         if len(chosen_walk_counts) > 0:
@@ -1048,7 +1049,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
     
         #write_items.append(walk_success_rate)
     
-        write_items.append(pruning)
+        write_items.append(cost_pruning)
     
         if connect_time != -1:
             write_items.append(connect_time)
@@ -1060,8 +1061,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         else:
             write_items.append('')
         
-        if curr_entropy != None:
-            write_items.append(curr_entropy)
+        if curr_path_entropy != None:
+            write_items.append(curr_path_entropy)
         else:
             write_items.append('')
      
