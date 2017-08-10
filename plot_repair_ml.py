@@ -23,11 +23,11 @@ ML_OUTFILE = '%s/repair_ml.csv' % OUT_DIR
 def print_ml_parameters(df, strategies, decay_types):
     df2 = df[(df['strategy'].isin(strategies)) & (df['decay_type'].isin(decay_types))]
     for name, group in df2.groupby(['strategy', 'decay_type']):
-        print "%s, %s" % (strategy, decay_type)
         strategy, decay_type = name
+        print "%s, %s" % (strategy, decay_type)
         max_likelihood = float('-inf')
         max_likelihood_params = []
-        for name2, group2 in df2.groupby(['explore', 'decay']):
+        for name2, group2 in group.groupby(['explore', 'decay']):
             explore, decay = name2
             likelihood = sum(group2['likelihood'])
             if likelihood > max_likelihood:
