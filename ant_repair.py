@@ -815,32 +815,37 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                             origins[next_ant], destinations[next_ant] = dest, orig
                             search_mode[next_ant] = False
             
-                            if track_pruning:
+                            if track_pruning :
                                 walk = walks[next_ant]
-                                chosen_walk_counts[tuple(walk)] += 1
-            
-                                path = walk_to_path(walk)
-                                start = path[0]
-                                end = path[-1]
-                                idx1 = nests.index(orig)
-                                idx2 = nests.index(dest)
-                                if idx2 > idx1:
-                                    path = path[::-1]
-                                path_counts[tuple(path)] += 1
-                                print path_counts
-            
-                                curr_path_entropy = entropy(path_counts.values())
-                                curr_walk_entropy = entropy(chosen_walk_counts.values())
-            
-                                if max_entropy == None:
-                                    max_entropy = curr_path_entropy
-                                else:
-                                    max_entropy = max(max_entropy, curr_path_entropy)
+                                
+                                if walk[0] == orig and walk[-1] == dest:
+                                    chosen_walk_counts[tuple(walk)] += 1
                 
-                                if max_walk_entropy == None:
-                                    max_walk_entropy = curr_walk_entropy
-                                else:
-                                    max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+                                    path = walk_to_path(walk)
+                                    start = path[0]
+                                    end = path[-1]
+                                    idx1 = nests.index(orig)
+                                    idx2 = nests.index(dest)
+                                    if idx2 > idx1:
+                                        path = path[::-1]
+                                    path_counts[tuple(path)] += 1
+                                    print len(path_counts)
+                                    for path in path_counts:
+                                        print path
+                
+                                    curr_path_entropy = entropy(path_counts.values())
+                                    print curr_path_entropy
+                                    curr_walk_entropy = entropy(chosen_walk_counts.values())
+                
+                                    if max_entropy == None:
+                                        max_entropy = curr_path_entropy
+                                    else:
+                                        max_entropy = max(max_entropy, curr_path_entropy)
+                    
+                                    if max_walk_entropy == None:
+                                        max_walk_entropy = curr_walk_entropy
+                                    else:
+                                        max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
             
                                 walks[next_ant] = [origins[next_ant]]
                             
