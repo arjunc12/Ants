@@ -2,7 +2,7 @@ import os
 import argparse
 from sys import argv
 
-steps_label = '1k'
+#steps_label = '1k'
 plot_script = 'plot_ant_repair.py'
 
 parser = argparse.ArgumentParser()
