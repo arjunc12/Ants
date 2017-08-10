@@ -829,12 +829,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                                     if idx2 > idx1:
                                         path = path[::-1]
                                     path_counts[tuple(path)] += 1
-                                    print len(path_counts)
-                                    for path in path_counts:
-                                        print path
                 
                                     curr_path_entropy = entropy(path_counts.values())
-                                    print curr_path_entropy
                                     curr_walk_entropy = entropy(chosen_walk_counts.values())
                 
                                     if max_entropy == None:
