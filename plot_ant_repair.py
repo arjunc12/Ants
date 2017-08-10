@@ -16,7 +16,7 @@ MLE_DECAY = 0.02
 TRANSPARENT = False
 
 COLUMNS = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
-           'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'pruning',\
+           'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'cost_pruning',\
            'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
            'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len']
 
@@ -197,7 +197,13 @@ def pruning_heat(df, strategy):
         return pylab.nanmean(group['pruning'])
         
     heat(df, pruning, 'pruning', strategy, 'average edge pruning done between start and end')
-    
+
+def cost_pruning_heat(df, strategy):
+    def pruning(group):
+        return pylab.nanmean(group['cost_pruning'])
+        
+    heat(df, pruning, 'cost_pruning', strategy, 'average edge pruning done between start and end')
+
 def path_pruning_heat(df, strategy):
     def path_pruning(group):
         if all(pylab.isnan(group['path_pruning'])):
@@ -304,13 +310,13 @@ def main():
     #cost_heat(df, strategy)
     #walk_entropy_heat(df, strategy)
     
-    #pruning_heat(df, strategy)
+    #cost_pruning_heat(df, strategy)
     #connect_time_heat(df, strategy)
     
-    #path_pruning_heat(df, strategy)
-    #chosen_path_entropy_heat(df, strategy)
+    path_pruning_heat(df, strategy)
+    chosen_path_entropy_heat(df, strategy)
     
-    #walk_pruning_heat(df, strategy)
+    walk_pruning_heat(df, strategy)
     #chosen_walk_entropy_heat(df, strategy)
     
     #mean_path_len_heat(df, strategy)
