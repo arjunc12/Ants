@@ -296,6 +296,8 @@ def simple_network():
                                             
     #init_graph(G)
         
+    G.graph['critical_node'] = (1, 3)
+
     return G
     
 def simple_network_nocut():
@@ -401,6 +403,8 @@ def medium_network():
                                             
     #init_graph(G)
         
+    G.graph['critical_node'] = (3, 3)
+
     return G
     
 def medium_network_nocut():
