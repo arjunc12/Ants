@@ -15,10 +15,12 @@ MLE_DECAY = 0.02
 
 TRANSPARENT = False
 
-COLUMNS = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy', 'walk_entropy', \
-           'mean_journey_time', 'median_journey_time', 'walk_success_rate', 'cost_pruning',\
-           'connect_time', 'path_pruning', 'chosen_path_entropy', 'walk_pruning', \
-           'chosen_walk_entropy', 'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len']
+COLUMNS = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy',\
+           'walk_entropy', 'mean_journey_time', 'median_journey_time',\
+           'walk_success_rate', 'cost_pruning', 'connect_time', 'path_pruning',\
+           'chosen_path_entropy', 'walk_pruning', 'chosen_walk_entropy',\
+           'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len',\
+           'cycles_pruning', 'max_cycles']
 
 
 def ant_repair_plot(df, strategy, graph, decay_type, group_func=pylab.mean):
