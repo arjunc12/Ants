@@ -76,6 +76,8 @@ FIRST_WAVE = 5
 
 PERIOD = 100
 
+MAX_PRUNING_STEPS = 10000
+
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
 # PARAMETERS:
@@ -473,13 +475,15 @@ def maximal_paths(G, source, dest, limit=None):
             prev = curr_path[-2]
         max_n = max_neighbors(G, curr, prev)
         for max_neighbor in max_n:
-            if max_neighbor not in curr_path:
-                new_path = curr_path + [max_neighbor]
-                if max_neighbor == dest:
-                    max_paths.append(new_path)
-                else:
-                    queue.append(new_path)
+            new_path = curr_path + [max_neighbor]
+            if max_neighbor == dest:
+                max_paths.append(new_path)
+            elif max_neighbor not in curr_path:
+                queue.append(new_path)
     return max_paths
+
+def maximal_cycles(G, source, limit=None):
+    return maximal_paths(G, source, source, limit)
 
 def print_queues(G):
     for u in sorted(G.nodes()):
@@ -538,6 +542,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
     
     pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     data_file = open('ant_%s%d.csv' % (out_str, max_steps), 'a')
+    
+    track_pruning = max_steps <= MAX_PRUNING_STEPS
 
     if video:
         fig = PP.figure()
@@ -576,6 +582,9 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
     
         queued_nodes = set()
         queued_edges = set()
+        
+        max_cycles = 0
+        curr_max_cycles = 0
             
         for ant in xrange(num_ants):
             origin = nests[ant % len(nests)]
@@ -654,6 +663,9 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                 check_queues(G2, queued_nodes, queued_edges, num_ants)
             
             for queued_node in queued_nodes:
+                curr_max_cycles = len(maximal_cycles(G, queued_node))
+                max_cycles = max(curr_max_cycles, max_cycles)
+                
                 queue = G2.node[queued_node]['queue']
                 #queue = G2.node[node]['queue']
                 #assert len(queue) > 0
@@ -756,8 +768,10 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                         #prevs[next_ant] = [to_list(prevs[next_ant])[0], next]
                         
                         currs[next_ant] = curr
-                        paths[next_ant].append(curr)
-                        walks[next_ant].append(curr)
+                        if video:
+                            paths[next_ant].append(curr)
+                        if track_pruning:
+                            walks[next_ant].append(curr)
                         
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
@@ -775,10 +789,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                             #G2[curr][next]['weight'] = max(G2[curr][next]['weight'], MIN_PHEROMONE)
                             #if G2[curr][next]['weight'] > MIN_PHEROMONE:
                                 #nonzero_edges.add(Ninv[(curr, next)])
-                            G2[curr][next]['anti_pheromone'] += 1
-
-
-                        
+                            G2[curr][next]['anti_pheromone'] += 1                     
                     else:
                         if (curr, next) == G[curr][next]['forwards']:
                             G2[curr][next]['forwards_queue'].append(next_ant)
@@ -831,45 +842,48 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                                 #nonzero_edges.add(Ninv[(curr, next)])
                             G2[curr][next]['anti_pheromone'] += 1
                         
-                        paths[next_ant].append(next)
-                        walks[next_ant].append(next)
+                        if video:
+                            paths[next_ant].append(next)
+                        if track_pruning:
+                            walks[next_ant].append(next)
 
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
-        
         
                         if next == destinations[next_ant]:
                             orig, dest = origins[next_ant], destinations[next_ant]
                             origins[next_ant], destinations[next_ant] = dest, orig
                             search_mode[next_ant] = False
             
-                            walk = walks[next_ant]
-                            chosen_walk_counts[tuple(walk)] += 1
+                            if track_pruning:
+                                walk = walks[next_ant]
+                                if walk[0] == orig and walk[-1] == dest:
+                                    chosen_walk_counts[tuple(walk)] += 1
             
-                            path = walk_to_path(walk)
-                            start = path[0]
-                            end = path[-1]
-                            idx1 = nests.index(orig)
-                            idx2 = nests.index(dest)
-                            if idx2 > idx1:
-                                path = path[::-1]
-                            path_counts[tuple(path)] += 1
+                                    path = walk_to_path(walk)
+                                    start = path[0]
+                                    end = path[-1]
+                                    idx1 = nests.index(orig)
+                                    idx2 = nests.index(dest)
+                                    if idx2 > idx1:
+                                        path = path[::-1]
+                                    path_counts[tuple(path)] += 1
             
-                            curr_entropy = entropy(path_counts.values())
-                            curr_walk_entropy = entropy(chosen_walk_counts.values())
+                                    curr_entropy = entropy(path_counts.values())
+                                    curr_walk_entropy = entropy(chosen_walk_counts.values())
             
-                            if max_entropy == None:
-                                max_entropy = curr_entropy
-                            else:
-                                max_entropy = max(max_entropy, curr_entropy)
+                                    if max_entropy == None:
+                                        max_entropy = curr_entropy
+                                    else:
+                                        max_entropy = max(max_entropy, curr_entropy)
                 
-                            if max_walk_entropy == None:
-                                max_walk_entropy = curr_walk_entropy
-                            else:
-                                max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+                                    if max_walk_entropy == None:
+                                        max_walk_entropy = curr_walk_entropy
+                                    else:
+                                        max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
             
-                            walks[next_ant] = [origins[next_ant]]
-            
+                                walks[next_ant] = [origins[next_ant]]            
+                        
                         elif next == origins[next_ant]:
                             search_mode[next_ant] = True
                             
@@ -898,15 +912,16 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
         
             G = G2
         
-            for u, v in sorted(G.edges()):
-                index = Ninv[(u, v)]
-                wt = G[u][v]['weight']
-                unique_weights.add(wt)
-                max_weight = max(max_weight, wt)
-                if wt <= MIN_DETECTABLE_PHEROMONE:
-                    edge_weights[index].append(None)
-                else:
-                    edge_weights[index].append(wt)
+            if video:
+                for u, v in sorted(G.edges()):
+                    index = Ninv[(u, v)]
+                    wt = G[u][v]['weight']
+                    unique_weights.add(wt)
+                    max_weight = max(max_weight, wt)
+                    if wt <= MIN_DETECTABLE_PHEROMONE:
+                        edge_weights[index].append(None)
+                    else:
+                        edge_weights[index].append(wt)
         
             if connect_time == -1 and has_pheromone_path(G, nests[0], nests[1]):
                 connect_time = steps
@@ -1061,6 +1076,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
         journey_lengths = []
         walk_counts = defaultdict(int)
         total_steps = 0
+        
+        cycles_pruning = max_cycles - curr_max_cycles
     
         write_items = [int(has_path), cost]
     
@@ -1109,6 +1126,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
             write_items.append(mean_path_len)
         else:
             write_items.append('')
+            
+        write_items += [cycles_pruning, curr_max_cycles]
     
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
