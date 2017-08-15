@@ -69,18 +69,7 @@ DEBUG_PATHS = False
 
 MAX_PRUNING_STEPS = 10000
 
-""" Difference from tesht2 is that the ants go one at a time + other output variables. """ 
-
-# PARAMETERS:
-#   n=number of ants
-#   delta=pheromone add-decay amount
-#   choice function=max or probabilistic
-#   trade-offs=speed of recovery vs. centrality
-#   backwards-coming ants=ignore.
-# TODO: add/decay as a function of n?
-# TODO: output path edges taken by each ant to visualize.
-# TODO: more memory of history?
-# TODO: is [0-1] the right range? 
+CRITICAL_NODES = True
 
 def clear_queues(G):
     '''
@@ -474,13 +463,15 @@ def maximal_paths(G, source, dest, limit=None):
             prev = curr_path[-2]
         max_n = max_neighbors(G, curr, prev)
         for max_neighbor in max_n:
-            if max_neighbor not in curr_path:
-                new_path = curr_path + [max_neighbor]
-                if max_neighbor == dest:
-                    max_paths.append(new_path)
-                else:
-                    queue.append(new_path)
+            new_path = curr_path + [max_neighbor]
+            if max_neighbor == dest:
+                max_paths.append(new_path)
+            elif max_neighbor not in curr_path:
+                queue.append(new_path)
     return max_paths
+
+def maximal_cycles(G, source, limit=None):
+    return maximal_paths(G, source, source, limit)
 
 def print_queues(G):
     for u in sorted(G.nodes()):
@@ -530,6 +521,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
     pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
     data_file = open('ant_%s%d.csv' % (out_str, max_steps), 'a')
     pruning_file = open('ant_%s_pruning.csv' % out_str, 'a')
+    critical_nodes_file = open('critical_nodes_%s.csv' % graph_name, 'w')
 
     if video:
         fig = PP.figure()
@@ -576,6 +568,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
     
         queued_nodes = set()
         queued_edges = set()
+
+        max_cycles = 0
+        curr_max_cycles = 0
             
         for ant in xrange(num_ants):
             origin = nests[ant % len(nests)]
@@ -645,13 +640,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 prun_write_items.append('')
             
             prun_str = ', '.join(map(str, prun_write_items))
-                        
+            
+            '''
             if graph_name == 'minimal':
                 w1 = G[(1, 3)][(2, 3)]['weight']
                 w2 = G[(1, 3)][(1, 4)]['weight']
                 critical_str = '%d, %f, %f\n' % (steps, w1, w2)
                 critical_edges_file.write(critical_str)
-            
+            '''
+
             G2 = G.copy()
         
             empty_nodes = set()
@@ -666,6 +663,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                 check_queues(G2, queued_nodes, queued_edges, num_ants)
             
             for queued_node in queued_nodes:
+                curr_max_cycles = len(maximal_cycles(G, queued_node))
+                max_cycles = max(curr_max_cycles, max_cycles)
+
                 queue = G2.node[queued_node]['queue']
                 #queue = G2.node[node]['queue']
                 #assert len(queue) > 0
@@ -735,7 +735,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     next, ex = next_edge(G, curr, exp_prob, strategy, prev, \
                                          destinations[next_ant], search_mode[next_ant],\
                                          backtrack)
-                                                                   
+
                     if ex:
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
@@ -772,10 +772,16 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             
             for edge_id in queued_edges:
                 u, v = N[edge_id]
+                 
                 resulting_size = 0
                 for direction in ['forwards', 'backwards']:
                     i = 0
                     curr, next = G2[u][v][direction]
+                    
+                    if CRITICAL_NODES and 'critical_node' in G.graph:
+                        if G.graph['critical_node'] in (u, v):
+                            critical_nodes_file.write('%s, %s, %d\n' % (curr, next, steps))
+                    
                     edge_queue = G2[u][v][direction + '_queue']
                     
                     eqlim = edge_queue_lim
@@ -797,7 +803,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                                     add_amount *= 0.5
                             G2[curr][next]['weight'] += add_amount
                             if decay_type == 'linear':
-                                G2[curr][add_neighbor]['units'].append(add_amount)
+                                G2[curr][next]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         
                         if video:
@@ -1034,6 +1040,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         journey_lengths = []
         walk_counts = defaultdict(int)
         total_steps = 0
+
+        cycles_pruning = max_cycles - curr_max_cycles
     
         write_items = [int(has_path), cost]
     
@@ -1082,10 +1090,16 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
             write_items.append(mean_path_len)
         else:
             write_items.append('')
+
+        write_items += [cycles_pruning, curr_max_cycles]
     
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
         data_file.write(line)
+        
+    data_file.close()
+    pruning_file.close()
+    critical_nodes_file.close()
 
 def main():
     start = time.time()
