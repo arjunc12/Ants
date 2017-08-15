@@ -1,3 +1,5 @@
+from numpy import subtract, where
+
 MIN_PHEROMONE = 0
 DECAY_CHOICES = ['constant', 'linear', 'exp']
 
