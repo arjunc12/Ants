@@ -108,16 +108,20 @@ def param_likelihood(choices, decay, explore, likelihood_func, decay_type, G=Non
         check_units = True
     
     log_likelihood = 0    
+    
+    '''
     G[sources[0]][dests[0]]['weight'] += 1
     if decay_type == 'linear':
         G[sources[0]][dests[0]]['units'].append(1)
+    '''
+
     G2 = G.copy()
     
     max_degree = 0
     for u in G.nodes():
         max_degree = max(max_degree, len(G.neighbors(u)))
     
-    for i in xrange(1, len(sources)):
+    for i in xrange(0, len(sources)):
         #check_graph(G, check_units)
         #check_graph(G2, check_units)
         
@@ -338,12 +342,12 @@ def main():
     parser.add_argument('-d', '--decay_types', nargs='+', choices=DECAY_CHOICES, required=True)
     parser.add_argument('-c', '--cumulative', action='store_true')
    
-    parser.add_argument('-dmin', type=float, default=0.05)
-    parser.add_argument('-dmax', type=float, default=0.95)
-    parser.add_argument('-emin', type=float, default=0.05)
-    parser.add_argument('-emax', type=float, default=0.95)
-    parser.add_argument('-dstep', type=float, default=0.05)
-    parser.add_argument('-estep', type=float, default=0.05)
+    parser.add_argument('-dmin', type=float, default=0.01)
+    parser.add_argument('-dmax', type=float, default=0.99)
+    parser.add_argument('-emin', type=float, default=0.01)
+    parser.add_argument('-emax', type=float, default=0.99)
+    parser.add_argument('-dstep', type=float, default=0.01)
+    parser.add_argument('-estep', type=float, default=0.01)
     
     parser.add_argument('-o', '--out', action='store_true')
     
