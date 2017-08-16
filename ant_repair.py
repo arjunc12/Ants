@@ -1041,7 +1041,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         walk_counts = defaultdict(int)
         total_steps = 0
 
-        cycles_pruning = max_cycles - curr_max_cycles
+        cycles_pruning = None
+        if max_cycles > 0:
+            cycles_pruning = max_cycles - curr_max_cycles
     
         write_items = [int(has_path), cost]
     
@@ -1091,7 +1093,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
         else:
             write_items.append('')
 
-        write_items += [cycles_pruning, curr_max_cycles]
+        if cycles_pruning != None:
+            write_items.append(cycles_pruning)
+        else:
+            write_items.append('')
+
+        write_items.append(curr_max_cycles)
     
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
