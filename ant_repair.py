@@ -571,6 +571,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
 
         max_cycles = 0
         curr_max_cycles = 0
+        
+        max_path_len = None
             
         for ant in xrange(num_ants):
             origin = nests[ant % len(nests)]
@@ -658,6 +660,23 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             empty_edges = set()
         
             updated_paths_ants = set()
+            
+            max_paths = maximal_paths(G, nests[0], nests[1])
+            max_path_lengths = []
+            for path in max_paths:
+                path_prob = path_prob_no_explore(G, path, strategy)
+                if path_prob > 0:
+                    max_path_lengths.append(len(path))
+                    
+            mean_path_len = None
+            if len(max_path_lengths) > 0:
+                mean_path_len = mean(max_path_lengths)
+            
+            if mean_path_len != None:
+                if max_path_len == None:
+                    max_path_len = mean_path_len
+                else:
+                    max_path_len = max(max_path_len, mean_path_len)
             
             if DEBUG_QUEUES:
                 check_queues(G2, queued_nodes, queued_edges, num_ants)
@@ -1032,6 +1051,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         mean_path_len = None
         if len(path_lengths) > 0:
             mean_path_len = mean(path_lengths)
+            
+        path_len_pruning = None
+        if mean_path_len != None:
+            if max_path_len != None:
+                path_len_pruning = max_path_len - mean_path_len
         
         print "has path", has_path
         print "path entropy", path_etr
@@ -1099,6 +1123,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             write_items.append('')
 
         write_items.append(curr_max_cycles)
+        
+        if path_len_pruning != None:
+            write_items.append(path_len_pruning)
+        else:
+            write_items.append('')
     
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
