@@ -492,7 +492,7 @@ def check_path(G, path):
         if u != v:
             assert G.has_edge(u, v)
     
-def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
+def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='uniform',\
             num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
             nframes=200, video2=False, cost_plot=False, backtrack=False, \
             decay_type='linear', node_queue_lim=1, edge_queue_lim=1, one_way=False):
@@ -727,8 +727,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     
                     exp_prob = explore_prob
                     if search_mode[next_ant]:
-                        exp_prob = explore_prob
-                        
+                        exp_prob = explore2              
                     elif (curr == origins[next_ant] and not search_mode[next_ant]):
                         exp_prob = 0
                     
@@ -1115,18 +1114,6 @@ def main():
         level=logging.DEBUG,
         format='%(levelname)s: %(asctime)s -- %(message)s'
     )
-    
-    '''
-    graph_choices = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
-                     'full_nocut', 'simple_nocut', 'small', 'tiny', 'medium', \
-                     'medium_nocut', 'grid_span', 'grid_span2', 'grid_span3', 'er', \
-                     'mod_grid', 'half_grid', 'mod_grid_nocut', 'half_grid_nocut',\
-                     'mod_grid1', 'mod_grid2', 'mod_grid3', 'vert_grid', 'barabasi', \
-                     'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', 'txroad',
-                     'subelji', 'minimal']
-    '''
-    decay_choices = ['linear', 'const', 'exp']
-    
 
     usage="usage: %prog [options]"
     parser = argparse.ArgumentParser()
@@ -1142,14 +1129,15 @@ def main():
                         default=0.05, help="amt of pheromone decay")
     parser.add_argument("-n", "--number", action="store", type=int, dest="num_ants", \
                         default=100, help="number of ants")
-    parser.add_argument("-pg", "--print_graph", action="store_true", dest="print_graph", \
-                        default=False)
-    parser.add_argument("-v", "--video", action="store_true", dest="video", default=False)
-    parser.add_argument("-v2", "--video2", action="store_true", dest="video2", default=False)
+    parser.add_argument("-pg", "--print_graph", action="store_true", dest="print_graph")
+    parser.add_argument("-v", "--video", action="store_true", dest="video")
+    parser.add_argument("-v2", "--video2", action="store_true", dest="video2")
     parser.add_argument("-f", "--frames", action="store", type=int, dest="frames", \
                         default=200)
     parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.05, \
                         help="explore probability")
+    parser.add_argument('-e2', '--explore2', type=float, dest='explore2', default=None,\
+                        help='search mode explore probability')
     parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=3000)
     parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
@@ -1176,6 +1164,9 @@ def main():
     video2 = args.video2
     frames = args.frames
     explore = args.explore
+    explore2 = args.explore2
+    if explore2 == None:
+        explore2 = explore
     max_steps = args.max_steps
     cost_plot = args.cost_plot
     backtrack = args.backtrack
@@ -1202,9 +1193,9 @@ def main():
         return None
 
     # Run recovery algorithm.
-    repair(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps,\
-               num_iters, print_graph, video, frames, video2, cost_plot, backtrack, \
-               decay_type, node_queue_lim, edge_queue_lim, one_way)
+    repair(G, pheromone_add, pheromone_decay, explore, explore2, strategy, num_ants,\
+           max_steps, num_iters, print_graph, video, frames, video2, cost_plot,\
+           backtrack, decay_type, node_queue_lim, edge_queue_lim, one_way)
     
     # =========================== Finish ============================
     logging.info("Time to run: %.3f (mins)" %((time.time()-start) / 60))
