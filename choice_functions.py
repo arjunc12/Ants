@@ -8,11 +8,21 @@ MIN_DETECTABLE_PHEROMONE = 0
 # minimum amount of pheromone that can be on an edge
 MIN_PHEROMONE = 0
 
+DBERG_H = 1
+
 from collections import defaultdict
 
 STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
                     'hybridr', 'ranku', 'uniform2', 'max2', 'maxu', 'maxa', 'ranka',\
-                    'unweighted']
+                    'unweighted', 'dberg']
+
+def local_graph(G, start):
+    G2 = nx.Graph()
+    for neighbor in G.neighbors(start):
+        G2.add_edge(start, neighbor)
+        G2[start][neighbor]['weight'] = G[start][neighbor]['weight']
+        
+    return G2
 
 def next_edge_unweighted(G, start, explore_prob=None, candidates=None):
     if candidates == None:
@@ -96,10 +106,21 @@ def next_edge_uniformn(G, start, explore_prob, n, candidates=None):
         return next, True
     else:
         explored_weights = np.array(explored_weights)
-        #explored_weights **= n
         explored_weights /= total_wt
         next = explored[choice(len(explored), 1, p=explored_weights)[0]]
         return next, False
+
+def next_edge_dberg(G, start, explore_prob, candidates=None):
+    if explore_prob == 0:
+        return next_edge_max(G, start, explore_prob, candidates)
+        
+    G2 = local_graph(G, start)
+    for neighbor in G2.neighbors(start):
+        wt = G2[start][neighbor]['weight']
+        wt += DBERG_H
+        
+    a = 1 / explore_prob
+    return next_edge_uniformn(G2, start, explore_prob, a, candidates)
     
 def next_edge_max(G, start, explore_prob, candidates=None):
     '''
@@ -422,6 +443,8 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         choice_func = next_edge_ranka
     elif strategy == 'unweighted':
         choice_func = next_edge_unweighted
+    elif strategy == 'dberg':
+        choice_func = next_edge_dberg
     else:
         raise ValueError('invalid strategy')
     return choice_func(G, start, explore_prob, candidates)
@@ -494,6 +517,15 @@ def uniformn_likelihood(G, source, dest, explore, n, prev=None):
         
 def uniform2_likelihood(G, source, dest, explore, prev=None):
     return uniformn_likelihood(G, source, dest, explore, 2, prev)
+    
+def dberg_likelihood(G, source, dest, explore, prev=None):
+    if explore == 0:
+        return max_edge_likelihood(G, source, dest, explore, prev)
+    G2 = local_graph(G, source)
+    for u, v in G2.edges_iter():
+        G2[u][v]['weight'] += DBERG_H
+    a = 1 / explore
+    return uniformn_likelihood(G2, source, dest, explore, a, prev)
              
 def max_edge_likelihood(G, source, dest, explore, prev=None):
     max_wt = MIN_PHEROMONE
@@ -832,6 +864,8 @@ def get_likelihood_func(strategy):
         likelihood_func = ranka_likelihood
     elif strategy == 'unweighted':
         likelihood_func = unweighted_likelihood
+    elif strategy == 'dberg':
+        likelihood_func = dberg_likelihood
     else:
         raise ValueError('invalid strategy')
     return likelihood_func
