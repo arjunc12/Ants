@@ -728,6 +728,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', 
                     exp_prob = explore_prob
                     if search_mode[next_ant]:
                         exp_prob = explore_prob
+                        
                     elif (curr == origins[next_ant] and not search_mode[next_ant]):
                         exp_prob = 0
                     
