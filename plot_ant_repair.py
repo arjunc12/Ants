@@ -20,7 +20,7 @@ COLUMNS = ['ants', 'explore', 'decay', 'has_path', 'cost', 'path_entropy',\
            'walk_success_rate', 'cost_pruning', 'connect_time', 'path_pruning',\
            'chosen_path_entropy', 'walk_pruning', 'chosen_walk_entropy',\
            'wasted_edge_count', 'wasted_edge_weight', 'mean_path_len',\
-           'cycles_pruning', 'max_cycles']
+           'cycles_pruning', 'max_cycles', 'path_len_pruning']
 
 
 def ant_repair_plot(df, strategy, graph, decay_type, group_func=pylab.mean):
