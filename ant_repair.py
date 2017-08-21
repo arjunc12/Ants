@@ -327,6 +327,19 @@ def pheromone_dead_end(G, curr, prev):
             return False
     return True
 
+def remove_self_loops(walk):
+    '''
+    Sometimes due to queuing a walk as a lot of the same vertex in a row and it looks like
+    self loops. This function removes those.
+    '''
+    assert len(walk) > 0
+    walk2 = [walk[0]]
+    for i in xrange(1, len(walk)):
+        node = walk[i]
+        if node != walk2[-1]:
+            walk2.append(node)
+    return walk2
+
 def walk_to_path(walk):
     '''
     Converts a walk on a graph to a path by removing all cycles in the path
@@ -868,8 +881,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                 
                                 if walk[0] == orig and walk[-1] == dest:
                                     chosen_walk_counts[tuple(walk)] += 1
-                
-                                    path, cycle_count = walk_to_path(walk)
+                                    
+                                    walk2 = remove_self_loops(walk)
+                                    path, cycle_count = walk_to_path(walk2)
+                                    if graph_name == 'medium':
+                                        print walk2, path, cycle_count
                                     start = path[0]
                                     end = path[-1]
                                     idx1 = nests.index(orig)
