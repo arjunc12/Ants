@@ -343,7 +343,7 @@ def walk_to_path(walk):
     visited
     '''
     visited = {}
-    cycle_count = 0
+    return_count = defaultdict(int)
     for i, node in enumerate(walk):
         if node not in visited:
             # new node, goes into the path
@@ -358,11 +358,15 @@ def walk_to_path(walk):
             for j in xrange(prev + 1, len(path)):
                 del visited[path[j]]
             path = path[:prev + 1]
-            cycle_count += 1
+            return_count[node] += 1
             
     assert len(path) >= 2
     assert path[0] == walk[0]
     assert path[-1] == walk[-1]
+    
+    cycle_count = 0
+    for node in path:
+        cycle_count += return_count[node]
     
     return path, cycle_count
 
