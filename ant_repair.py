@@ -886,7 +886,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                         max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
                                         
                                     mean_chosen_path_len = weighted_mean_path_len(path_counts)
-                                    if max_chosen_path == None:
+                                    if max_chosen_path_len == None:
                                         max_chosen_path_len = mean_chosen_path_len
                                     else:
                                         max_chosen_path_len = max(max_chosen_path_len, mean_chosen_path_len)
