@@ -343,6 +343,7 @@ def walk_to_path(walk):
     visited
     '''
     visited = {}
+    cycle_count = 0
     for i, node in enumerate(walk):
         if node not in visited:
             # new node, goes into the path
@@ -357,11 +358,13 @@ def walk_to_path(walk):
             for j in xrange(prev + 1, len(path)):
                 del visited[path[j]]
             path = path[:prev + 1]
+            cycle_count += 1
+            
     assert len(path) >= 2
     assert path[0] == walk[0]
     assert path[-1] == walk[-1]
     
-    return path
+    return path, cycle_count
 
 def queue_ant(G, queue_node, ant):
     '''
@@ -590,6 +593,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         max_path_len = None
         
         max_chosen_path_len = None
+        
+        chosen_cycle_counts = []
+        max_chosen_cycle_count = None
             
         for ant in xrange(num_ants):
             origin = nests[ant % len(nests)]
@@ -863,7 +869,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                 if walk[0] == orig and walk[-1] == dest:
                                     chosen_walk_counts[tuple(walk)] += 1
                 
-                                    path = walk_to_path(walk)
+                                    path, cycle_count = walk_to_path(walk)
                                     start = path[0]
                                     end = path[-1]
                                     idx1 = nests.index(orig)
@@ -890,6 +896,14 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                         max_chosen_path_len = mean_chosen_path_len
                                     else:
                                         max_chosen_path_len = max(max_chosen_path_len, mean_chosen_path_len)
+                                        
+                                    chosen_cycle_counts.append(cycle_count)
+                                    mean_chosen_cycle_count = mean(chosen_cycle_counts)
+                                    if max_chosen_cycle_count == None:
+                                        max_chosen_cycle_count = mean_chosen_cycle_count
+                                    else:
+                                        max_chosen_cycle_count = max(max_chosen_cycle_count, mean_chosen_cycle_count)
+                                    
             
                                 walks[next_ant] = [origins[next_ant]]
                             
@@ -1076,6 +1090,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             mean_path_len = mean(path_lengths)
             
         mean_chosen_path_len = weighted_mean_path_len(path_counts)
+        
+        mean_chosen_cycle_count = None
+        if len(chosen_cycle_counts) > 1:
+            mean_chosen_cycle_count = mean(chosen_cycle_counts)
             
         path_len_pruning = None
         if mean_path_len != None:
@@ -1086,6 +1104,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         if mean_chosen_path_len != None:
             if max_chosen_path_len != None:
                 chosen_path_len_pruning = max_chosen_path_len - mean_chosen_path_len
+                
+        chosen_cycle_count_pruning = None
+        if mean_chosen_cycle_count != None:
+            if max_chosen_cycle_count != None:
+                chosen_cycle_count_pruning = max_chosen_cycle_count - mean_chosen_cycle_count
         
         print "has path", has_path
         print "path entropy", path_etr
@@ -1161,6 +1184,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             
         if chosen_path_len_pruning != None:
             write_items.append(chosen_path_len_pruning)
+        else:
+            write_items.append('')
+            
+        if chosen_cycle_count_pruning != None:
+            write_items.append(chosen_cycle_count_pruning)
         else:
             write_items.append('')
     
