@@ -3,19 +3,24 @@
 from __future__ import division
 import networkx as nx
 import time,logging
-from optparse import OptionParser
+
 import argparse
+
 import matplotlib as mpl
 mpl.use('agg')
 from matplotlib import pylab as PP
+
 from numpy.random import seed,choice, random
 from numpy import mean,median, array, argmax, where, subtract
 import numpy as np
+
 from collections import defaultdict
+
 import os
+
 from matplotlib import animation
-from scipy.stats import spearmanr
-from scipy.stats import entropy
+
+from scipy.stats import spearmanr, entropy
 
 from graphs import *
 from choice_functions import *
@@ -491,11 +496,21 @@ def check_path(G, path):
         u, v = path[i], path[i + 1]
         if u != v:
             assert G.has_edge(u, v)
+
+def weighted_mean_path_len(path_counts):
+    lengths = []
+    weights = []
+    for path, count in path_counts.iteritems():
+        lengths.append(len(path))
+        weights.append(count)
+    if len(lengths) == 0:
+        return None
+    return PP.average(lengths, weights=weights)
     
-def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='uniform',\
-            num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
-            nframes=200, video2=False, cost_plot=False, backtrack=False, \
-            decay_type='linear', node_queue_lim=1, edge_queue_lim=1, one_way=False):
+def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='rank',\
+            num_ants=100, max_steps=1000, num_iters=1, print_graph=False, video=False, \
+            nframes=-1, video2=False, cost_plot=False, backtrack=False, \
+            decay_type='exp', node_queue_lim=1, edge_queue_lim=1, one_way=False):
     """ """
     
     graph_name = G.graph['name']
@@ -573,6 +588,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         curr_max_cycles = 0
         
         max_path_len = None
+        
+        max_chosen_path_len = None
             
         for ant in xrange(num_ants):
             origin = nests[ant % len(nests)]
@@ -867,6 +884,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                         max_walk_entropy = curr_walk_entropy
                                     else:
                                         max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)    
+                                        
+                                    mean_chosen_path_len = weighted_mean_path_len(path_counts)
+                                    if max_chosen_path == None:
+                                        max_chosen_path_len = mean_chosen_path_len
+                                    else:
+                                        max_chosen_path_len = max(max_chosen_path_len, mean_chosen_path_len)
             
                                 walks[next_ant] = [origins[next_ant]]
                             
@@ -1052,10 +1075,17 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         if len(path_lengths) > 0:
             mean_path_len = mean(path_lengths)
             
+        mean_chosen_path_len = weighted_mean_path_len(path_counts)
+            
         path_len_pruning = None
         if mean_path_len != None:
             if max_path_len != None:
                 path_len_pruning = max_path_len - mean_path_len
+                
+        chosen_path_len_pruning = None
+        if mean_chosen_path_len != None:
+            if max_chosen_path_len != None:
+                chosen_path_len_pruning = max_chosen_path_len - mean_chosen_path_len
         
         print "has path", has_path
         print "path entropy", path_etr
@@ -1128,6 +1158,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             write_items.append(path_len_pruning)
         else:
             write_items.append('')
+            
+        if chosen_path_len_pruning != None:
+            write_items.append(chosen_path_len_pruning)
+        else:
+            write_items.append('')
     
         ant_str = ', '.join(map(str, write_items))
         line = pher_str + ant_str + '\n'
@@ -1162,12 +1197,12 @@ def main():
     parser.add_argument("-v", "--video", action="store_true", dest="video")
     parser.add_argument("-v2", "--video2", action="store_true", dest="video2")
     parser.add_argument("-f", "--frames", action="store", type=int, dest="frames", \
-                        default=200)
+                        default=-1)
     parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.05, \
                         help="explore probability")
     parser.add_argument('-e2', '--explore2', type=float, dest='explore2', default=None,\
                         help='search mode explore probability')
-    parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=3000)
+    parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=1000)
     parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
     parser.add_argument("-dt", "--decay_type", dest="decay_type", default="exp", \
