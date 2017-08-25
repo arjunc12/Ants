@@ -76,6 +76,8 @@ MAX_PRUNING_STEPS = 10000
 
 CRITICAL_NODES = True
 
+SECONDS_PER_STEP = 5
+
 def clear_queues(G):
     '''
     empties all node and edge queues
@@ -804,7 +806,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                             nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
-                        prevs[next_ant] = curr
+                        #prevs[next_ant] = curr
                         currs[next_ant] = curr
                         if video:
                             paths[next_ant].append(curr)
@@ -948,7 +950,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                 check_queues(G2, queued_nodes, queued_edges, num_ants)
             
             decay_func = get_decay_func_edges(decay_type)
-            zero_edges = decay_func(G2, nonzero_edges, pheromone_decay, time=1, min_pheromone=MIN_PHEROMONE)
+            zero_edges = decay_func(G2, nonzero_edges, pheromone_decay,
+                                    time=SECONDS_PER_STEP, min_pheromone=MIN_PHEROMONE)
             nonzero_edges.difference_update(zero_edges)
         
             G = G2
