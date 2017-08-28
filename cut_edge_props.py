@@ -19,8 +19,8 @@ def edge_props(sheet):
     assert len(sources) == len(dests)
     for i in xrange(len(sources)):
         source, dest = sources[i], dests[i]
-        #edges.append(tuple(sorted((source, dest))))
-        edges.append((source, dest))
+        edges.append(tuple(sorted((source, dest))))
+        #edges.append((source, dest))
 
     counts = {}
     for edge in set(edges):
@@ -51,7 +51,7 @@ def edge_props(sheet):
 def main():
     sheets = CUT_SHEETS
     if len(argv) > 1:
-        sheets = argv[1]
+        sheets = argv[1:]
     for sheet in sheets:
         print sheet
         edge_props(sheet)
