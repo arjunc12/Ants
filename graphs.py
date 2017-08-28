@@ -297,6 +297,8 @@ def simple_network():
     #init_graph(G)
         
     G.graph['critical_node'] = (1, 3)
+    G.graph['critical_edge'] = ((1, 3), (2, 3))
+    G.graph['critical_node_prev'] = (0, 3)
 
     return G
     
@@ -350,6 +352,10 @@ def minimal_network():
         
     for j in xrange(1, 6):
         G.remove_edge((j, 0), (j + 1, 0))
+
+    G.graph['critical_node'] = (1, 3)
+    G.graph['critical_edge'] = ((1, 3), (2, 3))
+    G.graph['critical_node_prev'] = (0, 3)
         
     return G
 
@@ -404,6 +410,8 @@ def medium_network():
     #init_graph(G)
         
     G.graph['critical_node'] = (3, 3)
+    G.graph['critical_edge'] = ((3, 3), (4, 3))
+    G.graph['critical_node_prev'] = (2, 3)
 
     return G
     
