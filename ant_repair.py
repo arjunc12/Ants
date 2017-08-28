@@ -54,7 +54,7 @@ EDGE_THICKNESS = 25
 pheromone_thickness = 1
 ant_thickness = 25
 
-INIT_WEIGHT_FACTOR = 20
+INIT_WEIGHT_FACTOR = 10
 MAX_PATH_LENGTH = 38
 
 FRAME_INTERVAL = 1000
@@ -656,8 +656,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     edge_weights[index].append(wt)
     
         critical_edges_file = None
-        if graph_name == 'minimal':
-            critical_edges_file = open('critical_edges.csv', 'a')
+        if 'critical_node' in G.graph:
+            critical_edges_file = open('critical_edges_%s.csv' % graph_name, 'a')
         while steps <= max_steps:               
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
@@ -679,13 +679,24 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             
             prun_str = ', '.join(map(str, prun_write_items))
             
-            '''
-            if graph_name == 'minimal':
-                w1 = G[(1, 3)][(2, 3)]['weight']
-                w2 = G[(1, 3)][(1, 4)]['weight']
+            if critical_edges_file != None:
+                w1 = 0
+                w2 = 0
+                critical_node = G.graph['critical_node']
+                critical_edge = G.graph['critical_edge']
+                critical_node_prev = G.graph['critical_node_prev']
+                for v in G.neighbors(critical_node):
+                    if v == critical_node_prev:
+                        continue
+                    wt = G[critical_node][v]['weight']
+                    if Ninv[(critical_node, v)] == Ninv[critical_edge]:
+                        w1 += wt
+                    else:
+                        w2 += wt
+
+                    
                 critical_str = '%d, %f, %f\n' % (steps, w1, w2)
                 critical_edges_file.write(critical_str)
-            '''
 
             G2 = G.copy()
         
@@ -884,8 +895,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                     
                                     walk2 = remove_self_loops(walk)
                                     path, cycle_count = walk_to_path(walk2)
-                                    if graph_name == 'medium':
-                                        print walk2, path, cycle_count
                                     start = path[0]
                                     end = path[-1]
                                     idx1 = nests.index(orig)
