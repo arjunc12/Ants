@@ -13,8 +13,10 @@ def critical_node_props(fname):
         source += ')'
         dest += ')'
         time = int(time)
-        times[time].append((source, dest))
-        counts[(source, dest)] = []
+        #edge = (source, dest)
+        edge = tuple(sorted((source, dest)))
+        times[time].append(edge)
+        counts[edge] = []
 
     for time in sorted(times.keys()):
         for edge in counts:
@@ -26,10 +28,16 @@ def critical_node_props(fname):
             counts[edge].append(count)
 
     step_times = pylab.arange(1, len(times) + 1, dtype=pylab.float64)
-    pylab.figure()
+    norms = pylab.zeros_like(step_times)
     for edge in counts:
         counts[edge] /= step_times
+        norms += counts[edge]
+ 
+    pylab.figure()
+    for edge in counts:
+        counts[edge] /= norms
         pylab.plot(step_times, counts[edge], label=edge)
+
     pylab.legend()
     pref = fname[:-4]
     pylab.savefig('%s.pdf' % pref, format='pdf')
