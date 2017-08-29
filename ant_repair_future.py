@@ -886,8 +886,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                     
                                     walk2 = remove_self_loops(walk)
                                     path, cycle_count = walk_to_path(walk2)
-                                    if graph_name == 'medium':
-                                        print walk2, path, cycle_count
                                     start = path[0]
                                     end = path[-1]
                                     idx1 = nests.index(orig)
