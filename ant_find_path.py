@@ -72,6 +72,8 @@ REINFORCEMENT_RATE = {1 : 1, 2 : 0.5, 3 : 0.33, 4 : 0.25}
 
 ANTI_PHEROMONE = False
 
+WAVES = False
+
 FIRST_WAVE = 5
 
 PERIOD = 100
@@ -635,7 +637,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
             for nest in nests:
                 nest_nqls[nest] = ql
                 
-        reset_nest_nqls(FIRST_WAVE)
+        if WAVES:
+            reset_nest_nqls(FIRST_WAVE)
         
         while steps <= max_steps:
                    
@@ -674,10 +677,11 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                 if qlim == -1:
                     qlim = len(queue)
                 
-                if queued_node in nests:
-                    qlim = nest_nqls[queued_node]
-                    if steps % PERIOD == 0:
-                        qlim += FIRST_WAVE
+                if WAVES:
+                    if queued_node in nests:
+                        qlim = nest_nqls[queued_node]
+                        if steps % PERIOD == 0:
+                            qlim += FIRST_WAVE
             
                 next_ants = []
                 q = 0
@@ -759,8 +763,9 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
                         
-                        if curr in nests:
-                            nest_nqls[curr] += 1
+                        if WAVES:
+                            if curr in nests:
+                                nest_nqls[curr] += 1
                         
                         #prevs[next_ant] = curr
                         #prevs[next_ant] = next
@@ -977,10 +982,13 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                 if edge_wt == None:
                     if 'difficulty' in G[u][v]:
                         e_colors.append(DIFFICULTY_COLORS[G[u][v]['difficulty']])
-                    elif G.node[u]['plant'] == G.node[v]['plant']:
-                        e_colors.append('k')
+                    elif 'plant' in G.node[u] and 'plant' in G.node[v]:
+                        if G.node[u]['plant'] == G.node[v]['plant']:
+                            e_colors.append('k')
+                        else:
+                            e_colors.append('b')
                     else:
-                        e_colors.append('b')
+                        e_colors.append('k')
                     e_widths.append(1)
                 else:
                     e_colors.append('g')
