@@ -18,6 +18,8 @@ def plot_edge_weights(graph_name, limits):
         pylab.plot(df2['step'], df2['w2'], c='r', label='path')
         #pylab.plot(df2['step'], df2['w1'] + df2['w2'], c='m', label='total')
         pylab.legend()
+        pylab.xlabel('Simulation Steps')
+        pylab.ylabel('edge weight')
         title_str = 'critical_edges_%s%d' % (graph_name, limit)
         pylab.savefig('%s.pdf' % title_str, format='pdf')
         pylab.close()
