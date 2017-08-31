@@ -612,11 +612,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         chosen_cycle_counts = []
         max_chosen_cycle_count = None
             
-        for ant in xrange(num_ants):
+        curr_ants = num_ants
+        if curr_ants == -1:
+            curr_ants = max_steps // 10
+            
+        for ant in xrange(curr_ants):
             origin = nests[ant % len(nests)]
             origins[ant] = origin
             destinations[ant] = next_destination(origin)
-            prev_curr = None
+            prev, curr = None, None
             if one_way:
                 prev, curr = init_path[choice((len(init_path) // 2))]
             else:
@@ -717,7 +721,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     max_path_len = max(max_path_len, mean_path_len)
             
             if DEBUG_QUEUES:
-                check_queues(G2, queued_nodes, queued_edges, num_ants)
+                check_queues(G2, queued_nodes, queued_edges, curr_ants)
             
             for queued_node in queued_nodes:
                 curr_max_cycles = len(maximal_cycles(G, queued_node))
@@ -825,7 +829,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             queued_nodes.update(new_queue_nodes)
             
             if DEBUG_QUEUES:
-                check_queues(G2, queued_nodes, queued_edges, num_ants)
+                check_queues(G2, queued_nodes, queued_edges, curr_ants)
             
             for edge_id in queued_edges:
                 u, v = N[edge_id]
@@ -945,13 +949,42 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             queued_edges.difference_update(empty_edges)
             
             if DEBUG_QUEUES:
-                check_queues(G2, queued_nodes, queued_edges, num_ants)
+                check_queues(G2, queued_nodes, queued_edges, curr_ants)
             
             decay_func = get_decay_func_edges(decay_type)
             zero_edges = decay_func(G2, nonzero_edges, pheromone_decay,
                                     time=SECONDS_PER_STEP, min_pheromone=MIN_PHEROMONE)
             nonzero_edges.difference_update(zero_edges)
-        
+            
+            if num_ants == -1:
+                for nest in nests:
+                    ant = curr_ants
+                    curr = nest
+                    
+                    origin = nest
+                    origins[ant] = origin
+                    destinations[ant] = next_destination(origin)
+            
+                    if video:
+                        paths[ant] = ([None] * (steps + 1)) + [curr]
+                    
+                    if destinations[ant] in paths[ant]:
+                        origins[ant], destinations[ant] = destinations[ant], origins[ant]
+                    
+                    walks[ant] = [curr]
+                    
+                    prevs[ant] = None
+                    prevs2[ant] = None
+                    prevs3[ant] = None
+                    currs[ant] = curr
+                    
+                    deadend[ant] = False
+                    
+                    queue_ant(G2, curr, ant)
+                    queued_nodes.add(curr)
+                    
+                    curr_ants += 1
+                            
             G = G2
         
             for u, v in sorted(G.edges()):
@@ -1001,11 +1034,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         
             ax = PP.gca()
         
-            for n in xrange(num_ants):             
-                node = paths[n][frame + 1]
-                index = Minv[node]
-                n_colors[index] = 'k'
-                n_sizes[index] += ant_thickness
+            for p in paths:             
+                node = paths[p][frame + 1]
+                if node != None:
+                    index = Minv[node]
+                    n_colors[index] = 'k'
+                    n_sizes[index] += ant_thickness
                                         
             #if frame > 0:
             #    frame -= 1
