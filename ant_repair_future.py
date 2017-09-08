@@ -198,10 +198,11 @@ def color_graph(G, c, w, figname, cost=None):
             edgelist = sorted(G.edges()))
     PP.draw()
     #PP.show()
-    PP.savefig(figname + '.png', format='png')
+    #PP.savefig(figname + '.png', format='png')
+    PP.savefig(figname + '.pdf', format='pdf')
     PP.close()
     
-    os.system('convert %s.png %s.pdf' % (figname, figname))
+    #os.system('convert %s.png %s.pdf' % (figname, figname))
 
 def pheromone_subgraph(G, origin=None, destination=None):
     '''
@@ -968,7 +969,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     if video:
                         paths[ant] = ([None] * (steps + 1)) + [curr]
                     
-                    if destinations[ant] in paths[ant]:
+                    if destinations[ant] == curr:
                         origins[ant], destinations[ant] = destinations[ant], origins[ant]
                     
                     walks[ant] = [curr]
