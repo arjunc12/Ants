@@ -11,11 +11,12 @@ def plot_edge_weights(graph_name, limits):
     limits = reversed(sorted(limits))
     for limit in limits:
         df2 = df[df['step'] <= limit]
-        df2 = df.groupby('step', as_index=False).agg(pylab.mean)
+        df2 = df2.groupby('step', as_index=False).agg(pylab.mean)
+
         
         pylab.figure()
-        pylab.plot(df2['step'], df2['w1'], c='b', label='dead end')
-        pylab.plot(df2['step'], df2['w2'], c='r', label='path')
+        pylab.plot(df2['step'], df2['w1'], c='g', label='dead end')
+        pylab.plot(df2['step'], df2['w2'], c='b', label='trail')
         #pylab.plot(df2['step'], df2['w1'] + df2['w2'], c='m', label='total')
         pylab.legend()
         pylab.xlabel('Simulation Steps')
