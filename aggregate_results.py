@@ -70,14 +70,14 @@ def plot_aggregate_dfs(df, metrics, descriptor):
         curr_ax.axis('tight')
         cb = pylab.colorbar(hm)
         cb.set_clim(vmin, vmax)
-        cb.ax.set_ylabel('geometric mean', fontsize=20)
+        #cb.ax.set_ylabel('geometric mean', fontsize=20)
         cb.ax.set_ylim(bottom=0)
         pylab.tick_params(which='both', bottom='off', top='off', left='off', right='off', \
         labeltop='off', labelbottom='off', labelleft='off', labelright='off')
-        pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)), fontsize=20)
-        pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)), fontsize=20)
+        #pylab.xlabel("explore probability (%0.2f - %0.2f)" % (min(x), max(x)), fontsize=20)
+        #pylab.ylabel("pheromone decay (%0.2f-%0.2f)" % (min(y), max(y)), fontsize=20)
         pylab.savefig("%s_%s.png" % (title, descriptor), format="png", transparent=True, bbox_inches='tight')
-        os.system('convert %s_%s.png %s_%s.pdf' % (title, descriptor, title, descriptor))
+        #os.system('convert %s_%s.png %s_%s.pdf' % (title, descriptor, title, descriptor))
         pylab.close()
 
         print metric, best_aggs[k], best_explores[k], best_decays[k]
