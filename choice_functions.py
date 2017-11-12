@@ -629,18 +629,22 @@ def max2_likelihood(G, source, dest, explore, prev=None):
             midn += 1
 
     chosen_wt = G[source][dest]['weight']
-    if chosen_wt == max_wt:
-        prob = 1.0 / maxn
-        if lowern + midn > 0:
-            prob *= 1 - explore
-        return prob
-    elif chosen_wt <= MIN_DETECTABLE_PHEROMONE:
+    if chosen_wt <= MIN_DETECTABLE_PHEROMONE:
+        assert lowern > 0
         prob = 1.0 / lowern
         if maxn + midn > 0:
             prob *= explore ** 2
         return prob
+    elif chosen_wt == max_wt:
+        assert maxn > 0
+        prob = 1.0 / maxn
+        if lowern + midn > 0:
+            prob *= 1 - explore
+        return prob
     else:
+        assert midn > 0
         prob = 1.0 / midn
+        assert maxn > 0
         prob *= explore
         if lowern > 0:
             prob *= (1 - explore)
