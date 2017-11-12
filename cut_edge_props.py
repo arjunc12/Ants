@@ -10,7 +10,7 @@ DATASETS_DIR = 'datasets/reformated_csv'
 
 CUT_SHEETS = ['7b', '9a', '9c', '9d', '10', '11', '12', '13', '18', '19', '20', '21c', '22', '23b', '23c', '23e', '23f']
 
-def edge_props2(sheet, cut_node=None):
+def edge_props2(sheet, cut_node=None, trail=None, dead_end=None):
     counts_file = '%s/reformated_counts%s.csv' % (DATASETS_DIR, sheet)
     df = pd.read_csv(counts_file, names = ['source', 'dest', 'time'], skipinitialspace=True)
     df['time'] = pd.to_datetime(df['time'])
@@ -33,8 +33,9 @@ def edge_props2(sheet, cut_node=None):
         dest = dests[i]
         #edge = (source, dest)
         edge = tuple(sorted((source, dest)))
-        delta_edges[delta].append(edge)
-        counts[edge] = []
+        if cut_node == None or cut_node in edge:
+            delta_edges[delta].append(edge)
+            counts[edge] = []
 
     for delta in sorted(delta_edges.keys()):
         for edge in counts:
@@ -54,9 +55,17 @@ def edge_props2(sheet, cut_node=None):
     pylab.figure()
     for edge in counts:
         counts[edge] /= norms
-        pylab.plot(step_times, counts[edge], label=edge)
+        if (trail == None and dead_end == None) or ((edge == trail) or (edge == dead_end)):
+            label = edge
+            if trail != None and edge == trail:
+                label = 'trail'
+            elif dead_end != None and edge == dead_end:
+                label = 'dead end'
+            pylab.plot(sorted(delta_edges.keys()), counts[edge], label=label)
 
     pylab.legend()
+    pylab.xlabel('time (seconds)')
+    pylab.ylabel('proportion of choices on edge')
     pylab.savefig('cut_edge_props%s.pdf' % sheet, format='pdf')
     pylab.close()
 
@@ -107,6 +116,8 @@ def edge_props(sheet, cut_node=None):
         #pylab.plot(times, props[edge], label=edge)
         pylab.plot(deltas, props[edge], label=edge)
     pylab.legend()
+    pylab.xlabel('time (seconds)')
+    pylab.ylabel('proportion of choices on edge')
     pylab.savefig('cut_edge_props%s.pdf' % sheet, format='pdf')
 
 
@@ -115,17 +126,25 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-sh', '--sheets', default=None, nargs='+')
     parser.add_argument('-c', '--cut_node', default=None)
+    parser.add_argument('-t', '--trail', default=None, nargs=2)
+    parser.add_argument('-d', '--dead_end', default=None, nargs=2)
 
     args = parser.parse_args()
     sheets = args.sheets
     cut_node = args.cut_node
+    trail = args.trail
+    if trail != None:
+        trail = tuple(sorted(trail))
+    dead_end = args.dead_end
+    if dead_end != None:
+        dead_end = tuple(sorted(dead_end))
 
     if sheets == None:
         sheets = CUT_SHEETS
 
     for sheet in sheets:
         print sheet
-        edge_props2(sheet, cut_node)
+        edge_props2(sheet, cut_node, trail, dead_end)
 
 if __name__ == '__main__':
     main()
