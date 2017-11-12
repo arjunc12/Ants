@@ -9,6 +9,45 @@ M = {}    # node id -> node tuple
 Ninv = {}    # edge -> edge id
 N = {}       # edge id -> edge
 
+def walk_to_path(walk):
+    '''
+    Converts a walk on a graph to a path by removing all cycles in the path
+    '''
+    assert len(walk) >= 2
+    if walk[0] == walk[-1]:
+        print walk
+    assert walk[0] != walk[-1]
+    path = []
+    
+    '''
+    path does not have repeated vertices, so keep track of visited vertices on walk
+    maps each vertex to the first position in the walk at which that vertex was
+    visited
+    '''
+    visited = {}
+    cycle_count = 0
+    for i, node in enumerate(walk):
+        if node not in visited:
+            # new node, goes into the path
+            path.append(node)
+            visited[node] = len(path) - 1
+        else:
+            '''
+            visited node, meaning our walk has cycled back to a vertex.  Thus we excise 
+            all vertices that are part of that cycle from the path.
+            '''
+            prev = visited[node]
+            for j in xrange(prev + 1, len(path)):
+                del visited[path[j]]
+            path = path[:prev + 1]
+            cycle_count += 1
+            
+    assert len(path) >= 2
+    assert path[0] == walk[0]
+    assert path[-1] == walk[-1]
+    
+    return path, cycle_count
+
 def init_graph(G):
     '''
     initializes the graph for drawing
