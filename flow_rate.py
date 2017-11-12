@@ -50,11 +50,16 @@ def flow_rate_hist(sheets):
 
     #print "ants per second"
     print "seconds per ant"
+    mu = pylab.mean(ant_rates)
     print "mean", pylab.mean(ant_rates)
-    print "weighted mean", pylab.average(ant_rates, weights=weights)
+    wmean = pylab.average(ant_rates, weights=weights)
+    print "weighted mean", wmean
     print "median", pylab.median(ant_rates)
     print "std", pylab.std(ant_rates, ddof=1)
-
+    ant_rates = pylab.array(ant_rates)
+    werror = (ant_rates - mu) * weights
+    print "weighted std", ((sum(werror ** 2))) ** 0.5
+    print "weighted std 2", (pylab.average((ant_rates - mu)**2, weights=weights)) ** 0.5
     pylab.figure()
     pylab.hist(ant_rates)
     pylab.savefig('ant_flow_rates.pdf', format='pdf')
