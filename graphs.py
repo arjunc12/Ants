@@ -28,7 +28,7 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
                      'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid',\
-                     'full_plants', 'span_trees']
+                     'full_plants', 'span_trees', 'simple_loop']
 
 TRANSPARENT = False
 
@@ -301,7 +301,16 @@ def simple_network():
     G.graph['critical_node_prev'] = (0, 3)
 
     return G
-    
+
+def simple_network_loop():
+    G = simple_network()
+    G.add_edge((3, 5), (3, 4))
+    G.add_edge((3, 4), (4, 4))
+    G.add_edge((4, 4), (4, 5))
+    G.graph['name'] = 'simple_loop'
+
+    return G
+
 def simple_network_nocut():
     '''
     Manually builds a simple network with 3 disjoint paths between nest and target
@@ -948,6 +957,8 @@ def get_graph(graph_name):
         G = fig1_network()
     elif graph_name == 'simple':
         G = simple_network()
+    elif graph_name == 'simple_loop':
+        G = simple_network_loop()
     elif graph_name == 'full':
         G = full_grid()
     elif graph_name == 'half_grid':
