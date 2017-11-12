@@ -27,6 +27,8 @@ ALL = NOCUT + CUT
 NOCUT2 = ['6', '7a', '7c', '9b', '14','15', '16', '21a', '21b', '23a', '23d']
 ALL2 = NOCUT2 + CUT
 
+datasets_dict = {'nocut' : NOCUT, 'nocut2' : NOCUT2, 'cut' : CUT, 'all' : ALL, 'all2' : ALL2}
+
 DATASETS_DIR = 'datasets/reformated_csv'
 OUT_DIR = 'ml_plots'
 ML_OUTFILE = '%s/repair_ml.csv' % OUT_DIR
