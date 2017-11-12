@@ -112,8 +112,9 @@ def pure_random_walk(G, nest, target, ants):
             walk.append(next)
             steps += 1
         # output walk to file to be able to compute probabilities of different walks
-        walk_str = walk_to_string(walk)
-        out_file.write('%s, %d, %s\n' % (G.graph['name'], steps, walk_str))
+        path = walk_to_path(walk)
+        path_str = walk_to_string(path)
+        out_file.write('%s, %d, %s\n' % (G.graph['name'], steps, path_str))
     out_file.close()
     
 if __name__ == '__main__':
