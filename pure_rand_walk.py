@@ -76,7 +76,7 @@ def walk_to_string(walk):
     '''
     converts a sequences of nodes comprising a walk to a string. We can then output every different walk to a file
     to estimate the probabilities of all the different walks and estimate the entropy
-    '''    
+    '''
     walk_str = []
     for i in range(len(walk)):
         walk_str.append(str(Minv[walk[i]]))
@@ -112,9 +112,10 @@ def pure_random_walk(G, nest, target, ants):
             walk.append(next)
             steps += 1
         # output walk to file to be able to compute probabilities of different walks
-        path = walk_to_path(walk)
+        path, cycle_count = walk_to_path(walk)
+        path_len = len(path)
         path_str = walk_to_string(path)
-        out_file.write('%s, %d, %s\n' % (G.graph['name'], steps, path_str))
+        out_file.write('%s, %d, %d, %s\n' % (G.graph['name'], steps, path_len, path_str))
     out_file.close()
     
 if __name__ == '__main__':
