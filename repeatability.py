@@ -31,6 +31,8 @@ def difficulty_hist(df):
     pylab.figure()
     for name, group in df.groupby('Different plant'):
         difficulty = group['Junction difficulty']
+        print name
+        print pylab.mean(difficulty), "pm", pylab.std(difficulty, ddof=1)
         weights = pylab.ones_like(difficulty) / float(len(difficulty))
         pylab.hist(difficulty, bins=[1, 2, 3, 4, 5], alpha=0.5, label=name, weights=weights)
     pylab.legend()
