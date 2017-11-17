@@ -150,6 +150,7 @@ def main():
 
     df = pd.read_csv(ML_OUTFILE, names = COLUMNS, skipinitialspace=True)
     df['sheet'] = df['sheet'].astype(str)
+    df.drop_duplicates(inplace=True)
     df = filter_df(df, emin, emax, dmin, dmax, ghost, sheets)
 
     if heat:
