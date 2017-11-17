@@ -55,10 +55,11 @@ pheromone_thickness = 1
 ant_thickness = 25
 
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 38
+MAX_PATH_LENGTH = 25
+
+UNIFORM_ENTROPY = True
 
 FRAME_INTERVAL = 1000
-
 
 global EXPLORE_CHANCES
 global EXPLORES
@@ -1086,7 +1087,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         has_path = has_pheromone_path(G, nest, target)
         after_paths = []
         if has_path:
-            if False:#'uniform' in strategy:
+            if 'uniform' in strategy and UNIFORM_ENTROPY:
                 after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
             else:
                 after_paths = maximal_paths(pheromone_subgraph(G), nest, target)
