@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 from __future__ import division
+import matplotlib as mpl
+mpl.use('agg')
 import networkx as nx
 import time,logging
 from optparse import OptionParser
@@ -62,8 +64,10 @@ CHECK_EDGE_QUEUES = False
 
 MEMORY = 3
 
-EXPLORE_ONE_STEP = True
-EXPLORE_TWO_STEP = False
+EXPLORE_ONE_STEP = False
+EXPLORE_TWO_STEP = True
+
+DOWN_REGULATE = True
 
 """ Difference from tesht2 is that the ants go one at a time + other output variables. """ 
 
@@ -98,8 +102,9 @@ def init_graph(G):
     for i,u in enumerate(sorted(G.nodes())):
         M[i] = u
         Minv[u] = i    
-        
-        pos[u] = [u[0],u[1]] # position is the same as the label.
+
+        if 'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
+            pos[u] = [u[0],u[1]] # position is the same as the label.
         
         G.node[u]['queue'] = []
 
@@ -116,6 +121,7 @@ def init_graph(G):
     # each integer maps to one of the two orientations of the edge
     for i, (u,v) in enumerate(sorted(G.edges())):
         G[u][v]['weight'] = MIN_PHEROMONE
+        G[u][v]['anti_pheromone'] = 0
         
         G[u][v]['forwards'] = tuple(sorted((u, v)))
         G[u][v]['forwards_queue'] = []
@@ -747,10 +753,10 @@ def repair(G, pheromone_add, pheromone_decay, explore1, explore2, strategy='unif
                         empty_nodes.discard(next)
                         prevs[next_ant] = curr
                         currs[next_ant] = next
-                        if not deadend[next_ant]:
+                        if (not DOWN_REGULATE) or (not deadend[next_ant]):
                             G2[curr][next]['weight'] += pheromone_add
                             if decay_type == 'linear':
-                                G2[curr][add_neighbor]['units'].append(pheromone_add)
+                                G2[curr][next]['units'].append(pheromone_add)
                             nonzero_edges.add(Ninv[(curr, next)])
                         added_edges.append((curr, next))
                         
