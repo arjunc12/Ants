@@ -197,10 +197,10 @@ def color_graph(G, c, w, figname, cost=None):
             edgelist = sorted(G.edges()))
     PP.draw()
     #PP.show()
-    PP.savefig(figname + '.png', format='png')
+    print figname
+    PP.savefig(figname + '.pdf', format='pdf')
     PP.close()
     
-    os.system('convert %s.png %s.pdf' % (figname, figname))
 
 def pheromone_subgraph(G, origin=None, destination=None):
     '''
