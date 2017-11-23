@@ -525,10 +525,7 @@ def dberg_likelihood(G, source, dest, explore, prev=None):
     for u, v in G2.edges_iter():
         G2[u][v]['weight'] += DBERG_H
     a = 1 / explore
-    next, ex = uniformn_likelihood(G2, source, dest, explore, a, prev)
-    if G[curr][next]['weight'] <= MIN_DETECTABLE_PHEROMONE:
-        ex = True
-    return next, ex
+    return uniformn_likelihood(G2, source, dest, explore, a, prev)
              
 def max_edge_likelihood(G, source, dest, explore, prev=None):
     max_wt = MIN_PHEROMONE
