@@ -55,9 +55,9 @@ pheromone_thickness = 1
 ant_thickness = 25
 
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 25
+MAX_PATH_LENGTH = 50
 
-UNIFORM_ENTROPY = True
+UNIFORM_ENTROPY = False
 
 FRAME_INTERVAL = 1000
 
@@ -1103,6 +1103,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                 useful_edges.update(edges)
                 path_lengths.append(len(path))
         wasted_edge_count, wasted_edge_weight = wasted_edges(G, useful_edges)
+
+        #print sorted(path_probs)
+        #print sum(path_probs)
     
         path_etr = None
         if len(path_probs) > 0:
