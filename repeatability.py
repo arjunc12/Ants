@@ -4,6 +4,7 @@ import pylab
 import pandas as pd
 import networkx as nx
 from collections import defaultdict
+import seaborn as sns
 
 def get_df():
     df = pd.read_csv('repeatability/csv/repeatability1.csv')
@@ -27,14 +28,28 @@ def difficulty_distributions():
         
     return distributions
 
+def difficulty_barplot(df):
+    df2 = df.copy()
+    df2['Different plant'] += ' plant'
+    df2 = df2.groupby(['Junction difficulty', 'Different plant'], as_index=False).agg('count')
+    print df2
+
 def difficulty_hist(df):
+    difficulties = []
+    weights = []
+    labels = []
     pylab.figure()
     for name, group in df.groupby('Different plant'):
         difficulty = group['Junction difficulty']
         print name
         print pylab.mean(difficulty), "pm", pylab.std(difficulty, ddof=1)
-        weights = pylab.ones_like(difficulty) / float(len(difficulty))
-        pylab.hist(difficulty, bins=[1, 2, 3, 4, 5], alpha=0.5, label=name, weights=weights)
+        weight = pylab.ones_like(difficulty) / float(len(difficulty))
+        difficulties.append(difficulty)
+        weights.append(weight)
+        labels.append(name + ' plant')
+    pylab.hist(difficulties, bins=[1, 2, 3, 4, 5], label=labels, weights=weights)
+    pylab.xlabel('edge difficulty')
+    pylab.ylabel('frequency')
     pylab.legend()
     pylab.savefig('repeatability/figs/repeatability.pdf', format='pdf')
     pylab.close()
@@ -74,9 +89,10 @@ def draw_network(df):
 
 def main():
     df = get_df()
-    difficulty_hist(df)
-    draw_network(df)
-    print difficulty_distributions()
+    #difficulty_hist(df)
+    difficulty_barplot(df)
+    #draw_network(df)
+    #print difficulty_distributions()
 
 if __name__ == '__main__':
     main()
