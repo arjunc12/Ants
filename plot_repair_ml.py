@@ -69,6 +69,24 @@ def ml_plot(df, strategies, decay_types):
         pylab.savefig('figs/sandbox.pdf')
         pylab.close()
 
+def print_variance(df, strategies, decay_types):
+    df2 = df[(df['strategy'].isin(strategies)) & (df['decay_type'].isin(decay_types))]
+    for name, group in df2.groupby(['strategy', 'decay_type']):
+        print name
+        max_explores = []
+        max_decays = []
+        for sheet in group['sheet'].unique():
+            group2 = group[group['sheet'] == sheet]
+            max_likelihood = max(group2['likelihood'])
+            group2 = group2[group2['likelihood'] == max_likelihood]
+            #print group2
+            explores = list(group2['explore'])
+            decays = list(group2['decay'])
+            max_explores += explores
+            max_decays += decays
+        print "explore", pylab.var(max_explores, ddof=1)
+        print "decay", pylab.var(max_decays, ddof=1)
+
 def filter_df(df, emin, emax, dmin, dmax, ghost, sheets):
     '''
     df =  df[(emin <= df['explore']) & (df['explore'] <= emax) & \
@@ -106,6 +124,7 @@ def main():
     parser.add_argument('--plot', action='store_true')
     parser.add_argument('--hist', action='store_true')
     parser.add_argument('--print', action='store_true', dest='print_ml')
+    parser.add_argument('-v', '--var', action='store_true', dest='print_var')
 
     args = parser.parse_args()
 
@@ -147,6 +166,7 @@ def main():
     plot = args.plot
     hist = args.hist
     print_ml = args.print_ml
+    print_var = args.print_var
 
     df = pd.read_csv(ML_OUTFILE, names = COLUMNS, skipinitialspace=True)
     df['sheet'] = df['sheet'].astype(str)
@@ -159,6 +179,8 @@ def main():
         ml_plot(df, strategies, decay_types)
     if print_ml:
         print_ml_parameters(df, strategies, decay_types)
+    if print_var:
+        print_variance(df, strategies, decay_types)
 
 if __name__ == '__main__':
     main()
