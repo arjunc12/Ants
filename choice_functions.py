@@ -8,13 +8,13 @@ MIN_DETECTABLE_PHEROMONE = 0
 # minimum amount of pheromone that can be on an edge
 MIN_PHEROMONE = 0
 
-DBERG_H = 1
+DBERG_OFFSET = 1
 
 from collections import defaultdict
 
 STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
                     'hybridr', 'ranku', 'uniform2', 'max2', 'maxu', 'maxa', 'ranka',\
-                    'unweighted', 'dberg']
+                    'unweighted', 'dberg', 'rankt']
 
 def local_graph(G, start):
     G2 = nx.Graph()
@@ -110,16 +110,17 @@ def next_edge_uniformn(G, start, explore_prob, n, candidates=None):
         next = explored[choice(len(explored), 1, p=explored_weights)[0]]
         return next, False
 
-def next_edge_dberg(G, start, explore_prob, candidates=None):
+def next_edge_dberg(G, start, explore_prob, candidates=None, offset=DBERG_OFFSET):
     if explore_prob == 0:
         return next_edge_max(G, start, explore_prob, candidates)
         
     G2 = local_graph(G, start)
     for neighbor in G2.neighbors(start):
         wt = G2[start][neighbor]['weight']
-        wt += DBERG_H
+        wt += offset
         
     a = 1 / explore_prob
+    assert 0 <= a <= 1
     return next_edge_uniformn(G2, start, explore_prob, a, candidates)
     
 def next_edge_max(G, start, explore_prob, candidates=None):
@@ -518,12 +519,12 @@ def uniformn_likelihood(G, source, dest, explore, n, prev=None):
 def uniform2_likelihood(G, source, dest, explore, prev=None):
     return uniformn_likelihood(G, source, dest, explore, 2, prev)
     
-def dberg_likelihood(G, source, dest, explore, prev=None):
+def dberg_likelihood(G, source, dest, explore, prev=None, offset=DBERG_OFFSET):
     if explore == 0:
         return max_edge_likelihood(G, source, dest, explore, prev)
     G2 = local_graph(G, source)
     for u, v in G2.edges_iter():
-        G2[u][v]['weight'] += DBERG_H
+        G2[u][v]['weight'] += offset
     a = 1 / explore
     return uniformn_likelihood(G2, source, dest, explore, a, prev)
              
@@ -844,6 +845,40 @@ def ranka_likelihood(G, source, dest, explore, prev=None):
         else:
             prob *= explore
 
+def rankt_likelihood(G, source, dest, explore, prev=None):
+    chosen_wt = G[source][dest]['weight']
+    if chosen_wt <= MIN_DETECTABLE_PHEROMONE:
+        chosen_wt = 0
+
+    weights = defaultdict(list)
+    neighbors = G.neighbors(source)
+    if prev != None:
+        assert prev in neighbors
+
+    for n in neighbors:
+        wt = G[source][n]['weight']
+        if wt <= MIN_DETECTABLE_PHEROMONE:
+            wt = 0
+        weights[wt].append(n)
+    
+    ranked_weights = list(reversed(sorted(weights.keys())))
+    prob = 1.0
+    for i in xrange(len(ranked_weights)):
+        wt = ranked_weights[i]
+        rank_neighbors = weights[wt]
+        n = len(rank_neighbors)
+        if chosen_wt == wt:
+            sub_prob = 0
+            for j in xrange(1, n + 1):
+                p = (1.0 / n) * (explore ** (j - 1))
+                if not (i == len(ranked_weights) - 1 and j == n):
+                    p *= (1 - explore)
+                sub_prob += p
+            prob *= sub_prob
+            return prob
+        else:
+            prob *= (explore ** n)
+
 def get_likelihood_func(strategy):
     likelihood_func = None
     if strategy == 'uniform':
@@ -870,6 +905,8 @@ def get_likelihood_func(strategy):
         likelihood_func = unweighted_likelihood
     elif strategy == 'dberg':
         likelihood_func = dberg_likelihood
+    elif strategy == 'rankt':
+        likelihood_func = rankt_likelihood
     else:
         raise ValueError('invalid strategy')
     return likelihood_func
@@ -926,3 +963,21 @@ def is_explore(G, source, dest, strategy='rank', prev=None):
     else:
         explore_func = is_explore_max
     return explore_func(G, source, dest, prev)
+
+def main():
+    G = nx.Graph()
+    G.add_edge('a', 'b')
+    G.add_edge('a', 'c')
+    G.add_edge('a', 'd')
+    G['a']['b']['weight'] = 2.5
+    G['a']['c']['weight'] = 2.5
+    G['a']['d']['weight'] = 1
+    explore_prob = 0.1
+    for n in G.neighbors('a'):
+        print '----'
+        print n
+        print 'rankt', rankt_likelihood(G, 'a', n, explore_prob, prev=None)
+        print 'rank', rank_likelihood(G, 'a', n, explore_prob, prev=None)
+
+if __name__ == '__main__':
+    main()
