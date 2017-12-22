@@ -55,9 +55,9 @@ pheromone_thickness = 1
 ant_thickness = 25
 
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 50
+MAX_PATH_LENGTH = 20
 
-UNIFORM_ENTROPY = False
+UNIFORM_ENTROPY = True
 
 FRAME_INTERVAL = 1000
 
@@ -1116,7 +1116,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             
         mean_path_len = None
         if len(path_lengths) > 0:
-            mean_path_len = mean(path_lengths)
+            #mean_path_len = mean(path_lengths)
+            mean_path_len = PP.average(path_lengths, weights=path_probs)
+            if 'uniform' in strategy:
+                print "weighted mean path len", mean_path_len
             
         mean_chosen_path_len = weighted_mean_path_len(path_counts)
         

@@ -82,7 +82,24 @@ def walk_to_string(walk):
         walk_str.append(str(Minv[walk[i]]))
     return '-'.join(walk_str)
 
-def pure_random_walk(G, nest, target, ants):
+def pure_random_walk(G, nest, target):
+    curr = nest
+    steps = 0
+    walk = [curr]
+    prev = None
+    while curr != target:
+        candidates = G.neighbors(curr)
+        # avoid taking the most recently visited vertex
+        if prev in candidates and len(candidates) > 1:
+            candidates.remove(prev)
+        next = choice(candidates)
+        prev = curr
+        curr = next
+        walk.append(next)
+        steps += 1
+    return walk
+
+def write_pure_random_walk(G, nest, target, ants):
     '''
     carry out an unweighted random walk. Each ant starts at the nest vertex and walks on G until reaching the target
     vertex.
@@ -99,18 +116,8 @@ def pure_random_walk(G, nest, target, ants):
     for ant in xrange(ants):
         curr = nest
         steps = 0
-        walk = [curr]
-        prev = None
-        while curr != target:
-            candidates = G.neighbors(curr)
-            # avoid taking the most recently visited vertex
-            if prev in candidates and len(candidates) > 1:
-                candidates.remove(prev)
-            next = choice(candidates)
-            prev = curr
-            curr = next
-            walk.append(next)
-            steps += 1
+        walk = pure_random_walk(G, nest, target)
+        steps = len(walk)
         # output walk to file to be able to compute probabilities of different walks
         path, cycle_count = walk_to_path(walk)
         path_len = len(path)

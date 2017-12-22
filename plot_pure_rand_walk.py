@@ -35,3 +35,5 @@ for graph in graphs:
     '''
     print "mean", pylab.mean(df['path_len'])
     print "std", pylab.std(df['path_len'], ddof=1)
+
+    print "entropy", etr

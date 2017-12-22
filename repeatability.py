@@ -29,10 +29,24 @@ def difficulty_distributions():
     return distributions
 
 def difficulty_barplot(df):
-    df2 = df.copy()
-    df2['Different plant'] += ' plant'
-    df2 = df2.groupby(['Junction difficulty', 'Different plant'], as_index=False).agg('count')
-    print df2
+    x = []
+    y = []
+    hue = []
+    group_sums = {}
+    for name, group in df.groupby('Different plant'):
+        group_sums[name] = float(group.size)
+    for name, group in df.groupby(['Junction difficulty', 'Different plant']):
+        difficulty, plant = name
+        x.append(difficulty)
+        y.append(group.size / group_sums[plant])
+        hue.append(plant + ' plant')
+
+    pylab.figure()
+    sns.barplot(x=x, y=y, hue=hue, ci=None)
+    pylab.xlabel('edge difficulty')
+    pylab.ylabel('proportion')
+    pylab.savefig('repeatability/figs/repeatability.pdf', format='pdf')
+    pylab.close()
 
 def difficulty_hist(df):
     difficulties = []
