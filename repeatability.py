@@ -89,8 +89,9 @@ def draw_network(df):
 
 def main():
     df = get_df()
+    print df
     #difficulty_hist(df)
-    difficulty_barplot(df)
+    #difficulty_barplot(df)
     #draw_network(df)
     #print difficulty_distributions()
 
