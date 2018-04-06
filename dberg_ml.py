@@ -32,7 +32,8 @@ STRATEGIES = [STRATEGY]
 
 datasets_dict = {'nocut' : NOCUT, 'nocut2' : NOCUT2, 'cut' : CUT, 'all' : ALL, 'all2' : ALL2}
 
-DATASETS_DIR = 'datasets/reformated_csv'
+#DATASETS_DIR = 'datasets/reformated_csv'
+DATASETS_DIR = 'datasets/reformated_csv2'
 OUT_DIR = 'ml_plots'
 ML_OUTFILE = '%s/dberg_ml.csv' % OUT_DIR
 
@@ -153,7 +154,86 @@ def param_likelihood(choices, exponent, offset, decay=DECAY_RATE,\
         if decay_type == 'linear':
             G2[source][dest]['units'].append(add_amount)
 
-    return log_likelihood, G
+    return log_likelihood
+
+def param_likelihood2(choices, exponent, offset, decay=DECAY_RATE,\
+                     decay_type=DECAY_TYPE, ghost=False):
+    assert 0 <= decay <= 1
+    explore = 1.0 / exponent
+    #assert 0 <= explore <= 1
+    graph_line = None
+    with open(choices) as f:
+        graph_line = f.readline()
+    graph_line = graph_line.strip('\n')
+    edges = graph_line.split(',')
+    G = nx.Graph()
+    for edge in edges:
+        edge = edge.strip()
+        u, v = edge.split('-')
+        u = u.strip()
+        v = v.strip()
+        G.add_edge(u, v)
+    reset_graph(G)
+
+    df = pd.read_csv(choices, header=None, names=['source', 'dest', 'dt'],\
+                     skipinitialspace=True, skiprows=1)
+    df['dt'] = pd.to_datetime(df['dt'])
+    df.sort_values(by='dt', inplace=True)
+    sources = list(df['source'])
+    dests = list(df['dest'])
+    dts = list(df['dt'])
+    
+    assert len(sources) == len(dests)
+    
+    decay_func = get_decay_func_graph(decay_type)
+    check_units = False
+    if decay_type == 'linear':
+        check_units = True
+    
+    log_likelihood = 0
+    
+    '''
+    G[sources[0]][dests[0]]['weight'] += 1
+    if decay_type == 'linear':
+        G[sources[0]][dests[0]]['units'].append(1)
+    '''
+
+    G2 = G.copy()
+    
+    max_degree = 0
+    for u in G.nodes():
+        max_degree = max(max_degree, len(G.neighbors(u)))
+    
+    for i in xrange(0, len(sources)):
+        #check_graph(G, check_units)
+        #check_graph(G2, check_units)
+        
+        source = sources[i]
+        dest = dests[i]
+        
+        log_likelihood += np.log(dberg_likelihood(G, source, dest, explore=explore, offset=offset))
+        if log_likelihood == float("-inf"):
+            break
+        
+        curr = dts[i]
+        prev = curr
+        if i > 0:
+            prev = dts[i - 1]
+        if curr != prev:
+            diff = curr - prev
+            seconds = diff.total_seconds()
+            G = G2
+            decay_func(G, decay, seconds)
+            G2 = G.copy()
+        add_amount = 1
+        
+        if G[source][dest]['weight'] <= MIN_DETECTABLE_PHEROMONE:
+            pass #add_amount *= 2
+        G2[source][dest]['weight'] += add_amount
+        if decay_type == 'linear':
+            G2[source][dest]['units'].append(add_amount)
+
+    return log_likelihood
 
 def max_likelihood_estimates(likelihoods, exponents, offsets):
     max_likelihood = float("-inf")
@@ -183,10 +263,16 @@ def likelihood_matrix(sheet, exponents, offsets, decay_rate=DECAY_RATE, decay_ty
     for offset in offsets:
         for exponent in exponents:
             i, j = pos / len(exponents), pos % len(exponents)
+            '''
             likelihood, G = param_likelihood(choices, exponent, offset,\
                                              decay=decay_rate,\
                                              decay_type=decay_type, G=G,\
                                              ghost=ghost)
+            '''
+            likelihood = param_likelihood2(choices, exponent, offset,\
+                                           decay=decay_rate,\
+                                           decay_type=decay_type,\
+                                           ghost=ghost)
             #likelihood = pos
             likelihoods[i, j] = likelihood
             pos += 1        
@@ -195,7 +281,7 @@ def likelihood_matrix(sheet, exponents, offsets, decay_rate=DECAY_RATE, decay_ty
 def make_title_str(max_likelihood, max_values):
     title_str = ['max likelihood %f at:' % max_likelihood]
     for explore, decay in max_values:
-        title_str.append('(e=%0.2f, d=%0.2f)' % (explore, decay))
+        title_str.append('(e=%0.2f, o=%0.2f)' % (explore, decay))
     title_str = '\n'.join(title_str)
     return title_str
 
@@ -268,9 +354,10 @@ def write_likelihoods(likelihoods, sheet, num_lines, decay_type,\
                                                           offset, likelihood))
     f.close()
 
-def ml_analysis(label, sheets, decay_types, decay_rate=DECAY_RATE, omin=0.01, omax=2, emin=0.01, \
-            emax=2, ostep=0.01, estep=0.01, cumulative=False, out=False, ghost=False,\
-            heat=True, plot=False, write_file=False):
+def ml_analysis(label, sheets, decay_types, decay_rate=DECAY_RATE, omin=0.01,\
+                omax=2, emin=0.01, emax=2, ostep=0.01, estep=0.01,\
+                cumulative=False, individual=False, out=False, ghost=False,\
+                heat=True, plot=False, write_file=False):
     offsets = np.arange(omin, omax + ostep, ostep)
     exponents = np.arange(emin, emax + estep, estep)
     hist_file = open('%s/dberg_ml_hist.csv' % OUT_DIR, 'a')
@@ -299,31 +386,31 @@ def ml_analysis(label, sheets, decay_types, decay_rate=DECAY_RATE, omin=0.01, om
                 else:
                     cumulative_likelihoods += likelihoods
                     
-            if IND_PLOT:
-                os.system('mkdir -p %s/individual/%s' % (OUT_DIR, stragegy))
+            if individual:
+                os.system('mkdir -p %s/individual/%s' % (OUT_DIR, STRATEGY))
                 if heat:
                     likelihood_heat(likelihoods, max_likelihood, max_values, exponents, \
-                                      offsets, '%s/individual/%s/%s' % (OUT_DIR, strategy, outname))
+                                      offsets, '%s/individual/%s/%s' % (OUT_DIR, STRATEGY, outname))
                 if plot:
                     likelihood_plot(likelihoods, exponents, offsets, \
-                                    '%s/individual/%s/%s' % (OUT_DIR, strategy, outname))
+                                    '%s/individual/%s/%s' % (OUT_DIR, STRATEGY, outname))
             if out:
                 for exponent, offset in max_values:
                     hist_file.write('%0.2f, %0.2f, %s, %s, %s, %d\n' % \
-                                    (exponent, offset, strategy, decay_type, label, num_lines))
+                                    (exponent, offset, STRATEGY, decay_type, label, num_lines))
         
         if cumulative:
             cumulative_likelihoods
             outname = 'cumulative_%s_%s' % (out_str, label)
             max_likelihood, max_values = max_likelihood_estimates(cumulative_likelihoods,\
                                                           decays, explores)
-            os.system('mkdir -p %s/cumulative/%s' % (OUT_DIR, strategy))
+            os.system('mkdir -p %s/cumulative/%s' % (OUT_DIR, STRATEGY))
             if heat:
                 likelihood_heat(cumulative_likelihoods, max_likelihood, max_values, \
                             exponents, offsets, '%s/cumulative/%s/%s' % (OUT_DIR, strategy, outname))
             if plot:
                 likelihood_plot(cumulative_likelihoods, exponents, offsets, \
-                                '%s/cumulative/%s/%s' % (OUT_DIR, strategy, outname))
+                                '%s/cumulative/%s/%s' % (OUT_DIR, STRATEGY, outname))
             print "plotted"
     hist_file.close()
                 
@@ -338,6 +425,7 @@ def main():
     parser.add_argument('-d', '--decay', type=float, default=DECAY_RATE)
     parser.add_argument('-dt', '--decay_types', nargs='+', choices=DECAY_CHOICES, required=True)
     parser.add_argument('-c', '--cumulative', action='store_true')
+    parser.add_argument('-i', '--individual', action='store_true')
    
     parser.add_argument('-omin', type=float, default=0.01)
     parser.add_argument('-omax', type=float, default=2)
@@ -378,6 +466,7 @@ def main():
     omin, omax, emin, emax = args.omin, args.omax, args.emin, args.emax
     ostep, estep = args.ostep, args.estep
     cumulative = args.cumulative
+    individual = args.individual
     out = args.out
     ghost = args.ghost
     if ghost:
@@ -392,7 +481,7 @@ def main():
         return None
 
     ml_analysis(label, sheets, decay_types, decay_rate, omin, omax, emin, emax, ostep, estep, \
-                cumulative, out, ghost, heat, plot, write_file)
+                cumulative, individual, out, ghost, heat, plot, write_file)
 
 if __name__ == '__main__':
     main()
