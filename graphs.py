@@ -28,7 +28,7 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
                      'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid',\
-                     'full_plants', 'span_trees', 'simple_loop']
+                     'full_plants', 'span_trees', 'simple_loop', 'simple_nopath']
 
 TRANSPARENT = False
 
@@ -349,6 +349,13 @@ def simple_network_nocut():
                                             
     #init_graph(G)
         
+    return G
+
+def simple_nopath():
+    G = simple_network_nocut()
+    G.graph['name'] = 'simple_nopath'
+    G.graph['init_path'] = []
+
     return G
 
 def minimal_network():
@@ -969,6 +976,8 @@ def get_graph(graph_name):
         G = half_grid_nocut()
     elif graph_name == 'simple_nocut':
         G = simple_network_nocut()
+    elif graph_name == 'simple_nopath':
+        G = simple_nopath()
     elif graph_name == 'small':
         G = small_grid()
     elif graph_name == 'tiny':
