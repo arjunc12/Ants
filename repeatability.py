@@ -11,8 +11,27 @@ def get_df():
     df['Different plant'] = df['Different plant'].apply(lambda x: x.strip())
     return df
 
-def difficulty_distributions():
-    df = get_df()
+def length_distribution(df=None):
+    if df is None:
+        df = get_df()
+    df2 = df.copy()
+    df2['Distance in cm'] = df2['Distance in mm'] * 0.1
+    #df2 = df2[df2['Distance in mm'] < 80]
+    print "mean", pylab.mean(df2['Distance in cm'])
+    print "std", pylab.std(df2['Distance in cm'], ddof=1)
+    for name, group in df2.groupby('Different plant'):
+        print name
+        print pylab.mean(group['Distance in cm'])
+    pylab.figure()
+    pylab.hist(df2['Distance in cm'])
+    pylab.xlabel('Distance in cm')
+    pylab.ylabel('count')
+    pylab.savefig('repeatability/figs/distances.pdf', format='pdf')
+    pylab.close()
+
+def difficulty_distributions(df=None):
+    if df is None:
+        df = get_df()
     distributions = {}
     for name, group in df.groupby('Different plant'):
         distribution = defaultdict(int)
@@ -103,7 +122,7 @@ def draw_network(df):
 
 def main():
     df = get_df()
-    print df
+    length_distribution(df)
     #difficulty_hist(df)
     #difficulty_barplot(df)
     #draw_network(df)
