@@ -96,17 +96,16 @@ def draw_network(df):
             edge_color.append('b')
 
     pylab.figure()
-    nx.draw(G, edgelist=edgelist, edge_color=edge_color, pos=nx.spring_layout(G))
+    nx.draw(G, edgelist=edgelist, edge_color=edge_color)
     pylab.draw()
     pylab.savefig('repeatability/figs/network.pdf', format='pdf')
     pylab.close()
 
 def main():
     df = get_df()
-    print df
     #difficulty_hist(df)
     #difficulty_barplot(df)
-    #draw_network(df)
+    draw_network(df)
     #print difficulty_distributions()
 
 if __name__ == '__main__':
