@@ -5,6 +5,7 @@ from collections import defaultdict
 from scipy.stats import entropy
 import argparse
 import numpy as np
+import pandas as pd
 
 def bootstrap_entropy(G, ants=10000):
     nests = G.graph['nests']
@@ -24,9 +25,13 @@ def bootstrap_entropy(G, ants=10000):
     f.write('%s, %d, %f, %f\n' % (G.graph['name'], ants, mean_path_len, etr))
     f.close()
 
+def mle_std(x):
+    return np.std(x, ddof=1)
+
 def entropy_stats():
     df = pd.read_csv('unweighted_entropy.csv', names=['graph', 'ants', 'mean_path_len', 'entropy'])
-    print df.groupby('graph').agg(np.mean)
+    df = df[['graph', 'entropy']]
+    print df.groupby('graph').agg([np.mean, mle_std])
 
 def main():
     parser = argparse.ArgumentParser()
@@ -52,6 +57,9 @@ def main():
                 G = get_graph(graph)
                 if G != None:
                     bootstrap_entropy(G, ants)
+
+    if stats:
+        entropy_stats()
 
 if __name__ == '__main__':
     main()
