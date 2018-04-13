@@ -29,7 +29,7 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
                      'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid',\
                      'full_plants', 'span_trees', 'simple_loop', 'simple_nopath',\
-                     'small_world']
+                     'small_world', 'full2', 'full3']
 
 TRANSPARENT = False
 
@@ -536,6 +536,20 @@ def full_grid():
     
     return G
     
+def full_grid2():
+    G = full_grid()
+    G.graph['name'] = 'full2'
+    G.remove_edge((5, 5), (6, 5))
+    G.graph['init_path'].remove(((5, 5), (6, 5)))
+    return G
+    
+def full_grid3():
+    G = full_grid2()
+    G.graph['name'] = 'full3'
+    G.remove_edge((3, 5), (4, 5))
+    G.graph['init_path'].remove(((3, 5), (4, 5)))
+    return G
+    
 def full_grid_nocut():
     G = nx.grid_2d_graph(11,11)
     
@@ -989,6 +1003,10 @@ def get_graph(graph_name):
         G = simple_network_loop()
     elif graph_name == 'full':
         G = full_grid()
+    elif graph_name == 'full2':
+        G = full_grid2()
+    elif graph_name == 'full3':
+        G = full_grid3()
     elif graph_name == 'half_grid':
         G = half_grid()
     elif graph_name == 'full_nocut':
