@@ -28,7 +28,8 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'vert_grid1', 'vert_grid2', 'vert_grid3', 'caroad', 'paroad', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
                      'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid',\
-                     'full_plants', 'span_trees', 'simple_loop', 'simple_nopath']
+                     'full_plants', 'span_trees', 'simple_loop', 'simple_nopath',\
+                     'small_world']
 
 TRANSPARENT = False
 
@@ -957,6 +958,26 @@ def subelji_road():
     if G != None:
         G.graph['name'] = 'subelji'
     return G
+    
+def small_world():
+    G = nx.newman_watts_strogatz_graph(n=121, k=4, p=0.05)
+        
+    G.graph['name'] = 'small_world'
+    for i in xrange(MAX_ROAD_ATTEMPTS):
+        n1, n2 = sample(G.nodes(), 2)
+        if not nx.has_path(G, n1, n2):
+            continue
+        sp = nx.shortest_path(G, n1, n2)
+        index = random.choice(range(len(sp) - 1))
+        u, v = sp[index], sp[index + 1]
+        G.remove_edge(u, v)
+        if not nx.has_path(G, u, v):
+            G.add_edge(u, v)
+            continue
+        G.add_edge(u, v)
+        set_init_road_path(G, n1, n2, u, v)
+        return G
+    
 
 def get_graph(graph_name):
     G = None
@@ -1038,6 +1059,8 @@ def get_graph(graph_name):
         G = full_grid_plants()
     elif graph_name == 'span_trees':
         G = spanning_trees()
+    elif graph_name == 'small_world':
+        G = small_world()
     else:
         raise ValueError("invalid graph name")
     return G
