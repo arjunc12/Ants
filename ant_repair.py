@@ -77,6 +77,8 @@ MAX_PRUNING_STEPS = 10000
 
 CRITICAL_NODES = True
 
+IGNORE_POS_GRAPHS = ['caroad', 'paroad', 'txroad', 'subelji', 'er', 'barabasi', 'small_world']
+
 def clear_queues(G):
     '''
     empties all node and edge queues
@@ -101,7 +103,7 @@ def init_graph(G):
         M[i] = u
         Minv[u] = i    
         
-        if 'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
+        if G.graph['name'] not in IGNORE_POS_GRAPHS:
             pos[u] = [u[0],u[1]] # position is the same as the label.
         
         G.node[u]['queue'] = []
