@@ -393,7 +393,11 @@ def next_edge_ranka(G, start, explore_prob, candidates=None):
     return next, ex
 
 def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, \
-              search=True, backtrack=False):
+              search=True, backtrack=False, reinforce=False):
+    if reinforce:
+        assert prev != None
+        if G[start][prev]['anti_pheromone'] <= MIN_DETECTABLE_PHEROMONE:
+            return prev, False
     candidates = G.neighbors(start)
     #print start, candidates, prev
     for candidate in candidates[:]:
