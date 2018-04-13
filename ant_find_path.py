@@ -69,6 +69,7 @@ DEBUG_QUEUES = False
 DEBUG_PATHS = False
 
 REINFORCEMENT_RATE = {1 : 1, 2 : 0.5, 3 : 0.33, 4 : 0.25}
+REINFORCEMENT_THRESHOLD = 10
 
 ANTI_PHEROMONE = False
 
@@ -150,6 +151,7 @@ def init_graph(G):
         edge_width.append(1)
         
         G[u][v]['anti_pheromone'] = 0
+        G[u][v]['super_pheromone'] = 0
             
     G.graph['node_map'] = M
     G.graph['node_map_inv'] = Minv
@@ -562,6 +564,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
             pass #color_graph(G, 'g', pheromone_thickness, "graph_before")
         print str(iter) + ": " + pher_str
         explore = defaultdict(bool)
+        reinforce = defaultdict(bool)
         prevs = {}
         prevs2 = {}
         prevs3 = {}
@@ -640,17 +643,10 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
         if WAVES:
             reset_nest_nqls(FIRST_WAVE)
         
-        while steps <= max_steps:
-                   
+        while steps <= max_steps:  
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
             costs.append(cost)
-                        
-            if graph_name == 'minimal':
-                w1 = G[(1, 3)][(2, 3)]['weight']
-                w2 = G[(1, 3)][(1, 4)]['weight']
-                critical_str = '%d, %f, %f\n' % (steps, w1, w2)
-                critical_edges_file.write(critical_str)
             
             G2 = G.copy()
         
@@ -733,6 +729,8 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                     for neighbor in n:
                         if G[curr][neighbor]['anti_pheromone'] <= MIN_DETECTABLE_PHEROMONE:
                             candidates.append(neighbor)
+                            if G[curr][neighbor]['weight'] >= REINFORCEMENT_THRESHOLD and prev != None:
+                                reinforce[next_ant] = True
                         
                     if len(candidates) == 0:
                         deadend[next_ant] = (curr not in nests)
@@ -743,7 +741,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                     if (prev == curr):
                         prev = None
                     
-                    if (curr == origins[next_ant] and not search_mode[next_ant]):
+                    if (curr == origins[next_ant] and not search_mode[next_ant] and not reinforce[next_ant]):
                         prev = None
 
                     
@@ -756,7 +754,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                     
                     next, ex = next_edge(G, curr, exp_prob, strategy, prev, \
                                          destinations[next_ant], search_mode[next_ant],\
-                                         backtrack)
+                                         backtrack=backtrack, reinforce=reinforce[next_ant])
                                                                    
                     if ex and (G[curr][next]['weight'] <= MIN_DETECTABLE_PHEROMONE):
                         queue_ant(G2, curr, next_ant)
@@ -859,6 +857,7 @@ def find_path(G, pheromone_add, pheromone_decay, explore_prob, explore2,\
                             orig, dest = origins[next_ant], destinations[next_ant]
                             origins[next_ant], destinations[next_ant] = dest, orig
                             search_mode[next_ant] = False
+                            reinforce[next_ant] = True
             
                             if track_pruning:
                                 walk = walks[next_ant]
@@ -1179,7 +1178,7 @@ def main():
     parser.add_argument("-v", "--video", action="store_true", dest="video", default=False)
     parser.add_argument("-v2", "--video2", action="store_true", dest="video2", default=False)
     parser.add_argument("-f", "--frames", action="store", type=int, dest="frames", \
-                        default=200)
+                        default=-1)
     parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.05, \
                         help="explore probability")
     parser.add_argument('-e2', '--explore2', type=float, dest='explore2', default=None,\
