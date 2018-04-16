@@ -29,7 +29,7 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
                      'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid',\
                      'full_plants', 'span_trees', 'simple_loop', 'simple_nopath',\
-                     'small_world', 'full2', 'full3']
+                     'small_world', 'full2', 'full3', 'full4', 'full8']
 
 TRANSPARENT = False
 
@@ -550,6 +550,21 @@ def full_grid3():
     G.graph['init_path'].remove(((3, 5), (4, 5)))
     return G
     
+def full_grid4():
+    G = full_grid3()
+    G.graph['name'] = 'full4'
+    G.remove_edge((6, 5), (7, 5))
+    G.graph['init_path'].remove(((6, 5), (7, 5)))
+    return G
+    
+def full_grid8():
+    G = full_grid4()
+    G.graph['name'] = 'full8'
+    for u, v in [((1, 5), (2, 5)), ((2, 5), (3, 5)), ((7, 5), (8, 5)), ((8, 5), (9, 5))]:
+        G.remove_edge(u, v)
+        G.graph['init_path'].remove((u, v))
+    return G
+    
 def full_grid_nocut():
     G = nx.grid_2d_graph(11,11)
     
@@ -1007,6 +1022,10 @@ def get_graph(graph_name):
         G = full_grid2()
     elif graph_name == 'full3':
         G = full_grid3()
+    elif graph_name == 'full4':
+        G = full_grid4()
+    elif graph_name == 'full8':
+        G = full_grid8()
     elif graph_name == 'half_grid':
         G = half_grid()
     elif graph_name == 'full_nocut':
