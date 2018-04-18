@@ -14,7 +14,7 @@ from collections import defaultdict
 
 STRATEGY_CHOICES = ['uniform', 'max', 'hybrid', 'maxz', 'hybridz', 'rank', 'hybridm',\
                     'hybridr', 'ranku', 'uniform2', 'max2', 'maxu', 'maxa', 'ranka',\
-                    'unweighted', 'dberg', 'rankt']
+                    'unweighted', 'dberg', 'rankt', 'hybridu2']
 
 def local_graph(G, start):
     G2 = nx.Graph()
@@ -426,7 +426,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         return candidates[0], False
     
     choice_func = None
-    if (strategy == 'uniform') or (strategy in ['hybrid', 'hybridz', 'hybridm', 'hybridr'] and search):
+    if (strategy == 'uniform') or (strategy[:6] == 'hybrid' and search):
         choice_func = next_edge_uniform
     elif (strategy == 'max') or (strategy in ['hybrid', 'hybridm'] and not search):
         choice_func = next_edge_max
@@ -436,7 +436,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         choice_func = next_edge_rank
     elif (strategy == 'ranku'):
         choice_func = next_edge_ranku
-    elif (strategy == 'uniform2'):
+    elif (strategy == 'uniform2') or (strategy == 'hybridu2' and not search):
         choice_func = next_edge_uniform2
     elif strategy == 'max2':
         choice_func = next_edge_max2
@@ -895,7 +895,7 @@ def get_likelihood_func(strategy):
         likelihood_func = rank_likelihood
     elif strategy == 'ranku':
         likelihood_func = ranku_likelihood
-    elif strategy == 'uniform2':
+    elif strategy in ['uniform2', 'hybridu2']:
         likelihood_func = uniform2_likelihood
     elif strategy == 'max2':
         likelihood_func = max2_likelihood
