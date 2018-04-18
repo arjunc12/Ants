@@ -10,7 +10,7 @@ import os
 from repeatability import difficulty_distributions
 import numpy.random as randn
 
-ER_PROB = 0.3 / 3
+ER_PROB = 4.0 / 120
 
 BARABASI_NEIGHBORS = 4
 
