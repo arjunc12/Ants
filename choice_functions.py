@@ -120,7 +120,7 @@ def next_edge_dberg(G, start, explore_prob, candidates=None, offset=DBERG_OFFSET
         wt += offset
         
     a = 1 / explore_prob
-    assert 0 <= a <= 1
+    #assert 0 <= a <= 1
     return next_edge_uniformn(G2, start, explore_prob, a, candidates)
     
 def next_edge_max(G, start, explore_prob, candidates=None):
