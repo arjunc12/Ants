@@ -55,7 +55,7 @@ pheromone_thickness = 1
 ant_thickness = 25
 
 INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 20
+MAX_PATH_LENGTH = 10
 
 UNIFORM_ENTROPY = True
 
