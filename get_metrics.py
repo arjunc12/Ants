@@ -20,6 +20,7 @@ def main():
     parser.add_argument('-b', '--backtrack', action='store_true')
     parser.add_argument('-o', '--one_way', action='store_true')
     parser.add_argument('--sandbox', action='store_true')
+    parser.add_argument('--future', action='store_true')
 
     args = parser.parse_args()
     explores = args.explores
@@ -33,12 +34,15 @@ def main():
     backtrack = args.backtrack
     one_way = args.one_way
     sandbox = args.sandbox
+    future = args.future
 
     for strategy in strategies:
         for graph in graphs:
             for decay_type in decay_types:
                 for steps in max_steps:
                     out_items = ['repair']
+                    if future:
+                        out_items.append('future')
                     if sandbox:
                         out_items.append('sandbox')
                     out_items += [strategy, graph, decay_type]
