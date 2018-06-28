@@ -398,7 +398,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
         assert prev != None
         if G[start][prev]['anti_pheromone'] <= MIN_DETECTABLE_PHEROMONE:
             return prev, False
-    candidates = G.neighbors(start)
+    candidates = list(G.neighbors(start))
     #print start, candidates, prev
     for candidate in candidates[:]:
         if G[start][candidate]['anti_pheromone'] > MIN_DETECTABLE_PHEROMONE:
@@ -747,7 +747,7 @@ def maxa_likelihood(G, source, dest, explore, prev=None):
 def rank_likelihood(G, source, dest, explore, prev=None):
     chosen_wt = G[source][dest]['weight']
     weights = defaultdict(list)
-    neighbors = G.neighbors(source)
+    neighbors = list(G.neighbors(source))
     if prev != None:
         assert prev in neighbors
         neighbors.remove(prev)

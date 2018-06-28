@@ -83,7 +83,7 @@ def clear_queues(G):
     '''
     empties all node and edge queues
     '''
-    for u in G.nodes_iter():
+    for u in G.nodes():
         G.node[u]['queue'] = []
     
     for u, v in G.edges():
@@ -214,7 +214,7 @@ def pheromone_subgraph(G, origin=None, destination=None):
     adjacent to a pheromone edge
     '''
     G2 = nx.Graph()
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         # need enough pheromone for the ant to be able to detect it on that edge
         wt = G[u][v]['weight']
         if wt > MIN_DETECTABLE_PHEROMONE:
@@ -268,7 +268,7 @@ def pheromone_cost(G):
     Counts the total number of pheromone edges in the graph G
     '''
     G2 = nx.Graph()
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         if G[u][v]['weight'] > MIN_DETECTABLE_PHEROMONE:
             G2.add_edge(u, v)
     return G2.number_of_edges()
@@ -442,7 +442,7 @@ def wasted_edges(G, useful_edges):
     '''
     wasted_edges = 0
     wasted_edge_weight = 0
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         wt = G[u][v]['weight']
         if wt > MIN_DETECTABLE_PHEROMONE:
             edge_id = Ninv[(u, v)]
@@ -456,7 +456,7 @@ def max_neighbors(G, source, prev=None):
     Gets all neighbors that are tied for the highest weight among all neighbors.  Ignores
     ants most previously visited vertex
     '''
-    candidates = G.neighbors(source)
+    candidates = list(G.neighbors(source))
     # ignore previous vertex, ant won't consider it
     if prev != None:
         assert prev in candidates
@@ -566,7 +566,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     
     for iter in xrange(num_iters):    
         nonzero_edges = set()
-        for u, v in G.edges_iter():
+        for u, v in G.edges():
             G[u][v]['weight'] = MIN_PHEROMONE
             G[u][v]['units'] = []
         for u, v in init_path:
@@ -781,7 +781,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                                  and pheromone_dead_end(G, curr, prev):
                         search_mode[next_ant] = True
             
-                    n = G.neighbors(curr)
+                    n = list(G.neighbors(curr))
                     if curr != prev and prev != None:
                         n.remove(prev)
                     if len(n) == 0:
@@ -983,7 +983,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     
         cost = 0
         max_wt = 0
-        for u, v in G.edges_iter():
+        for u, v in G.edges():
             wt = G[u][v]['weight']
             if wt > MIN_PHEROMONE:
                 cost += 1
