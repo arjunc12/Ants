@@ -67,6 +67,8 @@ def network_changes(network_file):
                     else:
                         nodes_used[key] = set([n1, n2])
 
+
+
     nodes_used = nodes_used.items()
 
     contractions = set()
@@ -83,6 +85,9 @@ def network_changes(network_file):
             G = nx.contracted_nodes(G, n1, n2)
             contractions.add((n1, n2))
 
+    for component in nx.connected_components(G):
+        print component
+    
     terminals = []
     for line in open('mapping_network/csv/turtle_hill_terminals.csv'):
         line = line.strip('\n')
@@ -94,7 +99,6 @@ def network_changes(network_file):
         G[node][terminal]['repeatability'] = DEFAULT_REPEATABILITY
         G[node][terminal]['length'] = DEFAULT_LENGTH
         
-    print terminals
     
     S = nx.algorithms.approximation.steinertree.steiner_tree(G, terminals)
     
