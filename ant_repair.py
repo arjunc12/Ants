@@ -1051,7 +1051,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, \
                                           interval = FRAME_INTERVAL)
-            ani.save("ant_" + out_str + str(iter) + ".mp4")
+            mywriter = animation.AVConvWriter()
+            ani.save("ant_" + out_str + str(iter) + ".mp4", writer=mywriter)
         
         if print_graph:        
             color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
