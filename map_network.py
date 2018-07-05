@@ -7,10 +7,14 @@ from sys import argv
 from random import sample
 import pylab
 from networkx.algorithms import approximation
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+from itertools import combinations
+import os
 
 DEFAULT_REPEATABILITY = 1
 DEFAULT_LENGTH = 5 # cm
+
+DATA_DIR = 'mapping_network/csv'
 
 def bootstrap_clustering(G):
     deviations = []
@@ -22,8 +26,15 @@ def bootstrap_clustering(G):
         print sample_size
         print pylab.std(vals, ddof=1)
 
-def network_changes(network_file):
-    df = pd.read_csv('mapping_network/csv/turtle_hill.csv', skipinitialspace=True)
+def similar_nodes(G):
+    for u, v in combinations(list(G.nodes()), 2):
+        n1 = sorted(G.neighbors(u))
+        n2 = sorted(G.neighbors(v))
+        if n1 == n2:
+            print u, v
+
+def network_changes(network):
+    df = pd.read_csv('%s/%s/network.csv' % (DATA_DIR, network), skipinitialspace=True)
     #G = nx.MultiGraph()
     G = nx.Graph()
     path_nodes = set()
@@ -31,6 +42,8 @@ def network_changes(network_file):
     for row in df.iterrows():
         row = row[1]
         nodes = row['Nodes']
+        if pd.isnull(nodes):
+            continue
         nodes = nodes.split('to')
         nodes = map(lambda x : x.strip(), nodes)
         assert len(nodes) >= 2
@@ -52,7 +65,7 @@ def network_changes(network_file):
             G.add_edge(n1, n2)
             G[n1][n2]['repeatability'] = repeatability
         
-        used_map = {'yes' : True, 'y' : True, 'no' : False, 'n' : False, 'No' : False}
+        used_map = {'yes' : True, 'y' : True, 'Yes' : True, 'no' : False, 'n' : False, 'No' : False, 'N' : False}
         for key, item in row.iteritems():
             if 'used' in key:
                 used = None
@@ -71,25 +84,31 @@ def network_changes(network_file):
 
     nodes_used = nodes_used.items()
 
-    contractions = set()
-    for line in open('mapping_network/csv/turtle_hill_contract.csv'):
+    contractions = nx.Graph()
+    for line in open('%s/%s/contract.csv' % (DATA_DIR, network)):
         line = line.strip('\n')
-        line = line.split(' = ')
-        line = sorted(line, key=lambda x : len(x))
+        line = line.split('=')
         line = map(lambda x : x.strip(), line)
 
-        n1 = line[0]
-        for n2 in line[1:]:
-            if (n1, n2) in contractions:
-                continue
+        assert len(line) >= 2
+        
+        for i in xrange(1, len(line)):
+            contractions.add_edge(line[i - 1], line[i])
+            
+    for component in nx.connected_components(contractions):
+        component = list(component)
+        assert len(component) >= 2
+        component = sorted(component, key = lambda x : len(x))
+        n1 = component[0]
+        assert G.has_node(n1)
+        for i in xrange(1, len(component)):
+            n2 = component[i]
+            print n2
+            assert G.has_node(n2)
             G = nx.contracted_nodes(G, n1, n2)
-            contractions.add((n1, n2))
-
-    for component in nx.connected_components(G):
-        print component
-    
+            
     terminals = []
-    for line in open('mapping_network/csv/turtle_hill_terminals.csv'):
+    for line in open('%s/%s/terminals.csv' % (DATA_DIR, network)):
         line = line.strip('\n')
         node, terminal = line.split('to')
         node = node.strip()
@@ -98,7 +117,6 @@ def network_changes(network_file):
         G.add_edge(node, terminal)
         G[node][terminal]['repeatability'] = DEFAULT_REPEATABILITY
         G[node][terminal]['length'] = DEFAULT_LENGTH
-        
     
     S = nx.algorithms.approximation.steinertree.steiner_tree(G, terminals)
     
@@ -138,10 +156,10 @@ def network_changes(network_file):
         node_color = []
         for u in G.nodes():
             nodelist.append(u)
-            if S.has_node(u):
-                node_color.append('m')
-            elif u in path_nodes:
+            if u in path_nodes:
                 node_color.append('y')
+            elif S.has_node(u):
+                node_color.append('m')
             else:
                 node_color.append('r')
 
@@ -149,16 +167,21 @@ def network_changes(network_file):
                 labels=labels, node_color=node_color, nodelist=nodelist,\
                 edgelist=edgelist, edge_color=edge_color)
         pylab.draw()
-        pylab.savefig('mapping_network/figs/mapping_network%d.pdf' % frame, format='pdf')
+        pylab.savefig('mapping_network/figs/%s%d.pdf' % (network, frame), format='pdf')
         #pylab.close()
     
     ani = animation.FuncAnimation(fig, redraw, frames=len(nodes_used), interval=10000, init_func=init)
-    mywriter = animation.AVConvWriter()
-    ani.save('mapping_network/figs/mapping_network.mp4', writer=mywriter)
+    #mywriter = animation.AVConvWriter()
+    ani.save('mapping_network/figs/%s.mp4' % network)
     pylab.close()
+    
+    print "similar nodes"
+    similar_nodes(G)
 
 def main():
-    network_changes('mapping_network/csv/turtle_hill.csv')
+    for network in os.listdir(DATA_DIR):
+        print network
+        network_changes(network)
 
 if __name__ == '__main__':
     main()
