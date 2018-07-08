@@ -25,7 +25,7 @@ from random import randint
 
 import os
 
-SEED_DEBUG = True
+SEED_DEBUG = False
 
 SEED_MAX = 4294967295
 SEED_VAL = randint(0, SEED_MAX)
@@ -84,7 +84,7 @@ def clear_queues(G):
     '''
     empties all node and edge queues
     '''
-    for u in G.nodes_iter():
+    for u in G.nodes:
         G.node[u]['queue'] = []
     
     for u, v in G.edges():
@@ -213,7 +213,7 @@ def pheromone_subgraph(G, origin=None, destination=None):
     adjacent to a pheromone edge
     '''
     G2 = nx.Graph()
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         # need enough pheromone for the ant to be able to detect it on that edge
         wt = G[u][v]['weight']
         if wt > MIN_DETECTABLE_PHEROMONE:
@@ -267,7 +267,7 @@ def pheromone_cost(G):
     Counts the total number of pheromone edges in the graph G
     '''
     G2 = nx.Graph()
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         if G[u][v]['weight'] > MIN_DETECTABLE_PHEROMONE:
             G2.add_edge(u, v)
     return G2.number_of_edges()
@@ -498,11 +498,9 @@ def check_path(G, path):
             assert G.has_edge(u, v)
     
 def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform', \
-            num_ants=100, max_steps=10000, num_iters=1, print_graph=False, video=False, \
-            nframes=200, video2=False, cost_plot=False, backtrack=False, \
-            decay_type='linear', node_queue_lim=1, edge_queue_lim=1, one_way=False):
-    """ """
-    
+            num_ants=10, max_steps=1000, num_iters=1, print_graph=False, video=False, \
+            nframes=-1, backtrack=False, \
+            decay_type='exp', node_queue_lim=1, edge_queue_lim=1, one_way=False):
     graph_name = G.graph['name']
     nests = G.graph['nests']
     food = G.graph['food_nodes']
@@ -523,10 +521,6 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
     num_edges = G.size()
     
     nframes = min(nframes, max_steps)
-    
-    pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
-    data_file = open('ant_%s%d.csv' % (out_str, max_steps), 'a')
-    pruning_file = open('ant_%s_pruning.csv' % out_str, 'a')
 
     if video:
         fig = PP.figure()
@@ -535,7 +529,7 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
     
     for iter in xrange(num_iters):    
         nonzero_edges = set()
-        for u, v in G.edges_iter():
+        for u, v in G.edges():
             G[u][v]['weight'] = MIN_PHEROMONE
             G[u][v]['units'] = []
         for u, v in init_path:
@@ -547,11 +541,8 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
     
         if iter == 0 and print_graph:
             pass #color_graph(G, 'g', pheromone_thickness, "graph_before")
-        print str(iter) + ": " + pher_str
         explore = defaultdict(bool)
         prevs = {}
-        prevs2 = {}
-        prevs3 = {}
         currs = {}
         paths = {}
         walks = {}
@@ -589,8 +580,6 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                 origins[ant], destinations[ant] = destinations[ant], origins[ant]
             walks[ant] = [prev, curr]
             prevs[ant] = prev
-            prevs2[ant] = None
-            prevs3[ant] = None
             currs[ant] = curr
             deadend[ant] = False
             queue_ant(G, curr, ant)
@@ -616,32 +605,12 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             else:
                 edge_weights[index].append(wt)
     
-        critical_edges_file = None
-        if graph_name == 'minimal':
-            critical_edges_file = open('critical_edges.csv', 'a')
-        while steps <= max_steps:               
+        found_food = False
+        while steps <= max_steps and not found_food:               
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
             costs.append(cost)
-            prun_write_items = [steps, cost]
-       
-            if curr_entropy != None:
-                prun_write_items.append(curr_entropy)
-            else:
-                prun_write_items.append('')
-            
-            if curr_walk_entropy != None:
-                prun_write_items.append(curr_walk_entropy)
-            else:
-                prun_write_items.append('')
-            
-            prun_str = ', '.join(map(str, prun_write_items))
                         
-            if graph_name == 'minimal':
-                w1 = G[(1, 3)][(2, 3)]['weight']
-                w2 = G[(1, 3)][(1, 4)]['weight']
-                critical_str = '%d, %f, %f\n' % (steps, w1, w2)
-                critical_edges_file.write(critical_str)
             
             G2 = G.copy()
         
@@ -658,8 +627,6 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             
             for queued_node in queued_nodes:
                 queue = G2.node[queued_node]['queue']
-                #queue = G2.node[node]['queue']
-                #assert len(queue) > 0
             
                 qlim = node_queue_lim
                 if qlim == -1:
@@ -701,14 +668,9 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                                                  and pheromone_dead_end(G, curr, prev):
                         search_mode[next_ant] = True
             
-                    n = G.neighbors(curr)
+                    n = list(G.neighbors(curr))
                     if curr != prev and prev != None:
                         n.remove(prev)
-                    if len(n) == 0:
-                        deadend[next_ant] = (curr not in nests)
-                        #print curr, deadend[j]
-                    elif len(n) > 1:
-                        deadend[next_ant] = False
                 
                     if (prev == curr) or (curr == origins[next_ant] and not search_mode[next_ant]):
                         prev = None
@@ -725,16 +687,16 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                                          destinations[next_ant], search_mode[next_ant],\
                                          backtrack)
                                                                    
-                    if ex:
+                    if ex and G2[curr][next]['weight'] <= MIN_PHEROMONE:
                         queue_ant(G2, curr, next_ant)
-                        if not deadend[next_ant]:
-                            G2[curr][next]['weight'] += 2 * pheromone_add
-                            if decay_type == 'linear':
-                                G2[curr][next]['units'].append(2 * pheromone_add)
-                            nonzero_edges.add(Ninv[(curr, next)])
+                        
+                        G2[curr][next]['weight'] += 2 * pheromone_add
+                        if decay_type == 'linear':
+                            G2[curr][next]['units'].append(2 * pheromone_add)
+                        nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
-                        prevs[next_ant] = curr
+                        prevs[next_ant] = next
                         currs[next_ant] = curr
                         paths[next_ant].append(curr)
                         walks[next_ant].append(curr)
@@ -839,7 +801,7 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
     
         cost = 0
         max_wt = 0
-        for u, v in G.edges_iter():
+        for u, v in G.edges():
             wt = G[u][v]['weight']
             if wt > MIN_PHEROMONE:
                 cost += 1
@@ -916,95 +878,6 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
                         % (out_str, max_steps, explore_prob, pheromone_decay), cost)
             print "graph colored"
-    
-        costs.append(cost)
-        max_cost = max(max_cost, cost)
-        costs = PP.array(costs)
-        pruning = (max_cost - cost) / float(max_cost)
-        if cost_plot:
-            figname = "pruning/pruning_%s%d_e%0.2fd%0.2f" % (out_str, max_steps, \
-                       explore_prob, pheromone_decay, cost)
-            pruning_plot(costs, figname, max_cost)
-                
-        path_pruning = None  
-        if len(path_counts) > 0:
-            curr_entropy = entropy(path_counts.values())
-            max_entropy = max(max_entropy, curr_entropy)
-            path_pruning = max_entropy - curr_entropy
-        
-        walk_pruning = None
-        if len(chosen_walk_counts) > 0:
-            curr_walk_entropy = entropy(chosen_walk_counts.values())
-            max_walk_entropy = max(max_walk_entropy, curr_walk_entropy)
-            walk_pruning = max_walk_entropy - curr_walk_entropy
-
-        # Output results.
-        path_lengths, revisits = [], []
-        right_nest, wrong_nest = 0.0, 0.0
-        hit_counts, miss_counts = [], []
-    
-        nest, target = nests[0], nests[1]
-        
-        pher_subgraph = pheromone_subgraph(G)
-
-        has_path = has_pheromone_path(G, nest, target)
-        after_paths = []
-        if has_path:
-            after_paths = maximal_paths(pher_subgraph, nest, target)
-
-
-        has_food_path = True
-        for food_source in food:
-            connected_nests = 0
-            for nest in nests:
-                food_after_paths = maximal_paths(pher_subgraph, food_source, nest)
-                if len(food_after_paths) > 0:
-                    connected_nests += 1
-                    break
-            if connected_nests == 0:
-                has_food_path = False
-                break
-
-        print "has food path", has_food_path
-        
-        path_probs = []
-        useful_edges = set()
-        path_lenghts = []
-        for path in after_paths:
-            path_prob = path_prob_no_explore(G, path, strategy)
-            if path_prob > 0:
-                path_probs.append(path_prob)
-                edges = path_to_edges(path)
-                useful_edges.update(edges)
-                path_lengths.append(len(path))
-        wasted_edge_count, wasted_edge_weight = wasted_edges(G, useful_edges)
-    
-        path_etr = None
-        if len(path_probs) > 0:
-            path_etr = entropy(path_probs)
-            path_etr = abs(path_etr)
-        else:
-            has_path = False
-            
-        
-        print "has path", has_path
-        print "path entropy", path_etr
-        
-        journey_times = []
-        journey_lengths = []
-        walk_counts = defaultdict(int)
-        total_steps = 0
-    
-        write_items = [int(has_path), cost]
-    
-        if (path_etr != None) and path_etr != float("-inf") and (not PP.isnan(path_etr)):
-            write_items.append(path_etr)
-        else:
-            write_items.append('')
-    
-        ant_str = ', '.join(map(str, write_items))
-        line = pher_str + ant_str + '\n'
-        data_file.write(line)
 
 def main():
     start = time.time()
@@ -1027,36 +900,34 @@ def main():
 
     usage="usage: %prog [options]"
     parser = argparse.ArgumentParser()
-    parser.add_argument("-g", "--graph", dest='graph', choices=GRAPH_CHOICES, default='full',\
+    parser.add_argument("-g", "--graph", choices=GRAPH_CHOICES, default='food_grid',\
                         help="graph to run algorithm on")
-    parser.add_argument('-s', '--strategy', dest='strategy', choices=STRATEGY_CHOICES,\
-                        default='rank', help="strategy to run")
-    parser.add_argument("-x", "--repeats", type=int, dest="iterations", default=1,\
+    parser.add_argument('-s', '--strategy', choices=STRATEGY_CHOICES,\
+                        default='dberg', help="strategy to run")
+    parser.add_argument("-x", "--iterations", type=int, default=1,\
                         help="number of iterations") 
-    parser.add_argument("-a", "--add", type=float, dest="pheromone_add",\
-                        help="amt of phermone added")
-    parser.add_argument("-d", "--decay", action="store", type=float, dest="pheromone_decay", \
-                        default=0.05, help="amt of pheromone decay")
-    parser.add_argument("-n", "--number", action="store", type=int, dest="num_ants", \
-                        default=100, help="number of ants")
-    parser.add_argument("-pg", "--print_graph", action="store_true", dest="print_graph", \
+    parser.add_argument("-a", "--pheromone_add", type=float,\
+                        help="amt of phermone added", default=1)
+    parser.add_argument("-d", "--decay", type=float, \
+                        default=0.01, help="amt of pheromone decay")
+    parser.add_argument("-n", "--num_ants", action="store", type=int, dest="num_ants", \
+                        default=10, help="number of ants")
+    parser.add_argument("-pg", "--print_graph", action="store_true", \
                         default=False)
-    parser.add_argument("-v", "--video", action="store_true", dest="video", default=False)
-    parser.add_argument("-v2", "--video2", action="store_true", dest="video2", default=False)
-    parser.add_argument("-f", "--frames", action="store", type=int, dest="frames", \
-                        default=200)
-    parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.05, \
+    parser.add_argument("-v", "--video", action="store_true", default=False)
+    parser.add_argument("-f", "--frames", action="store", type=int, \
+                        default=-1)
+    parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.78, \
                         help="explore probability")
-    parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=3000)
-    parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
+    parser.add_argument("-m", "--max_steps", type=int, default=1000)
     parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
-    parser.add_argument("-dt", "--decay_type", dest="decay_type", default="exp", \
+    parser.add_argument("-dt", "--decay_type", default="exp", \
                         choices=DECAY_CHOICES)
-    parser.add_argument("-t", "--threshold", dest="threshold", type=float, default=0, \
+    parser.add_argument("-t", "--threshold", type=float, default=0, \
                         help="minimum detectable pheromone threshold")
-    parser.add_argument('-nql', '--node_queue_limit', type=int, dest='node_queue_lim', default=1)
-    parser.add_argument('-eql', '--edge_queue_limit', type=int, dest='edge_queue_lim', default=1)
-    parser.add_argument('-o', '--one_way', action='store_true', dest='one_way')
+    parser.add_argument('-nql', '--node_queue_lim', type=int, default=1)
+    parser.add_argument('-eql', '--edge_queue_lim', type=int, default=1)
+    parser.add_argument('-o', '--one_way', action='store_true')
 
     args = parser.parse_args()
     # ===============================================================
@@ -1066,15 +937,13 @@ def main():
     strategy = args.strategy
     num_iters = args.iterations
     pheromone_add = args.pheromone_add
-    pheromone_decay = args.pheromone_decay
+    pheromone_decay = args.decay
     num_ants = args.num_ants
     print_graph = args.print_graph
     video = args.video
-    video2 = args.video2
     frames = args.frames
     explore = args.explore
     max_steps = args.max_steps
-    cost_plot = args.cost_plot
     backtrack = args.backtrack
     decay_type = args.decay_type
     node_queue_lim = args.node_queue_lim
@@ -1100,7 +969,7 @@ def main():
 
     # Run recovery algorithm.
     find_food(G, pheromone_add, pheromone_decay, explore, strategy, num_ants, max_steps,\
-               num_iters, print_graph, video, frames, video2, cost_plot, backtrack, \
+               num_iters, print_graph, video, frames, backtrack, \
                decay_type, node_queue_lim, edge_queue_lim, one_way)
     
     # =========================== Finish ============================
