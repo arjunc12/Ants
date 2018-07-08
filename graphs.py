@@ -152,15 +152,20 @@ def spanning_trees():
     
     return H
 
-def food_grid(n=11):
-    G = nx.grid_2d_graph(n, n)
-    G.graph['name'] = 'food_grid'
-    G.graph['nests'] = [(0, n / 2), (n - 1, n / 2)]
+def food_grid(n=30):
+    G = nx.Graph()
     G.graph['init_path'] = []
-    for i in xrange(n - 1):
-       G.graph['init_path'].append(((i, n / 2), (i + 1, n / 2)))
+    for i in xrange(n):
+        n1, n2 = (i, 0), (i + 1, 0)
+        G.add_edge(n1, n2)
+        G.graph['init_path'].append((n1, n2))
+    G.graph['name'] = 'food_grid'
+    G.graph['nests'] = [(0, 0), (n, 0)]
 
-    G.graph['food_nodes'] = [(randint(0, n - 1), n / 2 + (random.choice([-1, 1]) *  randint(1, n / 2)))]
+    j = random.choice(range(n))
+    G.add_edge((j, 0), (j, 1))
+    G.add_edge((j, 1), (j, 2))
+    G.graph['food_nodes'] = [(j, 2)]
 
     return G
 
