@@ -400,9 +400,7 @@ def next_edge(G, start, explore_prob, strategy='uniform', prev=None, dest=None, 
             return prev, False
     candidates = list(G.neighbors(start))
     #print start, candidates, prev
-    for candidate in candidates[:]:
-        if G[start][candidate]['anti_pheromone'] > MIN_DETECTABLE_PHEROMONE:
-            candidates.remove(candidate)
+    
     if len(candidates) == 0:
         candidates = G.neighbors(start)
     if (dest != None) and (dest in candidates):
