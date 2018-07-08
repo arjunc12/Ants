@@ -743,6 +743,9 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                         
                         paths[next_ant].append(next)
                         walks[next_ant].append(next)
+                        
+                        if next in G.graph['food_nodes']:
+                            found_food = True
 
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
@@ -878,6 +881,12 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
                         % (out_str, max_steps, explore_prob, pheromone_decay), cost)
             print "graph colored"
+            
+        # output results
+        first_time = os.path.exists('ant_find_food.csv')
+        with open('ant_find_food.csv', 'a') as f:
+            pass
+        
 
 def main():
     start = time.time()
