@@ -133,7 +133,7 @@ def init_graph(G):
         N[i] = (u, v)        
         Ninv[(v, u)] = i
         
-        init_path = G.graph['init_path']
+        init_path = G.graph['init path']
         if (u, v) in init_path:
             edge_color.append('g')
             edge_width.append(10)
@@ -503,7 +503,7 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             decay_type='exp', node_queue_lim=1, edge_queue_lim=1, one_way=False):
     graph_name = G.graph['name']
     nests = G.graph['nests']
-    food = G.graph['food_nodes']
+    food = G.graph['food nodes']
 
     out_items = ['find_food', strategy, graph_name, decay_type]
     if backtrack:
@@ -525,7 +525,7 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
     if video:
         fig = PP.figure()
     
-    init_path = G.graph['init_path']
+    init_path = G.graph['init path']
     
     for iter in xrange(num_iters):    
         nonzero_edges = set()
@@ -744,7 +744,7 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                         paths[next_ant].append(next)
                         walks[next_ant].append(next)
                         
-                        if next in G.graph['food_nodes']:
+                        if next in G.graph['food nodes']:
                             found_food = True
 
                         if DEBUG_PATHS:
@@ -883,9 +883,31 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             print "graph colored"
             
         # output results
-        first_time = os.path.exists('ant_find_food.csv')
-        with open('ant_find_food.csv', 'a') as f:
-            pass
+        fname = '/iblsn/data/Arjun/Ants/ant_find_food.csv'
+        first_time = not os.path.exists(fname)
+        with open(fname, 'a') as f:
+            if first_time:
+                f.write('graph, strategy, decay type, ants, steps, max steps, ' + \
+                        'backtrack, one way, node queue limit, ' + \
+                        'edge queue limit, explore, decay, food dist\n')
+            
+            graph = G.graph['name']
+            steps = min(steps, max_steps)
+            backtrack = int(backtrack)
+            one_way = int(one_way)
+
+            food_dist = 0
+            for food_node in G.graph['food nodes']:
+                node_dist = float("inf")
+                for u, v in G.graph['init path']:
+                    dist = nx.shortest_path_length(G, food_node, u)
+                    node_dist = min(node_dist, dist)
+                food_dist = max(node_dist, food_dist)
+
+            f.write('%s, %s, %s, %d, %d, %d, %d, %d, %d, %d, %f, %f, %d\n' %\
+                    (graph, strategy, decay_type, num_ants, steps, max_steps,
+                     backtrack, one_way, node_queue_lim, edge_queue_lim,\
+                     explore_prob, pheromone_decay, food_dist))
         
 
 def main():
