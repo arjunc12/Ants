@@ -9,11 +9,14 @@ import argparse
 parser = argparse.ArgumentParser()
 
 # required arguments
-parser.add_argument('-s', '--strategies', nargs='+', required=True, dest='strategies')
-parser.add_argument('-g', '--graphs', nargs='+', required=True, dest='graphs')
-parser.add_argument('-dt', '--decay_types', nargs='+', required=True, dest='decay_types')
-parser.add_argument('-m', '--steps', required=True, type=int, dest='steps')
-parser.add_argument('-l', '--steps_label', required=True, dest='steps_label')
+parser.add_argument('-s', '--strategies', nargs='+', required=True)
+parser.add_argument('-g', '--graphs', nargs='+', required=True)
+parser.add_argument('-dt', '--decay_types', nargs='+', required=True)
+parser.add_argument('-m', '--steps', required=True, type=int)
+parser.add_argument('-l', '--steps_label', required=True)
+
+# which problem to solve
+parser.add_argument('-p', '--program', default='repair')
 
 # run the sandbox script instead of the main repair script
 # sandbox script used for testing new ideas like modulating parameters, new choice functions, etc.
@@ -22,22 +25,22 @@ parser.add_argument('--sandbox', action='store_true')
 # optional arguments
 
 # explore, decay ranges
-parser.add_argument('-emin', type=float, default=0.05, dest='emin')
-parser.add_argument('-emax', type=float, default=0.95, dest='emax')
-parser.add_argument('-dmin', type=float, default=0.05, dest='dmin')
-parser.add_argument('-dmax', type=float, default=0.95, dest='dmax')
+parser.add_argument('-emin', type=float, default=0.05)
+parser.add_argument('-emax', type=float, default=0.95)
+parser.add_argument('-dmin', type=float, default=0.05)
+parser.add_argument('-dmax', type=float, default=0.95)
 
 # explore, decay, add increments
-parser.add_argument('-estep', type=float, default=0.05, dest='estep')
-parser.add_argument('-dstep', type=float, default=0.05, dest='dstep')
-parser.add_argument('-a', '--add', type=float, default=1, dest='add')
+parser.add_argument('-estep', type=float, default=0.05)
+parser.add_argument('-dstep', type=float, default=0.05)
+parser.add_argument('-a', '--add', type=float, default=1)
 
 # number of different processes to use, so number of trials to run for each
 # parameter combination
-parser.add_argument('-x', '--num_iters', type=int, default=50, dest='num_iters')
+parser.add_argument('-x', '--num_iters', type=int, default=50)
 
 # number of ants in each simulation
-parser.add_argument('-n', '--num_ants', type=int, default=100, dest='num_ants')
+parser.add_argument('-n', '--num_ants', type=int, default=100)
 
 # node, edge queue limits
 parser.add_argument('-nql', '--node_queue_lim', type=int, default=1, dest='nql')
@@ -54,6 +57,8 @@ graphs = args.graphs
 decay_types = args.decay_types
 steps = args.steps
 steps_label = args.steps_label
+
+program = args.program
 
 emin = args.emin
 emax = args.emax
@@ -79,7 +84,7 @@ sandbox = args.sandbox
 for strategy in strategies:
     for graph in graphs:
         for decay_type in decay_types:
-            out_items = ['repair']
+            out_items = [program]
             if sandbox:
                 out_items.append('sandbox')
             out_items += [strategy, graph, decay_type]
@@ -122,12 +127,12 @@ for strategy in strategies:
             f.write('nq=%d\n' % nql)
             f.write('eq=%d\n' % eql)
             
-            pyscript = 'ant_repair'
+            pyscript = 'ant_' + program
             if sandbox:
                 pyscript += '_sandbox'
             pyscript += '.py'
 
-            py_command = '            python %s -a $add -d $d -e $e -x 1 -n $n -m $m -g $graph -s $strategy -dt $decay_type -nql $nq -eql $eq' % pyscript
+            py_command = 'python %s -a $add -d $d -e $e -x 1 -n $n -m $m -g $graph -s $strategy -dt $decay_type -nql $nq -eql $eq' % pyscript
             if backtrack:
                 py_command += ' --backtrack'
             if one_way:
@@ -139,7 +144,7 @@ for strategy in strategies:
             f.write('    for d in $(seq $dmin $dstep $dmax); do\n')
             f.write('        for iter in $(seq 1 1 $x); do\n')
             #f.write('            python ant_repair.py -a $add -d $d -e $e -x 1 -n $n -m $m -g $graph -s $strategy -dt $decay_type -nql $nq -eql $eq &\n')
-            f.write(py_command)
+            f.write('            ' + py_command)
             f.write('        done\n')
             # wait for all runs to finish before moving to next pair of parameter values
             f.write('        wait\n')
