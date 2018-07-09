@@ -9,6 +9,8 @@ import random
 import os
 from repeatability import difficulty_distributions
 import numpy.random as randn
+from map_network import read_network
+import os
 
 ER_PROB = 4.0 / 120
 
@@ -29,7 +31,8 @@ GRAPH_CHOICES = ['fig1', 'full', 'simple', 'simple_weighted', 'simple_multi', \
                      'txroad', 'subelji', 'minimal', 'grid_span_nocut', \
                      'grid_span_rand', 'grid_span4', 'shortcut', 'food_grid',\
                      'full_plants', 'span_trees', 'simple_loop', 'simple_nopath',\
-                     'small_world', 'full2', 'full3', 'full4', 'full8']
+                     'small_world', 'full2', 'full3', 'full4', 'full8',\
+                     'turtle_hill', 'tejon7', 'T189']
 
 TRANSPARENT = False
 
@@ -154,18 +157,19 @@ def spanning_trees():
 
 def food_grid(n=30):
     G = nx.Graph()
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for i in xrange(n):
         n1, n2 = (i, 0), (i + 1, 0)
         G.add_edge(n1, n2)
-        G.graph['init_path'].append((n1, n2))
+        G.graph['init path'].append((n1, n2))
     G.graph['name'] = 'food_grid'
     G.graph['nests'] = [(0, 0), (n, 0)]
 
     j = random.choice(range(n))
-    G.add_edge((j, 0), (j, 1))
-    G.add_edge((j, 1), (j, 2))
-    G.graph['food_nodes'] = [(j, 2)]
+    food_dist = random.choice(range(1, 21))
+    for k in xrange(food_dist):
+        G.add_edge((j, k), (j, k + 1))
+    G.graph['food nodes'] = [(j, food_dist)]
 
     return G
 
@@ -250,12 +254,12 @@ def fig1_network():
     G.remove_edge((4,2),(4,3))
     G.remove_edge((4,3),(4,4))
     
-    G.graph['init_path'] = []
-    G.graph['init_path'].append(((7, 3), (8, 3)))
-    G.graph['init_path'].append(((6, 3), (7, 3)))
-    G.graph['init_path'].append(((5, 3), (6, 3)))
-    G.graph['init_path'].append(((4, 3), (5, 3)))
-    G.graph['init_path'].append(((3, 2), (3, 3)))
+    G.graph['init path'] = []
+    G.graph['init path'].append(((7, 3), (8, 3)))
+    G.graph['init path'].append(((6, 3), (7, 3)))
+    G.graph['init path'].append(((5, 3), (6, 3)))
+    G.graph['init path'].append(((4, 3), (5, 3)))
+    G.graph['init path'].append(((3, 2), (3, 3)))
 
     #init_graph(G)
     
@@ -293,10 +297,10 @@ def simple_network():
                 except:
                     pass
     
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for j in xrange(7):
         if j != 5:
-            G.graph['init_path'].append(((j, 3), (j + 1, 3)))
+            G.graph['init path'].append(((j, 3), (j + 1, 3)))
     
     G.remove_edge((5, 3), (6, 3))
                                             
@@ -349,9 +353,9 @@ def simple_network_nocut():
                 except:
                     pass
     
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for j in xrange(7):
-        G.graph['init_path'].append(((j, 3), (j + 1, 3)))
+        G.graph['init path'].append(((j, 3), (j + 1, 3)))
                                             
     #init_graph(G)
         
@@ -360,7 +364,7 @@ def simple_network_nocut():
 def simple_nopath():
     G = simple_network_nocut()
     G.graph['name'] = 'simple_nopath'
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
 
     return G
 
@@ -422,10 +426,10 @@ def medium_network():
     G.add_edge((3, 3), (3, 4))
     G.add_edge((3, 4), (3, 5))
     
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for j in xrange(7):
         if j != 5:
-            G.graph['init_path'].append(((j, 3), (j + 1, 3)))
+            G.graph['init path'].append(((j, 3), (j + 1, 3)))
     
     G.remove_edge((5, 3), (6, 3))
                                             
@@ -478,9 +482,9 @@ def medium_network_nocut():
     G.add_edge((3, 3), (3, 4))
     G.add_edge((3, 4), (3, 5))
     
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for j in xrange(7):
-        G.graph['init_path'].append(((j, 3), (j + 1, 3)))
+        G.graph['init path'].append(((j, 3), (j + 1, 3)))
     
     #G.remove_edge((5, 3), (6, 3))
                                             
@@ -493,9 +497,9 @@ def square_grid_nocut(gridsize, gridname):
     G.graph['name'] = gridname + '_nocut'
     G.graph['nests'] = [(0, gridsize // 2), (gridsize - 1, gridsize // 2)]
     
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for i in xrange(gridsize - 1):
-        G.graph['init_path'].append(((i, gridsize // 2), (i + 1, gridsize // 2)))
+        G.graph['init path'].append(((i, gridsize // 2), (i + 1, gridsize // 2)))
     #init_graph(G)
     
     return G
@@ -506,10 +510,10 @@ def square_grid(gridsize, gridname):
     G.graph['nests'] = [(0, gridsize // 2), (gridsize - 1, gridsize // 2)]
     
     G.remove_edge((gridsize // 2 - 1, gridsize // 2), (gridsize // 2, gridsize // 2))
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for i in xrange(gridsize - 1):
         if i != gridsize // 2 - 1:
-            G.graph['init_path'].append(((i, gridsize // 2), (i + 1, gridsize // 2)))
+            G.graph['init path'].append(((i, gridsize // 2), (i + 1, gridsize // 2)))
     #init_graph(G)
     
     return G
@@ -532,10 +536,10 @@ def full_grid():
     
     G.remove_edge((4, 5), (5, 5))
     
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for i in xrange(10):
         if i != 4:
-            G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+            G.graph['init path'].append(((i, 5), (i + 1, 5)))
 
     #init_graph(G)
     
@@ -545,21 +549,21 @@ def full_grid2():
     G = full_grid()
     G.graph['name'] = 'full2'
     G.remove_edge((5, 5), (6, 5))
-    G.graph['init_path'].remove(((5, 5), (6, 5)))
+    G.graph['init path'].remove(((5, 5), (6, 5)))
     return G
     
 def full_grid3():
     G = full_grid2()
     G.graph['name'] = 'full3'
     G.remove_edge((3, 5), (4, 5))
-    G.graph['init_path'].remove(((3, 5), (4, 5)))
+    G.graph['init path'].remove(((3, 5), (4, 5)))
     return G
     
 def full_grid4():
     G = full_grid3()
     G.graph['name'] = 'full4'
     G.remove_edge((6, 5), (7, 5))
-    G.graph['init_path'].remove(((6, 5), (7, 5)))
+    G.graph['init path'].remove(((6, 5), (7, 5)))
     return G
     
 def full_grid8():
@@ -567,7 +571,7 @@ def full_grid8():
     G.graph['name'] = 'full8'
     for u, v in [((1, 5), (2, 5)), ((2, 5), (3, 5)), ((7, 5), (8, 5)), ((8, 5), (9, 5))]:
         G.remove_edge(u, v)
-        G.graph['init_path'].remove((u, v))
+        G.graph['init path'].remove((u, v))
     return G
     
 def full_grid_nocut():
@@ -576,9 +580,9 @@ def full_grid_nocut():
     G.graph['name'] = 'full_nocut'
     G.graph['nests'] = [(0, 5), (10, 5)]
     
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for i in range(10):
-        G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+        G.graph['init path'].append(((i, 5), (i + 1, 5)))
 
     #init_graph(G)
     
@@ -673,7 +677,7 @@ def er_network(p=0.5):
                     if G.has_edge(u, v):
                         G.remove_edge(u, v)
                         
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     '''
     if not nx.has_path(G, nest, target):
         return None
@@ -686,9 +690,9 @@ def er_network(p=0.5):
     
     G.remove_edge(short_path[idx], short_path[idx + 1])
     for i in xrange(idx):
-        G.graph['init_path'].append((short_path[i], short_path[i + 1]))
+        G.graph['init path'].append((short_path[i], short_path[i + 1]))
     for i in xrange(idx + 1, len(short_path) - 1):
-        G.graph['init_path'].append((short_path[i], short_path[i + 1]))
+        G.graph['init path'].append((short_path[i], short_path[i + 1]))
     #print P
         
     if not nx.has_path(G, nest, target):
@@ -698,7 +702,7 @@ def er_network(p=0.5):
     for i in xrange(10):
         if i != 4:
             G.add_edge((i, 5), (i + 1, 5))
-            G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+            G.graph['init path'].append(((i, 5), (i + 1, 5)))
             
     if G.has_edge((4, 5), (5, 5)):
         G.remove_edge((4, 5), (5, 5))
@@ -721,7 +725,7 @@ def grid_span():
     for i in range(10):
         if i != 4:
             grid.add_edge((i, 5), (i + 1, 5))
-            grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
+            grid.graph['init path'].append(((i, 5), (i + 1, 5))) 
     return grid
     
 def grid_span_rand():
@@ -737,16 +741,16 @@ def grid_span_rand():
     for i in range(10):
         if i != 4:
             grid.add_edge((i, 5), (i + 1, 5))
-            grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
+            grid.graph['init path'].append(((i, 5), (i + 1, 5))) 
     return grid
     
 def grid_span_nocut():
     G = grid_span()
     G.add_edge((4, 5), (5, 5))
     G.graph['name'] = 'grid_span_nocut'
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     for i in range(10):
-        G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+        G.graph['init path'].append(((i, 5), (i + 1, 5)))
     return G
     
 def grid_span2():
@@ -775,7 +779,7 @@ def grid_span4():
     for i in range(10):
         if i != 4:
             grid.add_edge((i, 5), (i + 1, 5))
-            grid.graph['init_path'].append(((i, 5), (i + 1, 5))) 
+            grid.graph['init path'].append(((i, 5), (i + 1, 5))) 
     return grid
 
 def barabasi_albert():
@@ -791,7 +795,7 @@ def barabasi_albert():
     nests = [(0, 5), (10, 5)]
     nest, target = nests
     G.graph['nests'] = nests
-    G.graph['init_path'] = []
+    G.graph['init path'] = []
     
     '''
     if not nx.has_path(G, nest, target):
@@ -806,9 +810,9 @@ def barabasi_albert():
     #print idx
     G.remove_edge(short_path[idx], short_path[idx + 1])
     for i in xrange(idx):
-        G.graph['init_path'].append((short_path[i], short_path[i + 1]))
+        G.graph['init path'].append((short_path[i], short_path[i + 1]))
     for i in xrange(idx + 1, len(short_path) - 1):
-        G.graph['init_path'].append((short_path[i], short_path[i + 1]))
+        G.graph['init path'].append((short_path[i], short_path[i + 1]))
     #print P
         
     if not nx.has_path(G, nest, target):
@@ -819,7 +823,7 @@ def barabasi_albert():
     for i in xrange(10):
         if i != 4:
             G.add_edge((i, 5), (i + 1, 5))
-            G.graph['init_path'].append(((i, 5), (i + 1, 5)))
+            G.graph['init path'].append(((i, 5), (i + 1, 5)))
             
     if G.has_edge((4, 5), (5, 5)):
         G.remove_edge((4, 5), (5, 5))
@@ -900,11 +904,11 @@ def set_init_road_path(road_graph, nest1, nest2, v1, v2):
     road_graph.graph['nests'] = [nest1, nest2]
     sp = nx.shortest_path(road_graph, nest1, nest2)
     road_graph.remove_edge(v1, v2)
-    road_graph.graph['init_path'] = []
+    road_graph.graph['init path'] = []
     for i in xrange(len(sp) - 1):
         u, v = sp[i], sp[i + 1]
         if not (u == v1 and v == v2):
-           road_graph.graph['init_path'].append((u, v))
+           road_graph.graph['init path'].append((u, v))
 
 
 def road(road_file_path, comments='#'):
@@ -965,7 +969,7 @@ def road(road_file_path, comments='#'):
 
     #set_init_road_path(G, (10, 4), (0, 0), (4, 6), (4, 9))
     #set_init_road_path(G, 490, 316, 360, 361)
-    #print G.graph['init_path']
+    #print G.graph['init path']
 
     #return G
 
@@ -1011,7 +1015,30 @@ def small_world():
         G.add_edge(u, v)
         set_init_road_path(G, n1, n2, u, v)
         return G
-    
+
+def mapped_network(network):
+    G = read_network(network)
+    graphscale = 1
+    pos = nx.kamada_kawai_layout(G, scale = graphscale)
+    for u in G.nodes():
+        G.node[u]['pos'] = pos[u]
+
+    nest1, nest2 = G.graph['nests'][:2]
+    sp = nx.shortest_path(G, nest1, nest2)
+    G.graph['init path'] = []
+    for i in xrange(len(sp) - 1):
+        u, v = sp[i], sp[i + 1]
+        G.graph['init path'].append((u, v))
+    return G
+
+def turtle_hill_network():
+    return mapped_network('turtle_hill')
+
+def T189_network():
+    return mapped_network('T189')
+
+def tejon7_network():
+    return mapped_network('tejon7')
 
 def get_graph(graph_name):
     G = None
@@ -1103,6 +1130,12 @@ def get_graph(graph_name):
         G = spanning_trees()
     elif graph_name == 'small_world':
         G = small_world()
+    elif graph_name == 'turtle_hill':
+        G = turtle_hill_network()
+    elif graph_name == 'tejon7':
+        G = tejon7_network()
+    elif graph_name == 'T189':
+        G = T189_network()
     else:
         raise ValueError("invalid graph name")
     return G
@@ -1121,13 +1154,13 @@ def main():
             continue
             
         path = None
-        if 'init_path' in G.graph:
-            path = G.graph['init_path']
+        if 'init path' in G.graph:
+            path = G.graph['init path']
         nests = G.graph['nests']
 
         food = []
-        if 'food_nodes' in G.graph:
-            food = G.graph['food_nodes']
+        if 'food nodes' in G.graph:
+            food = G.graph['food nodes']
         for n1 in nests:
             for n2 in nests:
                 if G.has_edge(n1, n2):
@@ -1136,7 +1169,10 @@ def main():
         node_sizes = []
         node_colors = []
         for node in sorted(G.nodes()):
-            pos[node] = (node[0], node[1])
+            if 'pos' in G.node[node]:
+                pos[node] = G.node[node]['pos']
+            else:
+                pos[node] = (node[0], node[1])
             if node in nests:
                 node_sizes.append(100)
                 node_colors.append('r')
@@ -1175,6 +1211,7 @@ def main():
         pylab.draw()
         #print "show"
         #PP.show()
+        os.system('mkdir -p figs/graphs')
         pylab.savefig("figs/graphs/%s.pdf" % G.graph['name'], format='pdf')
         #os.system('convert %s.png %s.pdf' % (G.graph['name'], G.graph['name']))
         pylab.close()
