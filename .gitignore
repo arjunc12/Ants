@@ -38,8 +38,6 @@ datasets/*
 
 *.jpeg
 
-ant_repair_old.py
-
 *.gz
 
 *.bz2
