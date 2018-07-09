@@ -31,11 +31,82 @@ def similar_nodes(G):
         n1 = sorted(G.neighbors(u))
         n2 = sorted(G.neighbors(v))
         if n1 == n2:
-            print u, v
+            print u, v, n1
+
+def read_network(network):
+    df = pd.read_csv('%s/%s/network.csv' % (DATA_DIR, network), skipinitialspace=True)
+    G = nx.Graph()
+    G.graph['name'] = network
+    for row in df.iterrows():
+        row = row[1]
+        nodes = row['Nodes']
+        if pd.isnull(nodes):
+            continue
+        nodes = nodes.split('to')
+        nodes = map(lambda x : x.strip(), nodes)
+        assert len(nodes) >= 2
+        for i in xrange(1, len(nodes)):
+            n1, n2 = nodes[i - 1], nodes[i]
+            n1 = n1.strip()
+            n2 = n2.strip()
+            r1 = row['Repeatability index from nest out']
+            r2 = row['Repeatability index toward nest']
+            repeatabilities = []
+            for repeatability in (r1, r2):
+                if not pd.isnull(repeatability):
+                    repeatabilities.append(int(repeatability))
+            repeatability = None
+            if len(repeatabilities) > 0:
+                repeatability = max(repeatabilities)
+            else:
+                repeatability = DEFAULT_REPEATABILITY
+            G.add_edge(n1, n2)
+            G[n1][n2]['repeatability'] = repeatability
+         
+    terminals = []
+    G.graph['nests'] = []
+    G.graph['food nodes'] = []
+    for line in open('%s/%s/terminals.csv' % (DATA_DIR, network)):
+        line = line.strip('\n')
+        node, terminal = line.split('to')
+        node = node.strip()
+        terminal = terminal.strip()
+        terminals.append(terminal)
+        G.add_edge(node, terminal)
+        G[node][terminal]['repeatability'] = DEFAULT_REPEATABILITY
+        G[node][terminal]['length'] = DEFAULT_LENGTH
+
+        if 'food' in terminal:
+            G.graph['food nodes'].append(terminal)
+        elif 'nest' in terminal:
+            G.graph['nests'].append(terminal)
+    
+    contractions = nx.Graph()
+    for line in open('%s/%s/contract.csv' % (DATA_DIR, network)):
+        line = line.strip('\n')
+        line = line.split('=')
+        line = map(lambda x : x.strip(), line)
+
+        assert len(line) >= 2
+        
+        for i in xrange(1, len(line)):
+            contractions.add_edge(line[i - 1], line[i])
+            
+    for component in nx.connected_components(contractions):
+        component = list(component)
+        assert len(component) >= 2
+        component = sorted(component, key = lambda x : len(x))
+        n1 = component[0]
+        assert G.has_node(n1)
+        for i in xrange(1, len(component)):
+            n2 = component[i]
+            assert G.has_node(n2)
+            G = nx.contracted_nodes(G, n1, n2)
+
+    return G
 
 def network_changes(network):
     df = pd.read_csv('%s/%s/network.csv' % (DATA_DIR, network), skipinitialspace=True)
-    #G = nx.MultiGraph()
     G = nx.Graph()
     path_nodes = set()
     nodes_used = OrderedDict()
@@ -103,7 +174,6 @@ def network_changes(network):
         assert G.has_node(n1)
         for i in xrange(1, len(component)):
             n2 = component[i]
-            print n2
             assert G.has_node(n2)
             G = nx.contracted_nodes(G, n1, n2)
             
@@ -172,7 +242,7 @@ def network_changes(network):
     
     ani = animation.FuncAnimation(fig, redraw, frames=len(nodes_used), interval=10000, init_func=init)
     #mywriter = animation.AVConvWriter()
-    ani.save('mapping_network/figs/%s.mp4' % network)
+    ani.save('mapping_network/figs/%s.mp4' % network, writer='avconv')
     pylab.close()
     
     print "similar nodes"
