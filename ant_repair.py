@@ -54,12 +54,11 @@ EDGE_THICKNESS = 25
 pheromone_thickness = 1
 ant_thickness = 25
 
-INIT_WEIGHT_FACTOR = 10
-MAX_PATH_LENGTH = 10
-
-UNIFORM_ENTROPY = True
+INIT_WEIGHT_FACTOR = 20
+MAX_PATH_LENGTH = 38
 
 FRAME_INTERVAL = 1000
+
 
 global EXPLORE_CHANCES
 global EXPLORES
@@ -77,13 +76,13 @@ MAX_PRUNING_STEPS = 10000
 
 CRITICAL_NODES = True
 
-IGNORE_POS_GRAPHS = ['caroad', 'paroad', 'txroad', 'subelji', 'er', 'barabasi', 'small_world']
+SECONDS_PER_STEP = 5
 
 def clear_queues(G):
     '''
     empties all node and edge queues
     '''
-    for u in G.nodes():
+    for u in G.nodes_iter():
         G.node[u]['queue'] = []
     
     for u, v in G.edges():
@@ -103,7 +102,7 @@ def init_graph(G):
         M[i] = u
         Minv[u] = i    
         
-        if G.graph['name'] not in IGNORE_POS_GRAPHS:
+        if 'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
             pos[u] = [u[0],u[1]] # position is the same as the label.
         
         G.node[u]['queue'] = []
@@ -199,10 +198,11 @@ def color_graph(G, c, w, figname, cost=None):
             edgelist = sorted(G.edges()))
     PP.draw()
     #PP.show()
-    print figname
+    #PP.savefig(figname + '.png', format='png')
     PP.savefig(figname + '.pdf', format='pdf')
     PP.close()
     
+    #os.system('convert %s.png %s.pdf' % (figname, figname))
 
 def pheromone_subgraph(G, origin=None, destination=None):
     '''
@@ -214,7 +214,7 @@ def pheromone_subgraph(G, origin=None, destination=None):
     adjacent to a pheromone edge
     '''
     G2 = nx.Graph()
-    for u, v in G.edges():
+    for u, v in G.edges_iter():
         # need enough pheromone for the ant to be able to detect it on that edge
         wt = G[u][v]['weight']
         if wt > MIN_DETECTABLE_PHEROMONE:
@@ -268,7 +268,7 @@ def pheromone_cost(G):
     Counts the total number of pheromone edges in the graph G
     '''
     G2 = nx.Graph()
-    for u, v in G.edges():
+    for u, v in G.edges_iter():
         if G[u][v]['weight'] > MIN_DETECTABLE_PHEROMONE:
             G2.add_edge(u, v)
     return G2.number_of_edges()
@@ -442,7 +442,7 @@ def wasted_edges(G, useful_edges):
     '''
     wasted_edges = 0
     wasted_edge_weight = 0
-    for u, v in G.edges():
+    for u, v in G.edges_iter():
         wt = G[u][v]['weight']
         if wt > MIN_DETECTABLE_PHEROMONE:
             edge_id = Ninv[(u, v)]
@@ -456,7 +456,7 @@ def max_neighbors(G, source, prev=None):
     Gets all neighbors that are tied for the highest weight among all neighbors.  Ignores
     ants most previously visited vertex
     '''
-    candidates = list(G.neighbors(source))
+    candidates = G.neighbors(source)
     # ignore previous vertex, ant won't consider it
     if prev != None:
         assert prev in candidates
@@ -535,7 +535,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     graph_name = G.graph['name']
     nests = G.graph['nests']
     
-    out_items = ['repair', strategy, graph_name, decay_type]
+    out_items = ['repair_future', strategy, graph_name, decay_type]
     if backtrack:
         out_items.append('backtrack')
     if one_way:
@@ -566,7 +566,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     
     for iter in xrange(num_iters):    
         nonzero_edges = set()
-        for u, v in G.edges():
+        for u, v in G.edges_iter():
             G[u][v]['weight'] = MIN_PHEROMONE
             G[u][v]['units'] = []
         for u, v in init_path:
@@ -613,11 +613,15 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         chosen_cycle_counts = []
         max_chosen_cycle_count = None
             
-        for ant in xrange(num_ants):
+        curr_ants = num_ants
+        if curr_ants == -1:
+            curr_ants = max_steps // 10
+            
+        for ant in xrange(curr_ants):
             origin = nests[ant % len(nests)]
             origins[ant] = origin
             destinations[ant] = next_destination(origin)
-            prev_curr = None
+            prev, curr = None, None
             if one_way:
                 prev, curr = init_path[choice((len(init_path) // 2))]
             else:
@@ -659,8 +663,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     edge_weights[index].append(wt)
     
         critical_edges_file = None
-        if 'critical_node' in G.graph:
-            critical_edges_file = open('critical_edges_%s.csv' % graph_name, 'a')
+        if graph_name == 'minimal':
+            critical_edges_file = open('critical_edges.csv', 'a')
         while steps <= max_steps:               
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
@@ -682,24 +686,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             
             prun_str = ', '.join(map(str, prun_write_items))
             
-            if critical_edges_file != None:
-                w1 = 0
-                w2 = 0
-                critical_node = G.graph['critical_node']
-                critical_edge = G.graph['critical_edge']
-                critical_node_prev = G.graph['critical_node_prev']
-                for v in G.neighbors(critical_node):
-                    if v == critical_node_prev:
-                        continue
-                    wt = G[critical_node][v]['weight']
-                    if Ninv[(critical_node, v)] == Ninv[critical_edge]:
-                        w1 += wt
-                    else:
-                        w2 += wt
-
-                    
+            '''
+            if graph_name == 'minimal':
+                w1 = G[(1, 3)][(2, 3)]['weight']
+                w2 = G[(1, 3)][(1, 4)]['weight']
                 critical_str = '%d, %f, %f\n' % (steps, w1, w2)
                 critical_edges_file.write(critical_str)
+            '''
 
             G2 = G.copy()
         
@@ -729,7 +722,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     max_path_len = max(max_path_len, mean_path_len)
             
             if DEBUG_QUEUES:
-                check_queues(G2, queued_nodes, queued_edges, num_ants)
+                check_queues(G2, queued_nodes, queued_edges, curr_ants)
             
             for queued_node in queued_nodes:
                 curr_max_cycles = len(maximal_cycles(G, queued_node))
@@ -781,7 +774,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                                  and pheromone_dead_end(G, curr, prev):
                         search_mode[next_ant] = True
             
-                    n = list(G.neighbors(curr))
+                    n = G.neighbors(curr)
                     if curr != prev and prev != None:
                         n.remove(prev)
                     if len(n) == 0:
@@ -805,7 +798,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                          destinations[next_ant], search_mode[next_ant],\
                                          backtrack)
 
-                    if ex:
+                    if ex and G[curr][next]['weight'] <= MIN_DETECTABLE_PHEROMONE:
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
                             add_amount = 2 * pheromone_add
@@ -818,7 +811,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                             nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
-                        prevs[next_ant] = curr
+                        #prevs[next_ant] = curr
                         currs[next_ant] = curr
                         if video:
                             paths[next_ant].append(curr)
@@ -837,7 +830,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             queued_nodes.update(new_queue_nodes)
             
             if DEBUG_QUEUES:
-                check_queues(G2, queued_nodes, queued_edges, num_ants)
+                check_queues(G2, queued_nodes, queued_edges, curr_ants)
             
             for edge_id in queued_edges:
                 u, v = N[edge_id]
@@ -957,12 +950,42 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             queued_edges.difference_update(empty_edges)
             
             if DEBUG_QUEUES:
-                check_queues(G2, queued_nodes, queued_edges, num_ants)
+                check_queues(G2, queued_nodes, queued_edges, curr_ants)
             
             decay_func = get_decay_func_edges(decay_type)
-            zero_edges = decay_func(G2, nonzero_edges, pheromone_decay, time=1, min_pheromone=MIN_PHEROMONE)
+            zero_edges = decay_func(G2, nonzero_edges, pheromone_decay,
+                                    time=SECONDS_PER_STEP, min_pheromone=MIN_PHEROMONE)
             nonzero_edges.difference_update(zero_edges)
-        
+            
+            if num_ants == -1:
+                for nest in nests:
+                    ant = curr_ants
+                    curr = nest
+                    
+                    origin = nest
+                    origins[ant] = origin
+                    destinations[ant] = next_destination(origin)
+            
+                    if video:
+                        paths[ant] = ([None] * (steps + 1)) + [curr]
+                    
+                    if destinations[ant] == curr:
+                        origins[ant], destinations[ant] = destinations[ant], origins[ant]
+                    
+                    walks[ant] = [curr]
+                    
+                    prevs[ant] = None
+                    prevs2[ant] = None
+                    prevs3[ant] = None
+                    currs[ant] = curr
+                    
+                    deadend[ant] = False
+                    
+                    queue_ant(G2, curr, ant)
+                    queued_nodes.add(curr)
+                    
+                    curr_ants += 1
+                            
             G = G2
         
             for u, v in sorted(G.edges()):
@@ -983,7 +1006,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     
         cost = 0
         max_wt = 0
-        for u, v in G.edges():
+        for u, v in G.edges_iter():
             wt = G[u][v]['weight']
             if wt > MIN_PHEROMONE:
                 cost += 1
@@ -1012,11 +1035,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         
             ax = PP.gca()
         
-            for n in xrange(num_ants):             
-                node = paths[n][frame + 1]
-                index = Minv[node]
-                n_colors[index] = 'k'
-                n_sizes[index] += ant_thickness
+            for p in paths:             
+                node = paths[p][frame + 1]
+                if node != None:
+                    index = Minv[node]
+                    n_colors[index] = 'k'
+                    n_sizes[index] += ant_thickness
                                         
             #if frame > 0:
             #    frame -= 1
@@ -1051,8 +1075,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, \
                                           interval = FRAME_INTERVAL)
-            mywriter = animation.AVConvWriter()
-            ani.save("ant_" + out_str + str(iter) + ".mp4", writer=mywriter)
+            ani.save("ant_" + out_str + str(iter) + ".mp4")
         
         if print_graph:        
             color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
@@ -1090,7 +1113,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         has_path = has_pheromone_path(G, nest, target)
         after_paths = []
         if has_path:
-            if 'uniform' in strategy and UNIFORM_ENTROPY:
+            if False:#'uniform' in strategy:
                 after_paths = pheromone_paths(G, nest, target, MAX_PATH_LENGTH)
             else:
                 after_paths = maximal_paths(pheromone_subgraph(G), nest, target)
@@ -1106,9 +1129,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                 useful_edges.update(edges)
                 path_lengths.append(len(path))
         wasted_edge_count, wasted_edge_weight = wasted_edges(G, useful_edges)
-
-        #print sorted(path_probs)
-        #print sum(path_probs)
     
         path_etr = None
         if len(path_probs) > 0:
@@ -1119,10 +1139,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             
         mean_path_len = None
         if len(path_lengths) > 0:
-            #mean_path_len = mean(path_lengths)
-            mean_path_len = PP.average(path_lengths, weights=path_probs)
-            if 'uniform' in strategy:
-                print "weighted mean path len", mean_path_len
+            mean_path_len = mean(path_lengths)
             
         mean_chosen_path_len = weighted_mean_path_len(path_counts)
         

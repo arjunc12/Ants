@@ -687,7 +687,7 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
                                          destinations[next_ant], search_mode[next_ant],\
                                          backtrack)
                                                                    
-                    if ex and G2[curr][next]['weight'] <= MIN_PHEROMONE:
+                    if G2[curr][next]['weight'] <= MIN_PHEROMONE:
                         queue_ant(G2, curr, next_ant)
                         
                         G2[curr][next]['weight'] += 2 * pheromone_add
