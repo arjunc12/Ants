@@ -197,12 +197,8 @@ def color_graph(G, c, w, figname, cost=None):
             node_color=node_color, width=widths, nodelist = sorted(G.nodes()), \
             edgelist = sorted(G.edges()))
     PP.draw()
-    #PP.show()
-    #PP.savefig(figname + '.png', format='png')
     PP.savefig(figname + '.pdf', format='pdf')
     PP.close()
-    
-    #os.system('convert %s.png %s.pdf' % (figname, figname))
 
 def pheromone_subgraph(G, origin=None, destination=None):
     '''
@@ -530,17 +526,26 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             num_ants=100, max_steps=1000, num_iters=1, print_graph=False, video=False, \
             nframes=-1, video2=False, cost_plot=False, backtrack=False, \
             decay_type='exp', node_queue_lim=1, edge_queue_lim=1, one_way=False):
-    """ """
-    
     graph_name = G.graph['name']
     nests = G.graph['nests']
     
-    out_items = ['repair_future', strategy, graph_name, decay_type]
+    out_items = ['repair', strategy, graph_name, decay_type]
     if backtrack:
         out_items.append('backtrack')
     if one_way:
         out_items.append('one_way')
     out_str = '_'.join(out_items)
+
+    savedir = '%s/%s/%s' % (graph_name, strategy, decay_type)
+
+    header_items = ['graph', 'strategy', 'decay type', 'ants', 'max steps',\
+                    'backtrack', 'one_way', 'node queue lim', 'edge queue lim',\
+                    'explore', 'decay']
+
+    
+    write_items = [graph_name, strategy, decay_type, ants, steps, max_steps,\
+                   backtrack, one_way, node_queue_lim, edge_queue_lim,\
+                   explore, decay]
     
     def next_destination(origin):
         idx = nests.index(origin)
@@ -552,11 +557,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     
     nframes = min(nframes, max_steps)
     
-    pher_str = "%d, %f, %f, " % (num_ants, explore_prob, pheromone_decay)
-    data_file = open('ant_%s%d.csv' % (out_str, max_steps), 'a')
-    pruning_file = open('ant_%s_pruning.csv' % out_str, 'a')
-    critical_nodes_file = open('critical_nodes_%s.csv' % graph_name, 'w')
-
+    data_fname = '/iblsn/data/Arjun/Ants/ant_repair.csv'
+    
     if video:
         fig = PP.figure()
     
@@ -576,13 +578,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             nonzero_edges.add(Ninv[(u, v)])
         clear_queues(G)
     
-        if iter == 0 and print_graph:
-            pass #color_graph(G, 'g', pheromone_thickness, "graph_before")
-        print str(iter) + ": " + pher_str
         explore = defaultdict(bool)
         prevs = {}
-        prevs2 = {}
-        prevs3 = {}
         currs = {}
         paths = {}
         walks = {}
@@ -634,8 +631,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                 origins[ant], destinations[ant] = destinations[ant], origins[ant]
             walks[ant] = [prev, curr]
             prevs[ant] = prev
-            prevs2[ant] = None
-            prevs3[ant] = None
             currs[ant] = curr
             deadend[ant] = False
             queue_ant(G, curr, ant)
@@ -662,38 +657,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                 else:
                     edge_weights[index].append(wt)
     
-        critical_edges_file = None
-        if graph_name == 'minimal':
-            critical_edges_file = open('critical_edges.csv', 'a')
         while steps <= max_steps:               
             cost = pheromone_cost(G)
             max_cost = max(max_cost, cost)
             
-            if cost_plot:
-                costs.append(cost)
-            
-            prun_write_items = [steps, cost]
-       
-            if curr_path_entropy != None:
-                prun_write_items.append(curr_path_entropy)
-            else:
-                prun_write_items.append('')
-            
-            if curr_walk_entropy != None:
-                prun_write_items.append(curr_walk_entropy)
-            else:
-                prun_write_items.append('')
-            
-            prun_str = ', '.join(map(str, prun_write_items))
-            
-            '''
-            if graph_name == 'minimal':
-                w1 = G[(1, 3)][(2, 3)]['weight']
-                w2 = G[(1, 3)][(1, 4)]['weight']
-                critical_str = '%d, %f, %f\n' % (steps, w1, w2)
-                critical_edges_file.write(critical_str)
-            '''
-
             G2 = G.copy()
         
             empty_nodes = set()
@@ -747,7 +714,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
             
                 for next_ant in next_ants:
                     queue.remove(next_ant)
-
             
                 for queued_ant in queue:
                     if queued_ant not in moved_ants:
@@ -758,7 +724,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                             check_path(G, paths[queued_ant])
                         if track_pruning:
                             walks[queued_ant].append(queued_node)
-                        #path = paths[queued_ant]
             
                 if len(queue) == 0:
                     empty_nodes.add(queued_node)
@@ -798,20 +763,17 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                          destinations[next_ant], search_mode[next_ant],\
                                          backtrack)
 
-                    if ex and G[curr][next]['weight'] <= MIN_DETECTABLE_PHEROMONE:
+                    if G[curr][next]['weight'] <= MIN_DETECTABLE_PHEROMONE:
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
                             add_amount = 2 * pheromone_add
-                            if 'plant' in G.node[curr] and 'plant' in G.node[next]:
-                                if G.node[curr]['plant'] != G.node[next]['plant']:
-                                    add_amount *= 0.5
                             G2[curr][next]['weight'] += add_amount
                             if decay_type == 'linear':
                                 G2[curr][next]['units'].append(add_amount)
                             nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
-                        #prevs[next_ant] = curr
+                        prevs[next_ant] = next
                         currs[next_ant] = curr
                         if video:
                             paths[next_ant].append(curr)
@@ -875,8 +837,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
 
                         if DEBUG_PATHS:
                             check_path(G, paths[next_ant])
-        
-        
+         
                         if next == destinations[next_ant]:
                             orig, dest = origins[next_ant], destinations[next_ant]
                             dest = next_destination(orig)
@@ -1042,8 +1003,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     n_colors[index] = 'k'
                     n_sizes[index] += ant_thickness
                                         
-            #if frame > 0:
-            #    frame -= 1
             max_units = max_weight / pheromone_add
         
             e_colors = []
@@ -1060,8 +1019,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         
             for nest in nests:
                 n_colors[Minv[nest]] = 'm'
-                #n_sizes[Minv[nest]] = min(n_sizes[Minv[nest]], 100)
-                #print nest, n_sizes[Minv[nest]]
 
             nx.draw(G, pos=pos, with_labels=False, node_size=n_sizes, edge_color=e_colors, \
                     node_color=n_colors, width=e_widths, nodelist = sorted(G.nodes()), \
@@ -1075,10 +1032,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, \
                                           interval = FRAME_INTERVAL)
-            ani.save("ant_" + out_str + str(iter) + ".mp4")
+            ani.save("ant_" + out_str + str(iter) + ".mp4", writer='avconv')
         
-        if print_graph:        
-            color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
+        if print_graph:
+            outdir = 'figs/after_graphs/' + savedir
+            os.system('mkdir -p ' + outdir)
+            figname = outdir + '/graph_after_%s%d_e%0.2fd%0.2f'
+            color_graph(G, 'g', (pheromone_add / max_wt),  \
                         % (out_str, max_steps, explore_prob, pheromone_decay), cost)
             print "graph colored"
     
@@ -1087,8 +1047,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         costs = PP.array(costs)
         cost_pruning = (max_cost - cost) / float(max_cost)
         if cost_plot:
-            figname = "pruning/pruning_%s%d_e%0.2fd%0.2f" % (out_str, max_steps, \
-                       explore_prob, pheromone_decay, cost)
+            outdir = 'figs/cost_plots/' + savedir
+            os.system('mkdir -p ' + outdir)
+            figname = outdir + "/cost_plot_%s%d_e%0.2fd%0.2f" %\
+                      (savedir, out_str, max_steps, explore_prob,\
+                       pheromone_decay, cost)
             pruning_plot(costs, figname, max_cost)
                 
         path_pruning = None  
@@ -1173,84 +1136,92 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         cycles_pruning = None
         if max_cycles > 0:
             cycles_pruning = max_cycles - curr_max_cycles
+   
+        header_items += ['has path', 'graph cost']
+        write_items += [int(has_path), cost]
     
-        write_items = [int(has_path), cost]
-    
+        header_items.append('path entropy')
         if (path_etr != None) and path_etr != float("-inf") and (not PP.isnan(path_etr)):
             assert path_etr >= 0
             write_items.append(path_etr)
         else:
             write_items.append('')
     
-        if len(walk_counts.values()) > 0:
-            write_items += [walk_entropy, mean_journey_time, med_journey_time, walk_success_rate]
-        else:
-            write_items += ['', '', '', '']
-    
-        #write_items.append(walk_success_rate)
-    
+        header_items.append('cost pruning')
         write_items.append(cost_pruning)
     
+        header_items.append('connect time')
         if connect_time != -1:
             write_items.append(connect_time)
         else:
             write_items.append('')
     
+        header_items.append('path pruning')
         if path_pruning != None:
             write_items.append(path_pruning)
         else:
             write_items.append('')
         
+        header_items.append('current path entropy')
         if curr_path_entropy != None:
             write_items.append(curr_path_entropy)
         else:
             write_items.append('')
      
+        header_items.append('walk pruning')
         if walk_pruning != None:
             write_items.append(walk_pruning)
         else:
             write_items.append('')
         
+        header_items.append('current walk entropy')
         if curr_walk_entropy != None:
             write_items.append(curr_walk_entropy)
         else:
             write_items.append('')
+
+        header_items.append('wasted edge count', 'wasted edge weight')
         write_items += [wasted_edge_count, wasted_edge_weight]
         
+        header_items.append('mean path length')
         if mean_path_len != None:
             write_items.append(mean_path_len)
         else:
             write_items.append('')
 
+        header_items.append('cycles pruning')
         if cycles_pruning != None:
             write_items.append(cycles_pruning)
         else:
             write_items.append('')
 
+        header_items.append('current max cycles')
         write_items.append(curr_max_cycles)
         
+        header_items.append('path length pruning')
         if path_len_pruning != None:
             write_items.append(path_len_pruning)
         else:
             write_items.append('')
             
+        header_items.append('chosen path length pruning')
         if chosen_path_len_pruning != None:
             write_items.append(chosen_path_len_pruning)
         else:
             write_items.append('')
             
+        header_items.append('chosen cycle count pruning')
         if chosen_cycle_count_pruning != None:
             write_items.append(chosen_cycle_count_pruning)
         else:
             write_items.append('')
     
-        ant_str = ', '.join(map(str, write_items))
-        line = pher_str + ant_str + '\n'
-        data_file.write(line)
+        header_str = ', '.join(map(str, header_items))
+        if first_time:
+            data_file.write(header_str + '\n')
+        data_str = ', '.join(map(str, write_items))
+        data_file.write(line + '\n')
         
-    data_file.close()
-    pruning_file.close()
-    critical_nodes_file.close()
 
 def main():
     start = time.time()
