@@ -12,9 +12,9 @@ sandbox.py
 
 *.out
 
-sandbox/*
+sandbox
 
-bfs0/*
+bfs0
 
 *.txt
 
@@ -22,9 +22,9 @@ bfs0/*
 
 *.xls
 
-graph_after/*
+graph_after
 
-pruning/*
+pruning
 
 *.sh
 
@@ -32,7 +32,7 @@ pruning/*
 
 *.bib
 
-datasets/*
+datasets
 
 *.jpg
 
@@ -46,21 +46,21 @@ datasets/*
 
 data.plist
 
-draft_paper/*
+draft_paper
 
 *.pbs
 
 out.subelj_euroroad_euroroad
 
-parameter_estimation/*
+parameter_estimation
 
-subelj_euroroad/*
+subelj_euroroad
 
 *.DS_Store
 
-figs/*
+figs
 
-FIGS2/*
+FIGS2
 
 *.graffle
 
@@ -70,9 +70,9 @@ remove_columns.py
 
 .nfs*
 
-ant_datasets/*
+ant_datasets
 
-manuscripts/*
+manuscripts
 
 aggregate_csv.py
 
@@ -80,12 +80,14 @@ aggregate_csv.py
 
 ant_repair.sh*
 
-related_work/*
+related_work
 
-road_datasets/*
+road_datasets
 
-repeatability/*
+repeatability
 
-Deborah Slides/*
+Deborah Slides
 
 mapping_network
+
+old_figs
