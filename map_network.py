@@ -110,6 +110,7 @@ def network_changes(network):
     G = nx.Graph()
     path_nodes = set()
     nodes_used = OrderedDict()
+    edge_order = []
     for row in df.iterrows():
         row = row[1]
         nodes = row['Nodes']
@@ -118,6 +119,7 @@ def network_changes(network):
         nodes = nodes.split('to')
         nodes = map(lambda x : x.strip(), nodes)
         assert len(nodes) >= 2
+        edge_tuple = []
         for i in xrange(1, len(nodes)):
             n1, n2 = nodes[i - 1], nodes[i]
             n1 = n1.strip()
@@ -134,26 +136,32 @@ def network_changes(network):
             else:
                 repeatability = DEFAULT_REPEATABILITY
             G.add_edge(n1, n2)
+            if len(edge_tuple) == 0:
+                edge_tuple += [n1, n2]
+            else:
+                edge_tuple.append(n2)
             G[n1][n2]['repeatability'] = repeatability
+        
+        edge_order.append(tuple(edge_tuple))
         
         used_map = {'yes' : True, 'y' : True, 'Yes' : True, 'no' : False, 'n' : False, 'No' : False, 'N' : False}
         for key, item in row.iteritems():
-            if 'used' in key:
+            if 'used' in key.lower():
                 used = None
                 if pd.isnull(item):
                     used = False
                 else:
                     item = item.strip()
                     used = used_map[item]
+
+                if key not in nodes_used:
+                    nodes_used[key] = set()
+                
                 if used:
-                    if key in nodes_used:
-                        nodes_used[key].update([n1, n2])
-                    else:
-                        nodes_used[key] = set([n1, n2])
+                    nodes_used[key].update([n1, n2])
+        
 
-
-
-    nodes_used = nodes_used.items()
+    print G.number_of_nodes(), "nodes before contraction"
 
     contractions = nx.Graph()
     for line in open('%s/%s/contract.csv' % (DATA_DIR, network)):
@@ -166,6 +174,8 @@ def network_changes(network):
         for i in xrange(1, len(line)):
             contractions.add_edge(line[i - 1], line[i])
             
+    nodes_contracted = 0
+    contraction_parents = {}
     for component in nx.connected_components(contractions):
         component = list(component)
         assert len(component) >= 2
@@ -176,6 +186,17 @@ def network_changes(network):
             n2 = component[i]
             assert G.has_node(n2)
             G = nx.contracted_nodes(G, n1, n2)
+            nodes_contracted += 1
+            contraction_parents[n2] = n1
+
+            for day, used in nodes_used.iteritems():
+                if n2 in used:
+                    nodes_used[day].add(n1)
+
+    print nodes_contracted, "nodes contracted"
+    print G.number_of_nodes(), "nodes after contraction"
+    
+    nodes_used = nodes_used.items()
             
     terminals = []
     for line in open('%s/%s/terminals.csv' % (DATA_DIR, network)):
@@ -187,8 +208,8 @@ def network_changes(network):
         G.add_edge(node, terminal)
         G[node][terminal]['repeatability'] = DEFAULT_REPEATABILITY
         G[node][terminal]['length'] = DEFAULT_LENGTH
-    
-    S = nx.algorithms.approximation.steinertree.steiner_tree(G, terminals)
+
+    S = nx.algorithms.approximation.steinertree.steiner_tree(G, terminals, weight='repeatability')
     
     graphscale = 1
     pos = nx.kamada_kawai_layout(G, scale = graphscale)
@@ -198,6 +219,15 @@ def network_changes(network):
         if u.isdigit():
             labels[u] = u
             max_node = max(max_node, int(u))
+
+    def get_label(u):
+        if u in labels:
+            return labels[u]
+        else:
+            assert u in contraction_parents
+            parent = contraction_parents[u]
+            assert parent in labels
+            return labels[parent]
 
     repeatability_color = {1 : 'k', 2 : 'b', 3 : 'r', 4 : 'g'}
     edgelist = []
@@ -214,33 +244,81 @@ def network_changes(network):
             labels[u] = str(next_node)
             next_node += 1 
 
+    with open('%s/%s/node_labels.csv' % (DATA_DIR, network), 'w') as f:
+        for node, label in sorted(list(labels.iteritems()), key=lambda (x, y) : int(y)):
+            f.write('%s, %s\n' % (node, label))
+
+    with open('%s/%s/edge_labels.csv' % (DATA_DIR, network), 'w') as f:
+        for edge in edge_order:
+            edge_str = []
+            for u in edge:
+                label = get_label(u)
+                edge_str.append(str(label))
+            edge_str = ' to '.join(edge_str)
+            f.write(edge_str + '\n')
+
     fig = pylab.figure()
     def init():
-        pylab.clf()
-
-    def redraw(frame):
-        print frame
-        day, path_nodes = nodes_used[frame]
-
         nodelist = []
         node_color = []
+        node_size = []
         for u in G.nodes():
             nodelist.append(u)
-            if u in path_nodes:
-                node_color.append('y')
-            elif S.has_node(u):
+            if u in terminals:
+                node_size.append(200)
+            else:
+                node_size.append(100)
+
+            if S.has_node(u):
                 node_color.append('m')
             else:
-                node_color.append('r')
+                node_color.append('g')
 
-        nx.draw(G, pos=pos, with_labels=True, node_size=20, font_size=5,\
+        nx.draw(G, pos=pos, with_labels=True, node_size=node_size, font_size=5,\
                 labels=labels, node_color=node_color, nodelist=nodelist,\
                 edgelist=edgelist, edge_color=edge_color)
         pylab.draw()
-        pylab.savefig('mapping_network/figs/%s%d.pdf' % (network, frame), format='pdf')
-        #pylab.close()
+        pylab.savefig('mapping_network/figs/%s_init.pdf' % network, format='pdf')
+
+    def redraw(frame):
+        print frame
+        if frame == 0:
+            init()
+        else:
+            
+            pylab.clf()
+            
+            day, path_nodes = nodes_used[frame - 1]
+
+            nodelist = []
+            node_color = []
+            node_size = []
+            for u in G.nodes():
+                nodelist.append(u)
+                if u in terminals:
+                    node_size.append(200)
+                else:
+                    node_size.append(100)
+
+                if u in path_nodes:
+                    if S.has_node(u):
+                        node_color.append('y')
+                    else:
+                        node_color.append('r')
+                else:
+                    if S.has_node(u):
+                        node_color.append('m')
+                    else:
+                        node_color.append('g')
+
+            nx.draw(G, pos=pos, with_labels=True, node_size=node_size, font_size=5,\
+                    labels=labels, node_color=node_color, nodelist=nodelist,\
+                    edgelist=edgelist, edge_color=edge_color)
+            pylab.draw()
+            pylab.savefig('mapping_network/figs/%s%d.pdf' % (network, frame), format='pdf')
+            #pylab.close()
     
-    ani = animation.FuncAnimation(fig, redraw, frames=len(nodes_used), interval=10000, init_func=init)
+    ani = animation.FuncAnimation(fig, redraw, frames=len(nodes_used) + 1, interval=5000, init_func=init)
     #mywriter = animation.AVConvWriter()
     ani.save('mapping_network/figs/%s.mp4' % network, writer='avconv')
     pylab.close()
