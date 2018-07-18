@@ -881,6 +881,9 @@ def find_food(G, pheromone_add, pheromone_decay, explore_prob, strategy='uniform
             color_graph(G, 'g', (pheromone_add / max_wt), "graph_after_%s%d_e%0.2fd%0.2f" \
                         % (out_str, max_steps, explore_prob, pheromone_decay), cost)
             print "graph colored"
+        
+        if video:
+            return None
             
         # output results
         fname = '/iblsn/data/Arjun/Ants/ant_find_food.csv'
