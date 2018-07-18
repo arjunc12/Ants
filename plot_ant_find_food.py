@@ -11,7 +11,6 @@ FIND_FOOD_FILE = '/iblsn/data/Arjun/Ants/ant_find_food.csv'
 
 def find_food_heat(df, max_steps, steps_label, decay):
     df = df[(df['max steps'] == max_steps) & (df['decay'] == decay)]
-    print df
     for name, group in df.groupby(['graph', 'strategy', 'decay type']):
         graph, strategy, decay_type, = name
         group = group[['explore', 'food dist', 'steps']]
@@ -25,5 +24,5 @@ def find_food_heat(df, max_steps, steps_label, decay):
 
 if __name__ == '__main__':
     df = pd.read_csv(FIND_FOOD_FILE, skipinitialspace=True)
-    find_food_heat(df, 100000, '100k', 0.01)
+    #find_food_heat(df, 100000, '100k', 0.01)
     find_food_heat(df, 10000, '10k', 0.01)
