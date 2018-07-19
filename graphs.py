@@ -910,6 +910,11 @@ def set_init_road_path(road_graph, nest1, nest2, v1, v2):
         if not (u == v1 and v == v2):
            road_graph.graph['init path'].append((u, v))
 
+def acceptable_break(G, u, v):
+    G2 = G.copy()
+    print u, list(G2.neighbors(u))
+    G2.remove_edge(u, v)
+    return nx.has_path(G, u, v)
 
 def road(road_file_path, comments='#'):
     G = nx.read_edgelist(road_file_path, comments=comments, nodetype=int)
@@ -1025,10 +1030,21 @@ def mapped_network(network):
 
     nest1, nest2 = G.graph['nests'][:2]
     sp = nx.shortest_path(G, nest1, nest2)
+    print sp
     G.graph['init path'] = []
+    break_edges = []
     for i in xrange(len(sp) - 1):
         u, v = sp[i], sp[i + 1]
         G.graph['init path'].append((u, v))
+        if acceptable_break(G, u, v):
+            break_edges.append((u, v))
+    
+    print network
+    print break_edges
+    break_index = random.choice(range(len(break_edges)))
+    u, v = break_edges[break_index]
+    G.remove_edge(u, v)
+    G.graph['init path'].remove((u, v))
     return G
 
 def turtle_hill_network():
