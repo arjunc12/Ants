@@ -949,6 +949,10 @@ def road(road_file_path, comments='#'):
     
     G.graph['name'] = 'road'
     
+    pos = nx.kamada_kawai_layout(G, scale = graphscale)
+    for u in G.nodes():
+        G.node[u]['pos'] = pos[u]
+    
     done = False
     for i in xrange(MAX_ROAD_ATTEMPTS):
         n1, n2 = sample(G.nodes(), 2)
