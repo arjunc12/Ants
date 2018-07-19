@@ -64,8 +64,9 @@ def read_network(network):
             G[n1][n2]['repeatability'] = repeatability
          
     terminals = []
-    G.graph['nests'] = []
-    G.graph['food nodes'] = []
+    food_nodes = set()
+    nests = set()
+    
     for line in open('%s/%s/terminals.csv' % (DATA_DIR, network)):
         line = line.strip('\n')
         node, terminal = line.split('to')
@@ -77,9 +78,12 @@ def read_network(network):
         G[node][terminal]['length'] = DEFAULT_LENGTH
 
         if 'food' in terminal:
-            G.graph['food nodes'].append(terminal)
+            food_nodes.add(terminal)
         elif 'nest' in terminal:
-            G.graph['nests'].append(terminal)
+            nests.add(terminal)
+    
+    G.graph['nests'] = list(nests)
+    G.graph['food nodes'] = list(food_nodes)
     
     contractions = nx.Graph()
     for line in open('%s/%s/contract.csv' % (DATA_DIR, network)):
