@@ -104,7 +104,7 @@ def init_graph(G):
         M[i] = u
         Minv[u] = i    
         
-        if 'road' not in G.graph['name'] and G.graph['name'] != 'subelji':
+        if 'pos' not in G.node[u]:
             pos[u] = [u[0],u[1]] # position is the same as the label.
         
         G.node[u]['queue'] = []
@@ -1043,9 +1043,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         if print_graph:
             outdir = 'figs/after_graphs/' + savedir
             os.system('mkdir -p ' + outdir)
-            figname = outdir + '/graph_after_%s%d_e%0.2fd%0.2f'
-            color_graph(G, 'g', (pheromone_add / max_wt),  \
-                        % (out_str, max_steps, explore_prob, pheromone_decay), cost)
+            figname = outdir + '/graph_after_%s%d_e%0.2fd%0.2f' % (out_str, max_steps, explore_prob, pheromone_decay)
+            color_graph(G, 'g', (pheromone_add / max_wt),  figname, cost)
             print "graph colored"
     
         costs.append(cost)
@@ -1238,37 +1237,34 @@ def main():
 
     usage="usage: %prog [options]"
     parser = argparse.ArgumentParser()
-    parser.add_argument("-g", "--graph", dest='graph', choices=GRAPH_CHOICES, default='full',\
+    parser.add_argument("-g", "--graph", choices=GRAPH_CHOICES, default='turtle_hill',\
                         help="graph to run algorithm on")
-    parser.add_argument('-s', '--strategy', dest='strategy', choices=STRATEGY_CHOICES,\
-                        default='rank', help="strategy to run")
-    parser.add_argument("-x", "--repeats", type=int, dest="iterations", default=1,\
+    parser.add_argument('-s', '--strategy', choices=STRATEGY_CHOICES,\
+                        default='dberg', help="strategy to run")
+    parser.add_argument("-x", "--iterations", type=int, default=1,\
                         help="number of iterations") 
-    parser.add_argument("-a", "--add", type=float, dest="pheromone_add",\
+    parser.add_argument("-a", "--pheromone_add", type=float,\
                         help="amt of phermone added")
-    parser.add_argument("-d", "--decay", action="store", type=float, dest="pheromone_decay", \
-                        default=0.05, help="amt of pheromone decay")
-    parser.add_argument("-n", "--number", action="store", type=int, dest="num_ants", \
-                        default=100, help="number of ants")
+    parser.add_argument("-d", "--pheromone_decay", type=float, \
+                        default=0.01, help="amt of pheromone decay")
+    parser.add_argument("-n", "--num_ants", type=int,\
+                        default=10, help="number of ants")
     parser.add_argument("-pg", "--print_graph", action="store_true", dest="print_graph")
     parser.add_argument("-v", "--video", action="store_true", dest="video")
-    parser.add_argument("-v2", "--video2", action="store_true", dest="video2")
     parser.add_argument("-f", "--frames", action="store", type=int, dest="frames", \
                         default=-1)
-    parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.05, \
+    parser.add_argument("-e", "--explore", type=float, dest="explore", default=0.78, \
                         help="explore probability")
-    parser.add_argument('-e2', '--explore2', type=float, dest='explore2', default=None,\
-                        help='search mode explore probability')
-    parser.add_argument("-m", "--max_steps", type=int, dest="max_steps", default=1000)
-    parser.add_argument("-c", "--cost_plot", action="store_true", dest="cost_plot", default=False)
-    parser.add_argument('-b', '--backtrack', action='store_true', dest='backtrack', default=False)
-    parser.add_argument("-dt", "--decay_type", dest="decay_type", default="exp", \
+    parser.add_argument("-m", "--max_steps", type=int, default=1000)
+    parser.add_argument("-c", "--cost_plot", action="store_true", default=False)
+    parser.add_argument('-b', '--backtrack', action='store_true', default=False)
+    parser.add_argument("-dt", "--decay_type", default="exp", \
                         choices=DECAY_CHOICES)
-    parser.add_argument("-t", "--threshold", dest="threshold", type=float, default=0, \
+    parser.add_argument("-t", "--threshold", type=float, default=0, \
                         help="minimum detectable pheromone threshold")
-    parser.add_argument('-nql', '--node_queue_limit', type=int, dest='node_queue_lim', default=1)
-    parser.add_argument('-eql', '--edge_queue_limit', type=int, dest='edge_queue_lim', default=1)
-    parser.add_argument('-o', '--one_way', action='store_true', dest='one_way')
+    parser.add_argument('-nql', '--node_queue_lim', type=int, default=1)
+    parser.add_argument('-eql', '--edge_queue_lim', type=int, default=1)
+    parser.add_argument('-o', '--one_way', action='store_true')
 
     args = parser.parse_args()
     # ===============================================================
@@ -1282,12 +1278,8 @@ def main():
     num_ants = args.num_ants
     print_graph = args.print_graph
     video = args.video
-    video2 = args.video2
     frames = args.frames
     explore = args.explore
-    explore2 = args.explore2
-    if explore2 == None:
-        explore2 = explore
     max_steps = args.max_steps
     cost_plot = args.cost_plot
     backtrack = args.backtrack
