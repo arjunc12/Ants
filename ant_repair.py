@@ -31,6 +31,8 @@ from random import randint
 
 import os
 
+from constants import *
+
 SEED_DEBUG = False
 
 SEED_MAX = 4294967295
@@ -76,7 +78,7 @@ MAX_PRUNING_STEPS = 10000
 
 CRITICAL_NODES = True
 
-SECONDS_PER_STEP = 5
+SECONDS_PER_STEP = 1
 
 def clear_queues(G):
     '''
@@ -767,10 +769,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
                             add_amount = 2 * pheromone_add
-                            G2[curr][next]['weight'] += add_amount
-                            if decay_type == 'linear':
-                                G2[curr][next]['units'].append(add_amount)
-                            nonzero_edges.add(Ninv[(curr, next)])
+                            repeatability = G[curr][next]['repeatability']
+                            reinforce_prob = REINFORCEMENT_RATES[repeatability]
+                            if uniform() <= reinforce_prob:
+                                G2[curr][next]['weight'] += add_amount
+                                if decay_type == 'linear':
+                                    G2[curr][next]['units'].append(add_amount)
+                                nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
                         prevs[next_ant] = next
@@ -825,10 +830,13 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                             if 'plant' in G.node[curr] and 'plant' in G.node[next]:
                                 if G.node[curr]['plant'] != G.node[next]['plant']:
                                     add_amount *= 0.5
-                            G2[curr][next]['weight'] += add_amount
-                            if decay_type == 'linear':
-                                G2[curr][next]['units'].append(add_amount)
-                            nonzero_edges.add(Ninv[(curr, next)])
+                            repeatability = G[curr][next]['repeatability']
+                            reinforce_prob = REINFORCEMENT_RATES[repeatability]
+                            if uniform() <= reinforce_prob:
+                                G2[curr][next]['weight'] += add_amount
+                                if decay_type == 'linear':
+                                    G2[curr][next]['units'].append(add_amount)
+                                nonzero_edges.add(Ninv[(curr, next)])
                         
                         if video:
                             paths[next_ant].append(next)
@@ -936,8 +944,6 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     walks[ant] = [curr]
                     
                     prevs[ant] = None
-                    prevs2[ant] = None
-                    prevs3[ant] = None
                     currs[ant] = curr
                     
                     deadend[ant] = False
