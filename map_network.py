@@ -259,6 +259,8 @@ def network_changes(network):
 
     fig = pylab.figure()
     def init():
+        pylab.text(0, 1.2, 'network structure', fontsize=15,\
+                   verticalalignment='center', horizontalalignment='center',)
         nodelist = []
         node_color = []
         node_size = []
@@ -272,11 +274,11 @@ def network_changes(network):
             if S.has_node(u):
                 node_color.append('m')
             else:
-                node_color.append('g')
+                node_color.append('k')
 
         nx.draw(G, pos=pos, with_labels=True, node_size=node_size, font_size=5,\
                 labels=labels, node_color=node_color, nodelist=nodelist,\
-                edgelist=edgelist, edge_color=edge_color)
+                edgelist=edgelist, edge_color=edge_color, font_color='w')
         pylab.draw()
         pylab.savefig('mapping_network/figs/%s_init.pdf' % network, format='pdf')
 
@@ -290,6 +292,10 @@ def network_changes(network):
             
             day, path_nodes = nodes_used[frame - 1]
 
+            day = day.strip('used ')
+            pylab.text(0, 1.2, day, fontsize=15,\
+                       verticalalignment='center', horizontalalignment='center')
+
             nodelist = []
             node_color = []
             node_size = []
@@ -302,25 +308,25 @@ def network_changes(network):
 
                 if u in path_nodes:
                     if S.has_node(u):
-                        node_color.append('y')
+                        node_color.append('b')
                     else:
                         node_color.append('r')
                 else:
                     if S.has_node(u):
                         node_color.append('m')
                     else:
-                        node_color.append('g')
+                        node_color.append('k')
 
             nx.draw(G, pos=pos, with_labels=True, node_size=node_size, font_size=5,\
                     labels=labels, node_color=node_color, nodelist=nodelist,\
-                    edgelist=edgelist, edge_color=edge_color)
+                    edgelist=edgelist, edge_color=edge_color, font_color='w')
             pylab.draw()
             pylab.savefig('mapping_network/figs/%s%d.pdf' % (network, frame), format='pdf')
             #pylab.close()
     
     ani = animation.FuncAnimation(fig, redraw, frames=len(nodes_used) + 1, interval=5000, init_func=init)
     #mywriter = animation.AVConvWriter()
-    ani.save('mapping_network/figs/%s.mp4' % network, writer='avconv')
+    ani.save('mapping_network/figs/%s.mp4' % network, writer='avconv', dpi=300)
     pylab.close()
     
     print "similar nodes"
