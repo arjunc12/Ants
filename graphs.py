@@ -912,7 +912,6 @@ def set_init_road_path(road_graph, nest1, nest2, v1, v2):
 
 def acceptable_break(G, u, v):
     G2 = G.copy()
-    print u, list(G2.neighbors(u))
     G2.remove_edge(u, v)
     return nx.has_path(G, u, v)
 
@@ -1030,7 +1029,6 @@ def mapped_network(network):
 
     nest1, nest2 = G.graph['nests'][:2]
     sp = nx.shortest_path(G, nest1, nest2)
-    print sp
     G.graph['init path'] = []
     break_edges = []
     for i in xrange(len(sp) - 1):
@@ -1039,8 +1037,6 @@ def mapped_network(network):
         if acceptable_break(G, u, v):
             break_edges.append((u, v))
     
-    print network
-    print break_edges
     break_index = random.choice(range(len(break_edges)))
     u, v = break_edges[break_index]
     G.remove_edge(u, v)
