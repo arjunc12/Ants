@@ -209,9 +209,10 @@ def network_changes(network):
         node = node.strip()
         terminal = terminal.strip()
         terminals.append(terminal)
-        G.add_edge(node, terminal)
-        G[node][terminal]['repeatability'] = DEFAULT_REPEATABILITY
-        G[node][terminal]['length'] = DEFAULT_LENGTH
+        if not G.has_edge(node, terminal):
+            G.add_edge(node, terminal)
+            G[node][terminal]['repeatability'] = DEFAULT_REPEATABILITY
+            G[node][terminal]['length'] = DEFAULT_LENGTH
 
     S = nx.algorithms.approximation.steinertree.steiner_tree(G, terminals, weight='repeatability')
     
