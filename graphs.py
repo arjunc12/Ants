@@ -913,7 +913,7 @@ def set_init_road_path(road_graph, nest1, nest2, v1, v2):
 def acceptable_break(G, u, v):
     G2 = G.copy()
     G2.remove_edge(u, v)
-    return nx.has_path(G, u, v)
+    return nx.has_path(G2, u, v)
 
 def road(road_file_path, comments='#'):
     G = nx.read_edgelist(road_file_path, comments=comments, nodetype=int)
