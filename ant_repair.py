@@ -84,7 +84,7 @@ def clear_queues(G):
     '''
     empties all node and edge queues
     '''
-    for u in G.nodes_iter():
+    for u in G.nodes():
         G.node[u]['queue'] = []
     
     for u, v in G.edges():
@@ -106,6 +106,8 @@ def init_graph(G):
         
         if 'pos' not in G.node[u]:
             pos[u] = [u[0],u[1]] # position is the same as the label.
+        else:
+            pos[u] = G.node[u]['pos']
         
         G.node[u]['queue'] = []
 
@@ -133,7 +135,7 @@ def init_graph(G):
         N[i] = (u, v)        
         Ninv[(v, u)] = i
         
-        init_path = G.graph['init_path']
+        init_path = G.graph['init path']
         if (u, v) in init_path:
             edge_color.append('g')
             edge_width.append(10)
@@ -212,7 +214,7 @@ def pheromone_subgraph(G, origin=None, destination=None):
     adjacent to a pheromone edge
     '''
     G2 = nx.Graph()
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         # need enough pheromone for the ant to be able to detect it on that edge
         wt = G[u][v]['weight']
         if wt > MIN_DETECTABLE_PHEROMONE:
@@ -266,7 +268,7 @@ def pheromone_cost(G):
     Counts the total number of pheromone edges in the graph G
     '''
     G2 = nx.Graph()
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         if G[u][v]['weight'] > MIN_DETECTABLE_PHEROMONE:
             G2.add_edge(u, v)
     return G2.number_of_edges()
@@ -440,7 +442,7 @@ def wasted_edges(G, useful_edges):
     '''
     wasted_edges = 0
     wasted_edge_weight = 0
-    for u, v in G.edges_iter():
+    for u, v in G.edges():
         wt = G[u][v]['weight']
         if wt > MIN_DETECTABLE_PHEROMONE:
             edge_id = Ninv[(u, v)]
@@ -454,7 +456,7 @@ def max_neighbors(G, source, prev=None):
     Gets all neighbors that are tied for the highest weight among all neighbors.  Ignores
     ants most previously visited vertex
     '''
-    candidates = G.neighbors(source)
+    candidates = list(G.neighbors(source))
     # ignore previous vertex, ant won't consider it
     if prev != None:
         assert prev in candidates
@@ -524,9 +526,9 @@ def weighted_mean_path_len(path_counts):
         return None
     return PP.average(lengths, weights=weights)
     
-def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='rank',\
+def repair(G, pheromone_add, pheromone_decay, explore_prob, strategy='rank',\
             num_ants=100, max_steps=1000, num_iters=1, print_graph=False, video=False, \
-            nframes=-1, video2=False, cost_plot=False, backtrack=False, \
+            nframes=-1, cost_plot=False, backtrack=False, \
             decay_type='exp', node_queue_lim=1, edge_queue_lim=1, one_way=False):
     graph_name = G.graph['name']
     nests = G.graph['nests']
@@ -545,9 +547,9 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                     'explore', 'decay']
 
     
-    write_items = [graph_name, strategy, decay_type, ants, steps, max_steps,\
+    write_items = [graph_name, strategy, decay_type, num_ants, max_steps,\
                    backtrack, one_way, node_queue_lim, edge_queue_lim,\
-                   explore, decay]
+                   explore_prob, pheromone_decay]
     
     def next_destination(origin):
         idx = nests.index(origin)
@@ -560,17 +562,18 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     nframes = min(nframes, max_steps)
     
     data_fname = '/iblsn/data/Arjun/Ants/ant_repair.csv'
+    first_time = not os.path.exists(data_fname)
     
     if video:
         fig = PP.figure()
     
-    init_path = G.graph['init_path']
+    init_path = G.graph['init path']
     
     track_pruning = max_steps <= MAX_PRUNING_STEPS
     
     for iter in xrange(num_iters):    
         nonzero_edges = set()
-        for u, v in G.edges_iter():
+        for u, v in G.edges():
             G[u][v]['weight'] = MIN_PHEROMONE
             G[u][v]['units'] = []
         for u, v in init_path:
@@ -741,7 +744,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                                                  and pheromone_dead_end(G, curr, prev):
                         search_mode[next_ant] = True
             
-                    n = G.neighbors(curr)
+                    n = list(G.neighbors(curr))
                     if curr != prev and prev != None:
                         n.remove(prev)
                     if len(n) == 0:
@@ -754,10 +757,8 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                         prev = None
 
                     
-                    exp_prob = explore_prob
-                    if search_mode[next_ant]:
-                        exp_prob = explore2              
-                    elif (curr == origins[next_ant] and not search_mode[next_ant]):
+                    exp_prob = explore_prob            
+                    if (curr == origins[next_ant] and not search_mode[next_ant]):
                         exp_prob = 0
                     
                     
@@ -769,13 +770,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                         queue_ant(G2, curr, next_ant)
                         if not deadend[next_ant]:
                             add_amount = 2 * pheromone_add
-                            repeatability = G[curr][next]['repeatability']
-                            reinforce_prob = REINFORCEMENT_RATES[repeatability]
-                            if uniform() <= reinforce_prob:
-                                G2[curr][next]['weight'] += add_amount
-                                if decay_type == 'linear':
-                                    G2[curr][next]['units'].append(add_amount)
-                                nonzero_edges.add(Ninv[(curr, next)])
+                            G2[curr][next]['weight'] += add_amount
+                            if decay_type == 'linear':
+                                G2[curr][next]['units'].append(add_amount)
+                            nonzero_edges.add(Ninv[(curr, next)])
                         new_queue_nodes.add(curr)
                         empty_nodes.discard(curr)
                         prevs[next_ant] = next
@@ -830,13 +828,10 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
                             if 'plant' in G.node[curr] and 'plant' in G.node[next]:
                                 if G.node[curr]['plant'] != G.node[next]['plant']:
                                     add_amount *= 0.5
-                            repeatability = G[curr][next]['repeatability']
-                            reinforce_prob = REINFORCEMENT_RATES[repeatability]
-                            if uniform() <= reinforce_prob:
-                                G2[curr][next]['weight'] += add_amount
-                                if decay_type == 'linear':
-                                    G2[curr][next]['units'].append(add_amount)
-                                nonzero_edges.add(Ninv[(curr, next)])
+                            G2[curr][next]['weight'] += add_amount
+                            if decay_type == 'linear':
+                                G2[curr][next]['units'].append(add_amount)
+                            nonzero_edges.add(Ninv[(curr, next)])
                         
                         if video:
                             paths[next_ant].append(next)
@@ -973,7 +968,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
     
         cost = 0
         max_wt = 0
-        for u, v in G.edges_iter():
+        for u, v in G.edges():
             wt = G[u][v]['weight']
             if wt > MIN_PHEROMONE:
                 cost += 1
@@ -1038,7 +1033,11 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         if video:    
             ani = animation.FuncAnimation(fig, redraw, init_func=init, frames=nframes, \
                                           interval = FRAME_INTERVAL)
-            ani.save("ant_" + out_str + str(iter) + ".mp4", writer='avconv')
+            vid_dir = 'figs/videos/%s' % savedir
+            os.system('mkdir -p ' + vid_dir)
+            ani.save('%s/ant_%s%d.mp4' % (vid_dir, out_str, iter), writer='avconv')
+            
+            return None
         
         if print_graph:
             outdir = 'figs/after_graphs/' + savedir
@@ -1185,7 +1184,7 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         else:
             write_items.append('')
 
-        header_items.append('wasted edge count', 'wasted edge weight')
+        header_items += ['wasted edge count', 'wasted edge weight']
         write_items += [wasted_edge_count, wasted_edge_weight]
         
         header_items.append('mean path length')
@@ -1221,11 +1220,12 @@ def repair(G, pheromone_add, pheromone_decay, explore_prob, explore2, strategy='
         else:
             write_items.append('')
     
-        header_str = ', '.join(map(str, header_items))
-        if first_time:
-            data_file.write(header_str + '\n')
-        data_str = ', '.join(map(str, write_items))
-        data_file.write(line + '\n')
+        with open(data_fname, 'a') as data_file:
+            header_str = ', '.join(map(str, header_items))
+            if first_time:
+                data_file.write(header_str + '\n')
+            data_str = ', '.join(map(str, write_items))
+            data_file.write(line + '\n')
         
 
 def main():
@@ -1243,12 +1243,12 @@ def main():
                         default='dberg', help="strategy to run")
     parser.add_argument("-x", "--iterations", type=int, default=1,\
                         help="number of iterations") 
-    parser.add_argument("-a", "--pheromone_add", type=float,\
+    parser.add_argument("-a", "--pheromone_add", type=float, default=1,\
                         help="amt of phermone added")
     parser.add_argument("-d", "--pheromone_decay", type=float, \
                         default=0.01, help="amt of pheromone decay")
     parser.add_argument("-n", "--num_ants", type=int,\
-                        default=10, help="number of ants")
+                        default=100, help="number of ants")
     parser.add_argument("-pg", "--print_graph", action="store_true", dest="print_graph")
     parser.add_argument("-v", "--video", action="store_true", dest="video")
     parser.add_argument("-f", "--frames", action="store", type=int, dest="frames", \
@@ -1306,8 +1306,8 @@ def main():
         return None
 
     # Run recovery algorithm.
-    repair(G, pheromone_add, pheromone_decay, explore, explore2, strategy, num_ants,\
-           max_steps, num_iters, print_graph, video, frames, video2, cost_plot,\
+    repair(G, pheromone_add, pheromone_decay, explore, strategy, num_ants,\
+           max_steps, num_iters, print_graph, video, frames, cost_plot,\
            backtrack, decay_type, node_queue_lim, edge_queue_lim, one_way)
     
     # =========================== Finish ============================
