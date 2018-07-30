@@ -533,7 +533,7 @@ def dberg_likelihood(G, source, dest, explore, prev=None, offset=DBERG_OFFSET):
 def max_edge_likelihood(G, source, dest, explore, prev=None):
     max_wt = MIN_PHEROMONE
     max_neighbors = []
-    neighbors = G.neighbors(source)
+    neighbors = list(G.neighbors(source))
     weights = []
     if prev != None:
         assert prev in neighbors
